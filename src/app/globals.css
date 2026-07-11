@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-brume text-encre antialiased;
+  font-feature-settings: "ss01" 1;
+}
+
+/* Signature : un halo qui respire très lentement, en fond des pages d'authentification.
+   Évoque la régulation du rythme sans jamais devenir un élément "à observer". */
+.halo-respiration {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.halo-respiration::before {
+  content: "";
+  position: absolute;
+  top: -20%;
+  right: -15%;
+  width: 60vmax;
+  height: 60vmax;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle,
+    rgba(95, 122, 99, 0.14) 0%,
+    rgba(95, 122, 99, 0.05) 45%,
+    rgba(95, 122, 99, 0) 70%
+  );
+  animation: respirer 11s ease-in-out infinite;
+}
+
+@keyframes respirer {
+  0%,
+  100% {
+    transform: scale(0.96);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .halo-respiration::before {
+    animation: none;
+  }
+}
+
+/* Focus clavier visible partout, sans exception */
+:focus-visible {
+  outline: 2px solid theme("colors.mousse.DEFAULT");
+  outline-offset: 2px;
+  border-radius: 4px;
+}
