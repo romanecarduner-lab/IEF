@@ -10,6 +10,15 @@ const LIENS_NAVIGATION = [
   { href: "/parcours", libelle: "Parcours" },
 ];
 
+// Ces pages dépendent systématiquement de la session de l'utilisateur
+// (cookies) : elles ne doivent jamais être pré-rendues statiquement au
+// build. Sans cette ligne, Next.js tente de les générer comme pages
+// statiques tant qu'il n'a pas explicitement détecté un appel à cookies()
+// pendant le rendu — ce qui échoue bruyamment si la validation des
+// variables d'environnement lève une erreur avant même d'atteindre cet
+// appel (voir le correctif d'authentification précédent).
+export const dynamic = "force-dynamic";
+
 /**
  * Garantit, avant d'afficher toute page protégée, que l'utilisateur
  * appartient à un espace familial. Si ce n'est pas encore le cas
