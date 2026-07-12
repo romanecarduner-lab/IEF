@@ -72,6 +72,17 @@ Puis ouvrir [http://localhost:3000](http://localhost:3000).
    (jamais `SUPABASE_SERVICE_ROLE_KEY`, non utilisée dans ce lot).
 3. Déployer. Chaque push sur `main` redéploie automatiquement.
 
+## Correctif critique — authentification bloquée indéfiniment
+
+Un bug a été corrigé après un premier déploiement : les formulaires de
+connexion, inscription, mot de passe oublié et réinitialisation
+n'enveloppaient pas l'appel à Supabase dans un `try/catch/finally`. Si les
+variables d'environnement étaient absentes sur Vercel, le client Supabase
+levait une erreur synchrone jamais rattrapée : le bouton restait bloqué
+sur "Un instant…" sans aucun message. Voir `src/lib/supabase/env.ts` et
+`src/lib/delaiMaximal.ts` pour le correctif (validation explicite des
+variables + délai maximal de 15 s + `try/catch/finally` systématique).
+
 ## Ce qui est inclus — Lot 1 (socle)
 
 - Inscription (email + mot de passe), confirmation par mail

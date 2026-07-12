@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CarteAuth } from "@/components/CarteAuth";
 import { BoutonPrincipal, Champ, MessageStatut } from "@/components/Formulaire";
 import { creerClientNavigateur } from "@/lib/supabase/client";
+import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaximal";
 
 export default function PageReinitialisation() {
   const router = useRouter();
@@ -30,21 +31,37 @@ export default function PageReinitialisation() {
     }
 
     setChargement(true);
-    const supabase = creerClientNavigateur();
-    // Le lien reçu par mail établit déjà une session temporaire côté client,
-    // permettant de mettre à jour le mot de passe sans autre confirmation.
-    const { error } = await supabase.auth.updateUser({ password: motDePasse });
-    setChargement(false);
+    console.log("Début réinitialisation du mot de passe");
 
-    if (error) {
-      setErreur(
-        "Le lien a peut-être expiré. Merci de refaire une demande de réinitialisation."
+    try {
+      const supabase = creerClientNavigateur();
+      // Le lien reçu par mail établit déjà une session temporaire côté
+      // client, permettant de mettre à jour le mot de passe sans autre
+      // confirmation.
+      const { error } = await avecDelaiMaximal(
+        supabase.auth.updateUser({ password: motDePasse })
       );
-      return;
-    }
+      console.log("Réponse Supabase reçue");
 
-    setReussi(true);
-    setTimeout(() => router.push("/connexion"), 2000);
+      if (error) {
+        console.error("Erreur Supabase", error.message);
+        setErreur(
+          "Le lien a peut-être expiré. Merci de refaire une demande de réinitialisation."
+        );
+        return;
+      }
+
+      setReussi(true);
+      setTimeout(() => router.push("/connexion"), 2000);
+    } catch (erreurInattendue) {
+      console.error(
+        "Erreur inattendue lors de la réinitialisation",
+        erreurInattendue
+      );
+      setErreur(messagePourErreurInattendue(erreurInattendue));
+    } finally {
+      setChargement(false);
+    }
   }
 
   return (

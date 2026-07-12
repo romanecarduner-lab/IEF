@@ -9,6 +9,7 @@ import {
   MessageStatut,
 } from "@/components/Formulaire";
 import { creerClientNavigateur } from "@/lib/supabase/client";
+import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaximal";
 
 export default function PageMotDePasseOublie() {
   const [chargement, setChargement] = useState(false);
@@ -19,21 +20,35 @@ export default function PageMotDePasseOublie() {
     evenement.preventDefault();
     setErreur(null);
     setChargement(true);
+    console.log("Début demande de réinitialisation");
 
     const donnees = new FormData(evenement.currentTarget);
     const email = String(donnees.get("email") ?? "");
 
-    const supabase = creerClientNavigateur();
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reinitialisation`,
-    });
+    try {
+      const supabase = creerClientNavigateur();
+      const { error } = await avecDelaiMaximal(
+        supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reinitialisation`,
+        })
+      );
+      console.log("Réponse Supabase reçue");
 
-    setChargement(false);
-
-    // Message identique que l'adresse existe ou non, pour ne pas révéler
-    // quelles adresses sont enregistrées.
-    if (!error) setEnvoye(true);
-    else setErreur("Une erreur est survenue. Merci de réessayer.");
+      // Message identique que l'adresse existe ou non, pour ne pas révéler
+      // quelles adresses sont enregistrées.
+      if (error) {
+        console.error("Erreur Supabase", error.message);
+      }
+      setEnvoye(true);
+    } catch (erreurInattendue) {
+      console.error(
+        "Erreur inattendue lors de la demande de réinitialisation",
+        erreurInattendue
+      );
+      setErreur(messagePourErreurInattendue(erreurInattendue));
+    } finally {
+      setChargement(false);
+    }
   }
 
   if (envoye) {

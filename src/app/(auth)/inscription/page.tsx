@@ -9,6 +9,7 @@ import {
   MessageStatut,
 } from "@/components/Formulaire";
 import { creerClientNavigateur } from "@/lib/supabase/client";
+import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaximal";
 
 export default function PageInscription() {
   const [chargement, setChargement] = useState(false);
@@ -35,24 +36,49 @@ export default function PageInscription() {
     }
 
     setChargement(true);
-    const supabase = creerClientNavigateur();
-    const { error } = await supabase.auth.signUp({
-      email,
-      password: motDePasse,
-      options: {
-        // Utilisé lors de la toute première connexion pour nommer l'espace
-        // familial créé automatiquement (voir (protege)/layout.tsx).
-        data: { nom_famille: nomFamille || "Ma famille" },
-        emailRedirectTo: `${window.location.origin}/connexion`,
-      },
-    });
-    setChargement(false);
+    console.log("Début inscription");
 
-    if (error) {
-      setErreur(traduireErreur(error.message));
-      return;
+    try {
+      const supabase = creerClientNavigateur();
+      const { data, error } = await avecDelaiMaximal(
+        supabase.auth.signUp({
+          email,
+          password: motDePasse,
+          options: {
+            // Utilisé lors de la toute première connexion pour nommer
+            // l'espace familial créé automatiquement (voir
+            // (protege)/layout.tsx). La création de l'espace n'a lieu
+            // qu'à ce moment-là, jamais ici : si la confirmation par mail
+            // est activée (réglage par défaut de Supabase), signUp() ne
+            // renvoie encore aucune session exploitable.
+            data: { nom_famille: nomFamille || "Ma famille" },
+            emailRedirectTo: `${window.location.origin}/connexion`,
+          },
+        })
+      );
+      console.log("Réponse Supabase reçue");
+
+      if (error) {
+        console.error("Erreur Supabase", error.message);
+        setErreur(traduireErreur(error.message));
+        return;
+      }
+
+      // Compte créé, mais aucune session tant que le mail n'est pas
+      // confirmé (comportement par défaut de Supabase) : on ne tente
+      // jamais de créer l'espace familial ici.
+      console.log(
+        data.session
+          ? "Compte créé, session déjà active (confirmation par mail désactivée)"
+          : "Compte créé, confirmation par mail requise avant toute session"
+      );
+      setEnvoye(true);
+    } catch (erreurInattendue) {
+      console.error("Erreur inattendue lors de l'inscription", erreurInattendue);
+      setErreur(messagePourErreurInattendue(erreurInattendue));
+    } finally {
+      setChargement(false);
     }
-    setEnvoye(true);
   }
 
   if (envoye) {

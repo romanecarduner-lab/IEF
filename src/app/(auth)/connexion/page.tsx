@@ -10,6 +10,7 @@ import {
   MessageStatut,
 } from "@/components/Formulaire";
 import { creerClientNavigateur } from "@/lib/supabase/client";
+import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaximal";
 
 // useSearchParams() exige une limite Suspense pour le rendu statique
 // (voir https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout).
@@ -31,27 +32,38 @@ function FormulaireConnexion() {
     evenement.preventDefault();
     setErreur(null);
     setChargement(true);
+    console.log("Début connexion");
 
     const donnees = new FormData(evenement.currentTarget);
     const email = String(donnees.get("email") ?? "");
     const motDePasse = String(donnees.get("mot-de-passe") ?? "");
 
-    const supabase = creerClientNavigateur();
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password: motDePasse,
-    });
+    // Toute la logique est dans un try/catch/finally : quelle que soit
+    // l'étape qui échoue (configuration manquante, réseau, réponse
+    // Supabase en erreur), le bouton ne doit jamais rester bloqué sur
+    // "Un instant…" sans message.
+    try {
+      const supabase = creerClientNavigateur();
+      const { error } = await avecDelaiMaximal(
+        supabase.auth.signInWithPassword({ email, password: motDePasse })
+      );
+      console.log("Réponse Supabase reçue");
 
-    setChargement(false);
+      if (error) {
+        console.error("Erreur Supabase", error.message);
+        setErreur("Adresse mail ou mot de passe incorrect.");
+        return;
+      }
 
-    if (error) {
-      setErreur("Adresse mail ou mot de passe incorrect.");
-      return;
+      const suite = parametres.get("suite") || "/tableau-de-bord";
+      router.push(suite);
+      router.refresh();
+    } catch (erreurInattendue) {
+      console.error("Erreur inattendue lors de la connexion", erreurInattendue);
+      setErreur(messagePourErreurInattendue(erreurInattendue));
+    } finally {
+      setChargement(false);
     }
-
-    const suite = parametres.get("suite") || "/tableau-de-bord";
-    router.push(suite);
-    router.refresh();
   }
 
   return (
