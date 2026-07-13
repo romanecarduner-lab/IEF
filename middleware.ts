@@ -13,6 +13,7 @@ const PAGES_PROTEGEES = [
   "/enfants",
   "/annees-scolaires",
   "/parcours",
+  "/journal",
 ];
 
 export async function middleware(request: NextRequest) {

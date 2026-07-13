@@ -116,6 +116,45 @@ variables + délai maximal de 15 s + `try/catch/finally` systématique).
   isolation entre familles sur ces trois tables + les deux gardes-fous du
   trigger
 
+## Ce qui est inclus — Lot 3 (structure du programme officiel)
+
+- Nouvelles tables : `types_element_programme` (8 types possibles : domaine,
+  sous-domaine, objectif, compétence, attendu, repère annuel, exemple de
+  réussite, contenu d'enseignement) et `elements_programme` (arborescence
+  générique, `parent_id` auto-référencé)
+- Trigger `verifier_coherence_element_programme` : un élément enfant doit
+  toujours appartenir au même cycle que son parent
+- **Toujours aucun import réel du programme officiel** — la source doit
+  être validée séparément avant d'y toucher. Cette migration ne crée que
+  la structure, vide.
+- Lecture ouverte à tout utilisateur authentifié, écriture réservée aux
+  migrations (aucune interface pour l'instant : cette structure reste
+  invisible au quotidien tant que le lot "Observations compétences" n'a
+  pas été développé)
+- Tests pgTAP (`0003_structure_programme.sql`) : RLS en lecture seule +
+  garde-fou du trigger de cohérence de cycle
+
+## Ce qui est inclus — Lot 4 (journal pédagogique)
+
+- Nouvelles tables de vocabulaire : `contextes_activite` (12 valeurs),
+  `niveaux_autonomie` (6 valeurs), `statuts_activite` (brouillon/validé)
+- Table `activites` : titre, description, contexte, lieu, observations,
+  paroles de l'enfant, personnes présentes (texte libre), autonomie
+  générale (facultative, distincte de l'autonomie par compétence prévue
+  au lot "Observations"), statut, favori
+- Page **Journal** : liste des activités (toutes familles confondues côté
+  UI, filtrées par RLS), bascule favori en un clic, suppression
+- Page **Ajouter une activité** avec :
+  - **Brouillon local (IndexedDB)** : sauvegarde automatique pendant la
+    saisie, indépendante de Supabase ; restauration proposée si un
+    brouillon non synchronisé est retrouvé au chargement de la page
+  - Indicateur de synchronisation (brouillon non synchronisé / en cours /
+    synchronisé)
+  - La ligne `activites` n'est créée dans Supabase qu'à l'envoi réussi du
+    formulaire, jamais avant (voir `src/lib/brouillonLocal.ts`)
+- Tests pgTAP (`0004_isolation_activites.sql`) : isolation entre familles
+  sur le journal
+
 ## Ce qui n'est volontairement pas inclus
 
 Import réel du programme officiel, journal pédagogique, traces,
