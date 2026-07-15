@@ -155,6 +155,33 @@ variables + délai maximal de 15 s + `try/catch/finally` systématique).
 - Tests pgTAP (`0004_isolation_activites.sql`) : isolation entre familles
   sur le journal
 
+## Ce qui est inclus — Lot 5 (traces)
+
+- Nouvelles tables : `types_trace` (photo, production, document, PDF,
+  citation, observation parentale, audio réservé), `statuts_trace`
+  (privé/sélectionné/archivé), `traces`
+- Bucket Storage privé `traces-pedagogiques` (créé par migration SQL),
+  avec policies RLS sur `storage.objects` : chaque famille ne peut lire,
+  déposer, remplacer ou supprimer des fichiers que sous son propre
+  préfixe (`{famille_id}/...`), vérifié via la même fonction
+  `est_membre_actif_famille` que le reste de l'application
+- Page **détail d'une activité** (`/journal/[id]`) : informations de
+  l'activité, liste des traces, formulaire d'ajout
+- **Compression côté client** avant envoi (`src/lib/compressionImage.ts`) :
+  redimensionnement + réorientation automatique (EXIF) + génération d'une
+  miniature, pour les photos et productions
+- Les documents (PDF, Word) sont envoyés sans compression
+- Les citations et observations parentales n'ont pas de fichier, juste du
+  texte
+- Accès aux fichiers exclusivement via URL signée temporaire (1h), jamais
+  d'URL publique permanente
+- La suppression d'une trace retire d'abord le(s) fichier(s) du bucket,
+  puis la ligne en base
+- Tests pgTAP (`0005_isolation_traces.sql`) : isolation entre familles sur
+  la table `traces` et sur `storage.objects`
+- Les fichiers audio ne sont pas encore intégrés côté interface (prévu
+  plus tard), les vidéos ne sont pas prévues en V1
+
 ## Ce qui n'est volontairement pas inclus
 
 Import réel du programme officiel, journal pédagogique, traces,

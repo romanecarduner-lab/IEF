@@ -76,9 +76,12 @@ export default async function PageJournal() {
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="font-display text-lg italic text-encre">
+                  <Link
+                    href={`/journal/${a.id}`}
+                    className="font-display text-lg italic text-encre hover:text-mousse-fonce"
+                  >
                     {a.titre}
-                  </p>
+                  </Link>
                   <p className="text-sm text-ardoise">
                     {a.enfant} · {a.annee} ·{" "}
                     {new Date(a.date).toLocaleDateString("fr-FR")}
