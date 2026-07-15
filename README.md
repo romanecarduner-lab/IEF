@@ -155,6 +155,17 @@ variables + délai maximal de 15 s + `try/catch/finally` systématique).
 - Tests pgTAP (`0004_isolation_activites.sql`) : isolation entre familles
   sur le journal
 
+## Amélioration — photo directe à la création
+
+Le formulaire "Ajouter une activité" propose maintenant un champ photo/
+document facultatif. En un seul envoi : l'activité est créée, puis (si un
+fichier a été choisi) il est compressé et envoyé comme première trace,
+sans repasser par la fiche de l'activité. En cas d'échec de l'envoi du
+fichier, l'activité reste enregistrée et l'utilisatrice est redirigée
+vers sa fiche pour réessayer — jamais de perte de données déjà saisies.
+Logique de téléversement partagée entre ce raccourci et le formulaire de
+trace complet (`src/lib/televersementTrace.ts`).
+
 ## Ce qui est inclus — Lot 5 (traces)
 
 - Nouvelles tables : `types_trace` (photo, production, document, PDF,

@@ -34,11 +34,13 @@ on conflict (code) do nothing;
 alter table types_trace enable row level security;
 alter table statuts_trace enable row level security;
 
+drop policy if exists "Lecture types_trace pour utilisateurs authentifies" on types_trace;
 create policy "Lecture types_trace pour utilisateurs authentifies"
   on types_trace for select
   to authenticated
   using (true);
 
+drop policy if exists "Lecture statuts_trace pour utilisateurs authentifies" on statuts_trace;
 create policy "Lecture statuts_trace pour utilisateurs authentifies"
   on statuts_trace for select
   to authenticated

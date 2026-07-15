@@ -33,6 +33,7 @@ create index if not exists idx_traces_statut on traces(statut_id);
 -- ---------------------------------------------------------------------------
 alter table traces enable row level security;
 
+drop policy if exists "Lecture traces si membre actif de la famille" on traces;
 create policy "Lecture traces si membre actif de la famille"
   on traces for select
   to authenticated
@@ -46,6 +47,7 @@ create policy "Lecture traces si membre actif de la famille"
     )
   );
 
+drop policy if exists "Creation trace si membre actif de la famille" on traces;
 create policy "Creation trace si membre actif de la famille"
   on traces for insert
   to authenticated
@@ -59,6 +61,7 @@ create policy "Creation trace si membre actif de la famille"
     )
   );
 
+drop policy if exists "Modification trace si membre actif de la famille" on traces;
 create policy "Modification trace si membre actif de la famille"
   on traces for update
   to authenticated
@@ -81,6 +84,7 @@ create policy "Modification trace si membre actif de la famille"
     )
   );
 
+drop policy if exists "Suppression trace si membre actif de la famille" on traces;
 create policy "Suppression trace si membre actif de la famille"
   on traces for delete
   to authenticated
@@ -113,6 +117,7 @@ values (
 )
 on conflict (id) do nothing;
 
+drop policy if exists "Lecture fichiers famille" on storage.objects;
 create policy "Lecture fichiers famille"
 on storage.objects for select
 to authenticated
@@ -121,6 +126,7 @@ using (
   and est_membre_actif_famille(((storage.foldername(name))[1])::uuid)
 );
 
+drop policy if exists "Insertion fichiers famille" on storage.objects;
 create policy "Insertion fichiers famille"
 on storage.objects for insert
 to authenticated
@@ -129,6 +135,7 @@ with check (
   and est_membre_actif_famille(((storage.foldername(name))[1])::uuid)
 );
 
+drop policy if exists "Modification fichiers famille" on storage.objects;
 create policy "Modification fichiers famille"
 on storage.objects for update
 to authenticated
@@ -141,6 +148,7 @@ with check (
   and est_membre_actif_famille(((storage.foldername(name))[1])::uuid)
 );
 
+drop policy if exists "Suppression fichiers famille" on storage.objects;
 create policy "Suppression fichiers famille"
 on storage.objects for delete
 to authenticated

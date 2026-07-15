@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Champ, MessageStatut } from "@/components/Formulaire";
 import { creerTrace } from "./actions";
 import { creerClientNavigateur } from "@/lib/supabase/client";
-import { preparerImage, estImage } from "@/lib/compressionImage";
+import { televerserFichierTrace } from "@/lib/televersementTrace";
 import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaximal";
 
 type TypeOption = { code: string; libelle: string };
@@ -59,43 +59,9 @@ export function FormulaireTrace({
 
       if (fichier) {
         const supabase = creerClientNavigateur();
-        const idTrace = crypto.randomUUID();
-        const extension = estImage(fichier) ? "jpg" : fichier.name.split(".").pop() || "bin";
-
-        if (estImage(fichier)) {
-          setEtapeEnvoi("Compression de l'image…");
-          const { image, miniature } = await preparerImage(fichier);
-
-          setEtapeEnvoi("Envoi de l'image…");
-          const cheminImage = `${familleId}/${idTrace}.${extension}`;
-          const cheminMiniature = `${familleId}/${idTrace}_thumb.${extension}`;
-
-          const [resultatImage, resultatMiniature] = await Promise.all([
-            supabase.storage.from("traces-pedagogiques").upload(cheminImage, image, {
-              contentType: "image/jpeg",
-            }),
-            supabase.storage.from("traces-pedagogiques").upload(cheminMiniature, miniature, {
-              contentType: "image/jpeg",
-            }),
-          ]);
-
-          if (resultatImage.error || resultatMiniature.error) {
-            throw new Error("Échec de l'envoi de l'image.");
-          }
-          cheminStockage = cheminImage;
-          miniatureCheminStockage = cheminMiniature;
-        } else {
-          setEtapeEnvoi("Envoi du fichier…");
-          const chemin = `${familleId}/${idTrace}.${extension}`;
-          const resultat = await supabase.storage
-            .from("traces-pedagogiques")
-            .upload(chemin, fichier, { contentType: fichier.type || undefined });
-
-          if (resultat.error) {
-            throw new Error("Échec de l'envoi du fichier.");
-          }
-          cheminStockage = chemin;
-        }
+        const resultat = await televerserFichierTrace(supabase, familleId, fichier, setEtapeEnvoi);
+        cheminStockage = resultat.cheminStockage;
+        miniatureCheminStockage = resultat.miniatureCheminStockage;
       }
 
       setEtapeEnvoi("Enregistrement…");

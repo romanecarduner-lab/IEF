@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Champ, MessageStatut } from "@/components/Formulaire";
 import { creerActivite, type DonneesActivite } from "../actions";
+import { creerTrace } from "../[id]/actions";
+import { creerClientNavigateur } from "@/lib/supabase/client";
+import { televerserFichierTrace } from "@/lib/televersementTrace";
+import { estImage } from "@/lib/compressionImage";
 import {
   lireBrouillon,
   sauvegarderBrouillon,
@@ -42,20 +46,24 @@ export function FormulaireActivite({
   parcours,
   contextes,
   autonomies,
+  familleId,
 }: {
   parcours: Option[];
   contextes: Option[];
   autonomies: Option[];
+  familleId: string;
 }) {
   const router = useRouter();
   const idLocalRef = useRef<string>(genererIdLocal());
   const delaiAutosaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputPhotoRef = useRef<HTMLInputElement>(null);
 
   const [donnees, setDonnees] = useState<DonneesBrouillonActivite>(DONNEES_VIDES);
   const [statutSync, setStatutSync] = useState<
     "aucun_changement" | "non_synchronise" | "en_cours" | "synchronise"
   >("aucun_changement");
   const [chargement, setChargement] = useState(false);
+  const [etapeEnvoi, setEtapeEnvoi] = useState<string | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [brouillonPropose, setBrouillonPropose] = useState<{
     idLocal: string;
@@ -134,7 +142,40 @@ export function FormulaireActivite({
 
       setStatutSync("synchronise");
       await supprimerBrouillon().catch(() => {});
-      router.push("/journal");
+
+      const fichier = inputPhotoRef.current?.files?.[0] ?? null;
+      if (fichier) {
+        try {
+          const supabase = creerClientNavigateur();
+          const televersement = await televerserFichierTrace(
+            supabase,
+            familleId,
+            fichier,
+            setEtapeEnvoi
+          );
+          await creerTrace({
+            activiteId: resultat.id,
+            typeCode: estImage(fichier) ? "photo" : "document",
+            cheminStockage: televersement.cheminStockage,
+            miniatureCheminStockage: televersement.miniatureCheminStockage,
+            contenuTexte: null,
+            legende: "",
+            dateTrace: donnees.dateActivite,
+          });
+        } catch (erreurPhoto) {
+          console.error("Erreur lors de l'ajout de la photo", erreurPhoto);
+          // L'activité est déjà enregistrée : on ne bloque jamais sur l'échec
+          // de la photo, on redirige vers la fiche pour permettre de réessayer.
+          router.push(`/journal/${resultat.id}`);
+          router.refresh();
+          setErreur(
+            "L'activité a été enregistrée, mais l'ajout de la photo a échoué. Vous pouvez réessayer depuis la fiche de l'activité."
+          );
+          return;
+        }
+      }
+
+      router.push(fichier ? `/journal/${resultat.id}` : "/journal");
       router.refresh();
     } catch (erreurInattendue) {
       console.error("Erreur inattendue lors de la création de l'activité", erreurInattendue);
@@ -142,6 +183,7 @@ export function FormulaireActivite({
       setStatutSync("non_synchronise");
     } finally {
       setChargement(false);
+      setEtapeEnvoi(null);
     }
   }
 
@@ -329,6 +371,27 @@ export function FormulaireActivite({
 
         <div className="mb-6">
           <label
+            htmlFor="photo"
+            className="mb-1.5 block text-sm font-medium text-encre"
+          >
+            Photo ou document (facultatif)
+          </label>
+          <input
+            ref={inputPhotoRef}
+            id="photo"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,application/pdf,application/msword,.docx"
+            className="w-full text-sm text-encre"
+          />
+          <p className="mt-1.5 text-xs text-ardoise">
+            Ajoutée automatiquement comme première trace de l&rsquo;activité.
+            D&rsquo;autres traces pourront être ajoutées ensuite depuis la
+            fiche de l&rsquo;activité.
+          </p>
+        </div>
+
+        <div className="mb-6">
+          <label
             htmlFor="statut"
             className="mb-1.5 block text-sm font-medium text-encre"
           >
@@ -353,7 +416,7 @@ export function FormulaireActivite({
             disabled={chargement}
             className="rounded-doux bg-mousse-fonce px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-mousse disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {chargement ? "Enregistrement…" : "Enregistrer l'activité"}
+            {chargement ? etapeEnvoi ?? "Enregistrement…" : "Enregistrer l'activité"}
           </button>
           <IndicateurSynchronisation statut={statutSync} />
         </div>

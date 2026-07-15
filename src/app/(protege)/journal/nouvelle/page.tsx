@@ -5,7 +5,11 @@ import { FormulaireActivite } from "./FormulaireActivite";
 export default async function PageNouvelleActivite() {
   const supabase = creerClientServeur();
 
-  const [{ data: parcoursBruts }, { data: contextes }, { data: autonomies }] =
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [{ data: parcoursBruts }, { data: contextes }, { data: autonomies }, { data: appartenance }] =
     await Promise.all([
       supabase
         .from("parcours_scolaires")
@@ -21,6 +25,12 @@ export default async function PageNouvelleActivite() {
         .select("id, libelle")
         .eq("actif", true)
         .order("ordre"),
+      supabase
+        .from("utilisateurs_familles")
+        .select("famille_id")
+        .eq("user_id", user?.id ?? "")
+        .limit(1)
+        .maybeSingle(),
     ]);
 
   const parcours = (parcoursBruts ?? []).map((p) => {
@@ -46,7 +56,7 @@ export default async function PageNouvelleActivite() {
         Ajouter une activité
       </h1>
 
-      {parcours.length === 0 ? (
+      {parcours.length === 0 || !appartenance ? (
         <p className="rounded-doux border border-dashed border-trait bg-white/50 p-8 text-center text-sm text-ardoise">
           Il faut d&rsquo;abord créer un parcours scolaire (enfant + année)
           avant de pouvoir ajouter une activité.
@@ -56,6 +66,7 @@ export default async function PageNouvelleActivite() {
           parcours={parcours}
           contextes={contextes ?? []}
           autonomies={autonomies ?? []}
+          familleId={appartenance.famille_id}
         />
       )}
     </div>
