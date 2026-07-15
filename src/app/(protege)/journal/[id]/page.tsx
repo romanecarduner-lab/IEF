@@ -60,12 +60,20 @@ export default async function PageActivite({ params }: { params: { id: string } 
     (tracesBrutes ?? []).map(async (t) => {
       const type = Array.isArray(t.types_trace) ? t.types_trace[0] : t.types_trace;
       let urlMiniature: string | null = null;
+      let urlFichier: string | null = null;
 
       if (t.miniature_chemin_stockage) {
         const { data } = await supabase.storage
           .from("traces-pedagogiques")
           .createSignedUrl(t.miniature_chemin_stockage, DUREE_SIGNATURE_SECONDES);
         urlMiniature = data?.signedUrl ?? null;
+      }
+
+      if (t.chemin_stockage) {
+        const { data } = await supabase.storage
+          .from("traces-pedagogiques")
+          .createSignedUrl(t.chemin_stockage, DUREE_SIGNATURE_SECONDES);
+        urlFichier = data?.signedUrl ?? null;
       }
 
       return {
@@ -75,6 +83,7 @@ export default async function PageActivite({ params }: { params: { id: string } 
         contenuTexte: t.contenu_texte as string | null,
         typeLibelle: type?.libelle as string | undefined,
         urlMiniature,
+        urlFichier,
       };
     })
   );
@@ -122,12 +131,26 @@ export default async function PageActivite({ params }: { params: { id: string } 
                 className="rounded-doux border border-trait bg-white/80 p-3 shadow-doux"
               >
                 {t.urlMiniature ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={t.urlMiniature}
-                    alt={t.legende ?? t.typeLibelle ?? "Trace"}
-                    className="mb-2 h-24 w-full rounded object-cover"
-                  />
+                  <a href={t.urlFichier ?? t.urlMiniature} target="_blank" rel="noopener noreferrer">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={t.urlMiniature}
+                      alt={t.legende ?? t.typeLibelle ?? "Trace"}
+                      className="mb-2 h-24 w-full rounded object-cover"
+                    />
+                  </a>
+                ) : t.urlFichier ? (
+                  <a
+                    href={t.urlFichier}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mb-2 flex h-24 flex-col items-center justify-center gap-1 rounded bg-lin text-center text-mousse-fonce hover:bg-trait"
+                  >
+                    <span className="text-2xl">📄</span>
+                    <span className="text-xs underline underline-offset-2">
+                      Ouvrir le document
+                    </span>
+                  </a>
                 ) : (
                   <p className="mb-2 line-clamp-3 text-sm text-encre">
                     {t.contenuTexte}
