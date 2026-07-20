@@ -6,6 +6,7 @@ import { Champ, MessageStatut } from "@/components/Formulaire";
 import { creerActivite, type DonneesActivite } from "../actions";
 import { creerTrace } from "../[id]/actions";
 import { creerObservations } from "../[id]/competences/actions";
+import { suggererObjectifsIA, proposerFormulationPedagogique } from "./actionsIA";
 import { creerClientNavigateur } from "@/lib/supabase/client";
 import { televerserFichierTrace } from "@/lib/televersementTrace";
 import { estImage } from "@/lib/compressionImage";
@@ -81,6 +82,17 @@ export function FormulaireActivite({
   );
   const delaiSuggestionsRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [suggestionsIA, setSuggestionsIA] = useState<
+    { id: string; libelle: string; chemin: string | null }[]
+  >([]);
+  const [chargementIA, setChargementIA] = useState(false);
+  const [erreurIA, setErreurIA] = useState<string | null>(null);
+  const [demandeIAFaite, setDemandeIAFaite] = useState(false);
+
+  const [formulationProposee, setFormulationProposee] = useState<string | null>(null);
+  const [chargementFormulation, setChargementFormulation] = useState(false);
+  const [erreurFormulation, setErreurFormulation] = useState<string | null>(null);
+
   // Au montage : un brouillon non synchronisé existe-t-il déjà (perte de
   // connexion, fermeture accidentelle) ?
   useEffect(() => {
@@ -126,6 +138,62 @@ export function FormulaireActivite({
       else nouveau.set(id, libelle);
       return nouveau;
     });
+  }
+
+  async function demanderSuggestionsIA() {
+    if (!donnees.titre.trim()) return;
+    setChargementIA(true);
+    setErreurIA(null);
+    setDemandeIAFaite(true);
+    try {
+      const resultat = await avecDelaiMaximal(
+        suggererObjectifsIA(donnees.titre, donnees.description),
+        20000
+      );
+      if ("erreur" in resultat) {
+        setErreurIA(resultat.erreur);
+        setSuggestionsIA([]);
+        return;
+      }
+      setSuggestionsIA(resultat.suggestions);
+    } catch (erreurInattendue) {
+      console.error("Erreur inattendue lors de la demande de suggestions IA", erreurInattendue);
+      setErreurIA(messagePourErreurInattendue(erreurInattendue));
+    } finally {
+      setChargementIA(false);
+    }
+  }
+
+  async function demanderFormulation() {
+    setChargementFormulation(true);
+    setErreurFormulation(null);
+    setFormulationProposee(null);
+    try {
+      const resultat = await avecDelaiMaximal(
+        proposerFormulationPedagogique(
+          donnees.titre,
+          donnees.description,
+          Array.from(suggestionsChoisies.values())
+        ),
+        20000
+      );
+      if ("erreur" in resultat) {
+        setErreurFormulation(resultat.erreur);
+        return;
+      }
+      setFormulationProposee(resultat.texte);
+    } catch (erreurInattendue) {
+      console.error("Erreur inattendue lors de la demande de formulation", erreurInattendue);
+      setErreurFormulation(messagePourErreurInattendue(erreurInattendue));
+    } finally {
+      setChargementFormulation(false);
+    }
+  }
+
+  function utiliserFormulation() {
+    if (!formulationProposee) return;
+    modifierChamp("observations", formulationProposee);
+    setFormulationProposee(null);
   }
 
   function modifierChamp<K extends keyof DonneesBrouillonActivite>(
@@ -390,6 +458,55 @@ export function FormulaireActivite({
           </div>
         )}
 
+        <div className="mb-4 -mt-2">
+          <button
+            type="button"
+            onClick={demanderSuggestionsIA}
+            disabled={chargementIA || !donnees.titre.trim()}
+            className="text-xs font-medium text-mousse-fonce underline decoration-mousse-clair/60 underline-offset-2 hover:text-mousse disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {chargementIA ? "L'IA réfléchit…" : "✨ Demander des suggestions à l'IA"}
+          </button>
+
+          {erreurIA && (
+            <p className="mt-1.5 text-xs text-alerte">{erreurIA}</p>
+          )}
+
+          {!chargementIA && demandeIAFaite && !erreurIA && suggestionsIA.length === 0 && (
+            <p className="mt-1.5 text-xs text-ardoise">
+              L&rsquo;IA n&rsquo;a trouvé aucun objectif clairement lié.
+            </p>
+          )}
+
+          {suggestionsIA.length > 0 && (
+            <div className="mt-2 rounded-doux border border-argile/30 bg-argile/5 p-3">
+              <p className="mb-2 text-xs font-medium text-encre">
+                Suggestions de l&rsquo;IA (à valider) :
+              </p>
+              <ul className="max-h-40 space-y-1 overflow-y-auto">
+                {suggestionsIA.map((s) => (
+                  <li key={s.id}>
+                    <label className="flex items-start gap-2 text-sm text-encre">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={suggestionsChoisies.has(s.id)}
+                        onChange={() => basculerSuggestion(s.id, s.libelle)}
+                      />
+                      <span>
+                        {s.libelle}
+                        {s.chemin && (
+                          <span className="block text-xs text-ardoise">{s.chemin}</span>
+                        )}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
         <div className="mb-4">
           <label
             htmlFor="description"
@@ -428,6 +545,48 @@ export function FormulaireActivite({
             onChange={(e) => modifierChamp("observations", e.target.value)}
             className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
           />
+
+          <button
+            type="button"
+            onClick={demanderFormulation}
+            disabled={chargementFormulation || suggestionsChoisies.size === 0}
+            title={
+              suggestionsChoisies.size === 0
+                ? "Sélectionnez d'abord au moins une compétence"
+                : undefined
+            }
+            className="mt-1.5 text-xs font-medium text-mousse-fonce underline decoration-mousse-clair/60 underline-offset-2 hover:text-mousse disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {chargementFormulation
+              ? "L'IA rédige…"
+              : "✨ Proposer une formulation pédagogique"}
+          </button>
+
+          {erreurFormulation && (
+            <p className="mt-1.5 text-xs text-alerte">{erreurFormulation}</p>
+          )}
+
+          {formulationProposee && (
+            <div className="mt-2 rounded-doux border border-mousse/30 bg-mousse/5 p-3">
+              <p className="mb-2 text-sm text-encre">{formulationProposee}</p>
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  onClick={utiliserFormulation}
+                  className="text-xs font-medium text-mousse-fonce underline underline-offset-2"
+                >
+                  Utiliser ce texte
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormulationProposee(null)}
+                  className="text-xs text-ardoise underline underline-offset-2"
+                >
+                  Ignorer
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <Champ

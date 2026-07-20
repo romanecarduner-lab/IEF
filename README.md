@@ -193,6 +193,36 @@ trace complet (`src/lib/televersementTrace.ts`).
 - Les fichiers audio ne sont pas encore intégrés côté interface (prévu
   plus tard), les vidéos ne sont pas prévues en V1
 
+## Amélioration — formulation pédagogique rédigée par l'IA
+
+Une fois au moins une compétence sélectionnée (mots-clés ou IA), un bouton
+"✨ Proposer une formulation pédagogique" sous le champ Observations
+appelle Claude (modèle Sonnet 5, choisi pour la qualité de rédaction — le
+coût reste minime vu la taille du prompt) pour rédiger un court paragraphe
+reliant ce que le parent a décrit aux compétences retenues. Deux règles
+imposées au modèle dans le prompt : ne jamais inventer un détail non
+mentionné par le parent, et ne jamais recopier le texte du programme
+officiel mot pour mot (reformulation entière exigée). Le parent choisit
+"Utiliser ce texte" (remplace le contenu du champ Observations) ou
+"Ignorer" — rien n'est jamais inséré automatiquement.
+
+## Amélioration — suggestions IA (Claude)
+
+En plus des suggestions par mots-clés (gratuites, automatiques), un bouton
+"✨ Demander des suggestions à l'IA" appelle l'API Claude (modèle
+claude-haiku-4-5, choisi pour son coût très faible) avec le titre et la
+description de l'activité, ainsi que la liste complète des 424 objectifs
+du programme. Claude renvoie les numéros des objectifs les plus
+pertinents ; l'application les traduit en résultats affichés avec leur
+emplacement dans le programme. Rien n'est coché automatiquement.
+
+**Nécessite la variable d'environnement `ANTHROPIC_API_KEY`** (serveur
+uniquement, jamais exposée au client) — voir les instructions de
+configuration transmises séparément. **Chaque clic sur ce bouton a un
+coût** (de l'ordre du centime avec Haiku), contrairement à la recherche
+par mots-clés qui reste gratuite — c'est pourquoi ce n'est jamais
+déclenché automatiquement pendant la saisie.
+
 ## Amélioration — suggestions de compétences à la création
 
 Le formulaire "Ajouter une activité" propose désormais, sous le champ
@@ -223,6 +253,26 @@ générale". Rien n'est jamais ajouté automatiquement sans validation.
   sélecteur, et listés avec possibilité de suppression
 - Tests pgTAP (`0006_isolation_observations.sql`) : isolation entre
   familles
+
+## Ce qui est inclus — Lot 7 (synthèse de progression)
+
+- Nouvelle table `statuts_progression` (7 valeurs officielles : non encore
+  observé → mobilisé dans plusieurs contextes)
+- Nouvelles tables `syntheses_progression` (statut global par compétence
+  et par parcours) et `historique_progression` (trace de chaque
+  changement de statut, jamais modifiée ni supprimée)
+- Vue `v_indicateurs_observation` : nombre d'observations, de dates
+  distinctes et de contextes distincts par compétence, **calculée à la
+  demande** (jamais stockée), avec `security_invoker = true` pour que la
+  RLS de l'utilisateur s'applique correctement à la vue
+- Page **Progression** : liste des compétences déjà observées pour un
+  parcours (enfant + année), avec leurs indicateurs, un badge "à
+  réexaminer" (indicatif, calculé, jamais automatique) au-delà de 3
+  observations sur au moins 2 dates et 2 contextes différents, et un
+  sélecteur pour valider manuellement le statut global — **jamais changé
+  automatiquement par l'application**
+- Tests pgTAP (`0007_isolation_progression.sql`) : isolation entre
+  familles sur les synthèses et sur la vue
 
 ## Ce qui n'est volontairement pas inclus
 
