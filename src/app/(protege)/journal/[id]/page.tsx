@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { creerClientServeur } from "@/lib/supabase/server";
 import { FormulaireTrace } from "./FormulaireTrace";
 import { supprimerTrace } from "./actions";
+import { supprimerObservation } from "./competences/actions";
 
 const DUREE_SIGNATURE_SECONDES = 60 * 60; // 1 heure, cf. Corrections-Schema-et-Lot1.md, section 11
 
@@ -40,21 +41,44 @@ export default async function PageActivite({ params }: { params: { id: string } 
 
   const familleId = enfant?.famille_id as string | undefined;
 
-  const [{ data: tracesBrutes }, { data: typesBruts }] = await Promise.all([
-    supabase
-      .from("traces")
-      .select(
-        "id, legende, date_trace, contenu_texte, chemin_stockage, miniature_chemin_stockage, types_trace(libelle)"
-      )
-      .eq("activite_id", params.id)
-      .order("date_trace", { ascending: false }),
-    supabase
-      .from("types_trace")
-      .select("code, libelle")
-      .eq("actif", true)
-      .neq("code", "audio") // pas encore implémenté côté interface (V1)
-      .order("ordre"),
-  ]);
+  const [{ data: tracesBrutes }, { data: typesBruts }, { data: observationsBrutes }] =
+    await Promise.all([
+      supabase
+        .from("traces")
+        .select(
+          "id, legende, date_trace, contenu_texte, chemin_stockage, miniature_chemin_stockage, types_trace(libelle)"
+        )
+        .eq("activite_id", params.id)
+        .order("date_trace", { ascending: false }),
+      supabase
+        .from("types_trace")
+        .select("code, libelle")
+        .eq("actif", true)
+        .neq("code", "audio") // pas encore implémenté côté interface (V1)
+        .order("ordre"),
+      supabase
+        .from("observations_elements_programme")
+        .select(
+          "id, justification, elements_programme(libelle), niveaux_autonomie(libelle)"
+        )
+        .eq("activite_id", params.id)
+        .order("created_at", { ascending: false }),
+    ]);
+
+  const observations = (observationsBrutes ?? []).map((o) => {
+    const element = Array.isArray(o.elements_programme)
+      ? o.elements_programme[0]
+      : o.elements_programme;
+    const niveau = Array.isArray(o.niveaux_autonomie)
+      ? o.niveaux_autonomie[0]
+      : o.niveaux_autonomie;
+    return {
+      id: o.id as string,
+      elementLibelle: element?.libelle as string | undefined,
+      niveauLibelle: niveau?.libelle as string | undefined,
+      justification: o.justification as string | null,
+    };
+  });
 
   const traces = await Promise.all(
     (tracesBrutes ?? []).map(async (t) => {
@@ -119,10 +143,37 @@ export default async function PageActivite({ params }: { params: { id: string } 
 
         <Link
           href={`/journal/${params.id}/competences`}
-          className="mb-6 inline-block rounded-doux bg-mousse-fonce px-4 py-2 text-sm font-medium text-white hover:bg-mousse"
+          className="mb-4 inline-block rounded-doux bg-mousse-fonce px-4 py-2 text-sm font-medium text-white hover:bg-mousse"
         >
           Relier à des compétences
         </Link>
+
+        {observations.length > 0 && (
+          <ul className="mb-6 space-y-2">
+            {observations.map((o) => (
+              <li
+                key={o.id}
+                className="flex items-start justify-between gap-3 rounded-doux border border-trait bg-white/80 p-3 text-sm shadow-doux"
+              >
+                <div>
+                  <p className="text-encre">{o.elementLibelle}</p>
+                  <p className="text-xs text-ardoise">{o.niveauLibelle}</p>
+                  {o.justification && (
+                    <p className="mt-1 text-xs text-ardoise">{o.justification}</p>
+                  )}
+                </div>
+                <form action={supprimerObservation.bind(null, o.id, params.id)}>
+                  <button
+                    type="submit"
+                    className="shrink-0 text-xs text-alerte underline decoration-alerte/40 underline-offset-2 hover:decoration-alerte"
+                  >
+                    Supprimer
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
 
         <h2 className="mb-4 font-display text-xl italic text-encre">Traces</h2>
 
