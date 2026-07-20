@@ -18,7 +18,11 @@ export default async function PageParcours() {
         .from("annees_scolaires")
         .select("id, libelle")
         .order("date_debut", { ascending: false }),
-      supabase.from("cycles").select("id, libelle").order("ordre"),
+      supabase
+        .from("cycles")
+        .select("id, libelle, referentiels_programmes!inner(statut)")
+        .eq("referentiels_programmes.statut", "actif")
+        .order("ordre"),
     ]);
 
   return (

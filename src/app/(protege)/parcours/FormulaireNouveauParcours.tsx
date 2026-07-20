@@ -122,8 +122,7 @@ export function FormulaireNouveauParcours({
             ))}
           </select>
           <p className="mt-1.5 text-xs text-ardoise">
-            Référentiel provisoire — sera remplacé par le programme officiel
-            au lot suivant.
+            Cycle du programme officiel (École maternelle).
           </p>
         </div>
 
