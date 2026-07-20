@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Champ, MessageStatut } from "@/components/Formulaire";
 import { creerActivite, type DonneesActivite } from "../actions";
 import { creerTrace } from "../[id]/actions";
+import { creerObservations } from "../[id]/competences/actions";
 import { creerClientNavigateur } from "@/lib/supabase/client";
 import { televerserFichierTrace } from "@/lib/televersementTrace";
 import { estImage } from "@/lib/compressionImage";
@@ -71,6 +72,15 @@ export function FormulaireActivite({
     sauvegardeLe: number;
   } | null>(null);
 
+  const [suggestions, setSuggestions] = useState<
+    { id: string; libelle: string; chemin: string | null }[]
+  >([]);
+  const [chargementSuggestions, setChargementSuggestions] = useState(false);
+  const [suggestionsChoisies, setSuggestionsChoisies] = useState<Map<string, string>>(
+    new Map()
+  );
+  const delaiSuggestionsRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Au montage : un brouillon non synchronisé existe-t-il déjà (perte de
   // connexion, fermeture accidentelle) ?
   useEffect(() => {
@@ -83,6 +93,40 @@ export function FormulaireActivite({
         // formulaire reste utilisable, simplement sans filet de sécurité.
       });
   }, []);
+
+  // Suggère des objectifs du programme par rapprochement de mots-clés avec
+  // le titre saisi. Simple recherche lexicale, pas une IA sémantique : le
+  // parent valide toujours en cochant lui-même.
+  useEffect(() => {
+    if (delaiSuggestionsRef.current) clearTimeout(delaiSuggestionsRef.current);
+
+    if (donnees.titre.trim().length < 4) {
+      setSuggestions([]);
+      return;
+    }
+
+    delaiSuggestionsRef.current = setTimeout(async () => {
+      setChargementSuggestions(true);
+      try {
+        const supabase = creerClientNavigateur();
+        const { data } = await supabase.rpc("suggerer_objectifs_programme", {
+          p_texte: donnees.titre,
+        });
+        setSuggestions(data ?? []);
+      } finally {
+        setChargementSuggestions(false);
+      }
+    }, 500);
+  }, [donnees.titre]);
+
+  function basculerSuggestion(id: string, libelle: string) {
+    setSuggestionsChoisies((precedent) => {
+      const nouveau = new Map(precedent);
+      if (nouveau.has(id)) nouveau.delete(id);
+      else nouveau.set(id, libelle);
+      return nouveau;
+    });
+  }
 
   function modifierChamp<K extends keyof DonneesBrouillonActivite>(
     champ: K,
@@ -175,7 +219,27 @@ export function FormulaireActivite({
         }
       }
 
-      router.push(fichier ? `/journal/${resultat.id}` : "/journal");
+      if (suggestionsChoisies.size > 0) {
+        try {
+          await creerObservations({
+            activiteId: resultat.id,
+            elementProgrammeIds: Array.from(suggestionsChoisies.keys()),
+            niveauAutonomieId: donnees.autonomieGeneraleId || autonomies[0]?.id || "",
+            justification: "",
+            commentairePedagogique: "",
+          });
+        } catch (erreurCompetences) {
+          console.error(
+            "Erreur lors de l'enregistrement des compétences suggérées",
+            erreurCompetences
+          );
+          // Non bloquant : l'activité (et la photo éventuelle) restent
+          // enregistrées ; les compétences pourront être ajoutées depuis la
+          // fiche de l'activité.
+        }
+      }
+
+      router.push(fichier || suggestionsChoisies.size > 0 ? `/journal/${resultat.id}` : "/journal");
       router.refresh();
     } catch (erreurInattendue) {
       console.error("Erreur inattendue lors de la création de l'activité", erreurInattendue);
@@ -286,6 +350,45 @@ export function FormulaireActivite({
           value={donnees.titre}
           onChange={(e) => modifierChamp("titre", e.target.value)}
         />
+
+        {chargementSuggestions && (
+          <p className="mb-4 -mt-2 text-xs text-ardoise">Recherche de compétences…</p>
+        )}
+
+        {!chargementSuggestions && suggestions.length > 0 && (
+          <div className="mb-4 -mt-2 rounded-doux border border-mousse/30 bg-mousse/5 p-3">
+            <p className="mb-2 text-xs font-medium text-mousse-fonce">
+              Compétences qui pourraient correspondre (rapprochement par
+              mots-clés — à vous de valider) :
+            </p>
+            <ul className="max-h-40 space-y-1 overflow-y-auto">
+              {suggestions.map((s) => (
+                <li key={s.id}>
+                  <label className="flex items-start gap-2 text-sm text-encre">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={suggestionsChoisies.has(s.id)}
+                      onChange={() => basculerSuggestion(s.id, s.libelle)}
+                    />
+                    <span>
+                      {s.libelle}
+                      {s.chemin && (
+                        <span className="block text-xs text-ardoise">{s.chemin}</span>
+                      )}
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+            {suggestionsChoisies.size > 0 && (
+              <p className="mt-2 text-xs text-mousse-fonce">
+                {suggestionsChoisies.size} compétence(s) sera(ont) enregistrée(s)
+                avec cette activité.
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="mb-4">
           <label

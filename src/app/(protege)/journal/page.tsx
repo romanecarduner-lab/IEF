@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { creerClientServeur } from "@/lib/supabase/server";
-import { supprimerActivite, basculerFavori } from "./actions";
+import { supprimerActivite, basculerFavori, basculerStatutActivite } from "./actions";
 
 export default async function PageJournal() {
   const supabase = creerClientServeur();
@@ -90,15 +90,24 @@ export default async function PageJournal() {
                   {a.description && (
                     <p className="mt-2 text-sm text-encre">{a.description}</p>
                   )}
-                  <span
-                    className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs ${
-                      a.statutCode === "valide"
-                        ? "bg-mousse/10 text-mousse-fonce"
-                        : "bg-trait text-ardoise"
-                    }`}
-                  >
-                    {a.statutLibelle}
-                  </span>
+                  <form action={basculerStatutActivite.bind(null, a.id, a.statutCode ?? "brouillon")}>
+                    <button
+                      type="submit"
+                      title={
+                        a.statutCode === "valide"
+                          ? "Remettre en brouillon"
+                          : "Valider cette activité"
+                      }
+                      className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs transition-colors ${
+                        a.statutCode === "valide"
+                          ? "bg-mousse/10 text-mousse-fonce hover:bg-mousse/20"
+                          : "bg-trait text-ardoise hover:bg-argile/20"
+                      }`}
+                    >
+                      {a.statutLibelle}
+                      {a.statutCode !== "valide" && " · cliquer pour valider"}
+                    </button>
+                  </form>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-2">
                   <form action={basculerFavori.bind(null, a.id, a.favori)}>

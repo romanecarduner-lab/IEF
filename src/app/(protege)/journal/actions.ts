@@ -91,3 +91,20 @@ export async function basculerFavori(id: string, valeurActuelle: boolean) {
   await supabase.from("activites").update({ favori: !valeurActuelle }).eq("id", id);
   revalidatePath("/journal");
 }
+
+export async function basculerStatutActivite(id: string, statutActuelCode: string) {
+  const nouveauCode = statutActuelCode === "valide" ? "brouillon" : "valide";
+  const supabase = creerClientServeur();
+
+  const { data: statut } = await supabase
+    .from("statuts_activite")
+    .select("id")
+    .eq("code", nouveauCode)
+    .maybeSingle();
+
+  if (!statut) return;
+
+  await supabase.from("activites").update({ statut_id: statut.id }).eq("id", id);
+  revalidatePath("/journal");
+  revalidatePath(`/journal/${id}`);
+}

@@ -193,6 +193,16 @@ trace complet (`src/lib/televersementTrace.ts`).
 - Les fichiers audio ne sont pas encore intégrés côté interface (prévu
   plus tard), les vidéos ne sont pas prévues en V1
 
+## Amélioration — suggestions de compétences à la création
+
+Le formulaire "Ajouter une activité" propose désormais, sous le champ
+Titre, une liste de compétences potentiellement pertinentes — calculée par
+rapprochement de mots-clés (chaque mot significatif du titre comparé aux
+libellés des objectifs), pas par une IA sémantique. Le parent coche
+librement celles qui conviennent ; elles sont enregistrées avec l'activité
+en un seul envoi, avec le même niveau d'autonomie que "Autonomie
+générale". Rien n'est jamais ajouté automatiquement sans validation.
+
 ## Ce qui est inclus — Lot 6 (relier activités aux compétences)
 
 - Nouvelles tables : `observations_elements_programme` (lien activité ↔

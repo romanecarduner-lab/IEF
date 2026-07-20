@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { creerClientServeur } from "@/lib/supabase/server";
 import { FormulaireTrace } from "./FormulaireTrace";
 import { supprimerTrace } from "./actions";
+import { basculerStatutActivite } from "../actions";
 import { supprimerObservation } from "./competences/actions";
 
 const DUREE_SIGNATURE_SECONDES = 60 * 60; // 1 heure, cf. Corrections-Schema-et-Lot1.md, section 11
@@ -14,7 +15,7 @@ export default async function PageActivite({ params }: { params: { id: string } 
     .from("activites")
     .select(
       `id, titre, description, date_activite, lieu, observations, paroles_enfant,
-       contextes_activite(libelle), statuts_activite(libelle),
+       contextes_activite(libelle), statuts_activite(code, libelle),
        parcours_scolaires(enfants(prenom, famille_id), annees_scolaires(libelle))`
     )
     .eq("id", params.id)
@@ -38,6 +39,9 @@ export default async function PageActivite({ params }: { params: { id: string } 
   const contexte = Array.isArray(activite.contextes_activite)
     ? activite.contextes_activite[0]
     : activite.contextes_activite;
+  const statut = Array.isArray(activite.statuts_activite)
+    ? activite.statuts_activite[0]
+    : activite.statuts_activite;
 
   const familleId = enfant?.famille_id as string | undefined;
 
@@ -120,11 +124,29 @@ export default async function PageActivite({ params }: { params: { id: string } 
         </Link>
 
         <h1 className="mb-1 font-display text-2xl italic text-encre">{activite.titre}</h1>
-        <p className="mb-6 text-sm text-ardoise">
+        <p className="mb-4 text-sm text-ardoise">
           {enfant?.prenom} · {annee?.libelle} ·{" "}
           {new Date(activite.date_activite as string).toLocaleDateString("fr-FR")}
           {contexte ? ` · ${contexte.libelle}` : ""}
         </p>
+
+        <form
+          action={basculerStatutActivite.bind(null, params.id, statut?.code ?? "brouillon")}
+          className="mb-6"
+        >
+          <button
+            type="submit"
+            title={statut?.code === "valide" ? "Remettre en brouillon" : "Valider cette activité"}
+            className={`inline-block rounded-full px-2.5 py-0.5 text-xs transition-colors ${
+              statut?.code === "valide"
+                ? "bg-mousse/10 text-mousse-fonce hover:bg-mousse/20"
+                : "bg-trait text-ardoise hover:bg-argile/20"
+            }`}
+          >
+            {statut?.libelle}
+            {statut?.code !== "valide" && " · cliquer pour valider"}
+          </button>
+        </form>
 
         {activite.description && (
           <p className="mb-4 text-sm text-encre">{activite.description}</p>
