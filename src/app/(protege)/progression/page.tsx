@@ -1,6 +1,7 @@
 import { creerClientServeur } from "@/lib/supabase/server";
 import { SelecteurParcours } from "./SelecteurParcours";
 import { SelecteurStatutProgression } from "./SelecteurStatutProgression";
+import { GraphiqueProgression, type DonneesDomaine } from "./GraphiqueProgression";
 
 const STATUT_PAR_DEFAUT = "non_encore_observe";
 
@@ -42,22 +43,47 @@ export default async function PageProgression({
     );
   }
 
-  const [{ data: indicateurs }, { data: statuts }, { data: synthesesBrutes }] =
-    await Promise.all([
-      supabase
-        .from("v_indicateurs_observation")
-        .select("element_programme_id, nb_observations, nb_dates_distinctes, nb_contextes_distincts")
-        .eq("parcours_id", parcoursId),
-      supabase
-        .from("statuts_progression")
-        .select("code, libelle")
-        .eq("actif", true)
-        .order("ordre"),
-      supabase
-        .from("syntheses_progression")
-        .select("element_programme_id, statuts_progression(code)")
-        .eq("parcours_id", parcoursId),
-    ]);
+  const [
+    { data: indicateurs },
+    { data: statuts },
+    { data: synthesesBrutes },
+    { data: totauxDomaine },
+    { data: repartitionDomaine },
+  ] = await Promise.all([
+    supabase
+      .from("v_indicateurs_observation")
+      .select("element_programme_id, nb_observations, nb_dates_distinctes, nb_contextes_distincts")
+      .eq("parcours_id", parcoursId),
+    supabase
+      .from("statuts_progression")
+      .select("code, libelle")
+      .eq("actif", true)
+      .order("ordre"),
+    supabase
+      .from("syntheses_progression")
+      .select("element_programme_id, statuts_progression(code)")
+      .eq("parcours_id", parcoursId),
+    supabase.from("v_total_objectifs_par_domaine").select("domaine, total_objectifs"),
+    supabase
+      .from("v_progression_par_domaine")
+      .select("domaine, statut_code, nb")
+      .eq("parcours_id", parcoursId),
+  ]);
+
+  const donneesGraphique: DonneesDomaine[] = (totauxDomaine ?? []).map((t) => {
+    const domaine = t.domaine as string;
+    const parStatut: Record<string, number> = {};
+    for (const r of repartitionDomaine ?? []) {
+      if (r.domaine === domaine) {
+        parStatut[r.statut_code as string] = r.nb as number;
+      }
+    }
+    return {
+      domaine,
+      totalObjectifs: t.total_objectifs as number,
+      parStatut,
+    };
+  });
 
   const statutsParElement = new Map<string, string>();
   for (const s of synthesesBrutes ?? []) {
@@ -109,6 +135,10 @@ export default async function PageProgression({
           <SelecteurParcours parcoursId={parcoursId} options={parcoursOptions} />
         )}
       </div>
+
+      {donneesGraphique.length > 0 && (
+        <GraphiqueProgression donnees={donneesGraphique} />
+      )}
 
       {lignes.length === 0 ? (
         <p className="rounded-doux border border-dashed border-trait bg-white/50 p-8 text-center text-sm text-ardoise">

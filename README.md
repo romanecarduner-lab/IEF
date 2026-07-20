@@ -254,6 +254,16 @@ générale". Rien n'est jamais ajouté automatiquement sans validation.
 - Tests pgTAP (`0006_isolation_observations.sql`) : isolation entre
   familles
 
+## Amélioration — vue visuelle de la couverture du programme
+
+En haut de la page **Progression**, un graphique en barres empilées
+(bibliothèque `recharts`) montre, pour chaque domaine du programme
+officiel, la proportion d'objectifs déjà validés à chaque niveau (de
+"première observation" à "mobilisé dans plusieurs contextes"), le reste
+étant affiché comme "pas encore abordé". Basé sur deux nouvelles vues
+(`v_total_objectifs_par_domaine`, `v_progression_par_domaine`), calculées
+à la demande comme le reste des indicateurs de progression.
+
 ## Ce qui est inclus — Lot 7 (synthèse de progression)
 
 - Nouvelle table `statuts_progression` (7 valeurs officielles : non encore
