@@ -44,11 +44,11 @@ language sql
 stable
 as $$
   with recursive descendants as (
-    select e.id, e.libelle, e.parent_id, e.type_element_id
+    select e.id, e.libelle, e.parent_id, e.type_element_id, e.ordre
     from elements_programme e
     where e.parent_id = p_element_id
     union all
-    select e.id, e.libelle, e.parent_id, e.type_element_id
+    select e.id, e.libelle, e.parent_id, e.type_element_id, e.ordre
     from elements_programme e
     join descendants d on e.parent_id = d.id
   )

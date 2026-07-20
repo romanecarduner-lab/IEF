@@ -49,9 +49,14 @@ export function SelecteurCompetences({
     () => arbre.filter((n) => n.type === "competence" && n.parentId === sousDomaineId),
     [arbre, sousDomaineId]
   );
+  // Certaines sections du programme officiel ne comportent aucun niveau
+  // "compétence" intermédiaire : les tranches d'âge sont alors rattachées
+  // directement au sous-domaine. Le sélecteur doit gérer les deux cas.
+  const aUneCompetenceIntermediaire = competences.length > 0;
+  const parentPourTranchesAge = aUneCompetenceIntermediaire ? competenceId : sousDomaineId;
   const reperesAnnuels = useMemo(
-    () => arbre.filter((n) => n.type === "repere_annuel" && n.parentId === competenceId),
-    [arbre, competenceId]
+    () => arbre.filter((n) => n.type === "repere_annuel" && n.parentId === parentPourTranchesAge),
+    [arbre, parentPourTranchesAge]
   );
 
   useEffect(() => {
@@ -176,7 +181,12 @@ export function SelecteurCompetences({
           label="Compétence"
           valeur={competenceId}
           options={competences}
-          disabled={!sousDomaineId}
+          disabled={!sousDomaineId || !aUneCompetenceIntermediaire}
+          placeholder={
+            sousDomaineId && !aUneCompetenceIntermediaire
+              ? "Non applicable ici"
+              : "Sélectionner…"
+          }
           onChange={(v) => {
             setCompetenceId(v);
             setRepereAnnuelId("");
@@ -186,7 +196,7 @@ export function SelecteurCompetences({
           label="Tranche d'âge"
           valeur={repereAnnuelId}
           options={reperesAnnuels}
-          disabled={!competenceId}
+          disabled={!parentPourTranchesAge}
           onChange={setRepereAnnuelId}
         />
       </div>
@@ -303,12 +313,14 @@ function SelectNiveau({
   valeur,
   options,
   disabled,
+  placeholder,
   onChange,
 }: {
   label: string;
   valeur: string;
   options: { id: string; libelle: string }[];
   disabled?: boolean;
+  placeholder?: string;
   onChange: (v: string) => void;
 }) {
   return (
@@ -320,7 +332,7 @@ function SelectNiveau({
         onChange={(e) => onChange(e.target.value)}
         className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none disabled:bg-lin disabled:text-ardoise"
       >
-        <option value="">Sélectionner…</option>
+        <option value="">{placeholder ?? "Sélectionner…"}</option>
         {options.map((o) => (
           <option key={o.id} value={o.id}>
             {o.libelle}
