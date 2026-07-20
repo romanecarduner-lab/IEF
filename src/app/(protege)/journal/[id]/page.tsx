@@ -117,6 +117,13 @@ export default async function PageActivite({ params }: { params: { id: string } 
           </p>
         )}
 
+        <Link
+          href={`/journal/${params.id}/competences`}
+          className="mb-6 inline-block rounded-doux bg-mousse-fonce px-4 py-2 text-sm font-medium text-white hover:bg-mousse"
+        >
+          Relier à des compétences
+        </Link>
+
         <h2 className="mb-4 font-display text-xl italic text-encre">Traces</h2>
 
         {traces.length === 0 ? (

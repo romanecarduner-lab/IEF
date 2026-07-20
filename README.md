@@ -193,6 +193,27 @@ trace complet (`src/lib/televersementTrace.ts`).
 - Les fichiers audio ne sont pas encore intégrés côté interface (prévu
   plus tard), les vidéos ne sont pas prévues en V1
 
+## Ce qui est inclus — Lot 6 (relier activités aux compétences)
+
+- Nouvelles tables : `observations_elements_programme` (lien activité ↔
+  élément du programme, avec niveau d'autonomie, justification,
+  commentaire pédagogique) et `traces_elements_programme` (lien trace ↔
+  élément du programme — table créée, interface non construite pour ce
+  lot)
+- Fonction `lister_objectifs_sous_element` : parcourt récursivement
+  l'arborescence pour lister tous les objectifs sous une tranche d'âge,
+  qu'il y ait ou non un niveau de sous-compétence intermédiaire
+- Page **Compétences observées** (`/journal/[id]/competences`), accessible
+  depuis la fiche d'activité : sélecteur en cascade
+  Domaine → Sous-domaine → Compétence → Tranche d'âge, puis case à cocher
+  par objectif, niveau d'autonomie partagé, justification et commentaire
+  facultatifs. Plusieurs objectifs peuvent être enregistrés en un seul
+  envoi.
+- Les objectifs déjà observés pour l'activité sont annotés dans le
+  sélecteur, et listés avec possibilité de suppression
+- Tests pgTAP (`0006_isolation_observations.sql`) : isolation entre
+  familles
+
 ## Ce qui n'est volontairement pas inclus
 
 Import réel du programme officiel, journal pédagogique, traces,
