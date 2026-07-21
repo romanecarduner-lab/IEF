@@ -254,6 +254,18 @@ générale". Rien n'est jamais ajouté automatiquement sans validation.
 - Tests pgTAP (`0006_isolation_observations.sql`) : isolation entre
   familles
 
+## Correctif — suggestion de statut au lieu de repartir de zéro
+
+La page Progression proposait systématiquement "Non encore observé" par
+défaut, même quand un niveau d'autonomie avait déjà été renseigné lors de
+l'observation — obligeant à reconsidérer depuis rien. Elle propose
+maintenant une **suggestion pré-remplie**, dérivée du meilleur niveau
+d'autonomie déjà indiqué (ex. "autonome" → suggestion "Réalisé de manière
+autonome"), signalée par un badge "suggestion à confirmer". Le principe
+reste respecté : rien n'est enregistré tant que le bouton **Confirmer**
+n'a pas été cliqué — c'est juste beaucoup plus rapide quand la suggestion
+convient déjà.
+
 ## Amélioration — vue visuelle de la couverture du programme
 
 En haut de la page **Progression**, un graphique en barres empilées

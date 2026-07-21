@@ -10,32 +10,36 @@ export function SelecteurStatutProgression({
   parcoursId,
   elementProgrammeId,
   statutActuelCode,
+  dejaValide,
   statuts,
 }: {
   parcoursId: string;
   elementProgrammeId: string;
   statutActuelCode: string;
+  dejaValide: boolean;
   statuts: Statut[];
 }) {
   const router = useRouter();
+  const [valeur, setValeur] = useState(statutActuelCode);
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
+  const [confirme, setConfirme] = useState(dejaValide);
 
-  async function gererChangement(evenement: React.ChangeEvent<HTMLSelectElement>) {
-    const nouveauCode = evenement.target.value;
+  async function gererConfirmation() {
     setEnCours(true);
     setErreur(null);
     try {
       const resultat = await validerStatutProgression(
         parcoursId,
         elementProgrammeId,
-        nouveauCode,
+        valeur,
         ""
       );
       if ("erreur" in resultat) {
         setErreur(resultat.erreur);
         return;
       }
+      setConfirme(true);
       router.refresh();
     } finally {
       setEnCours(false);
@@ -43,10 +47,13 @@ export function SelecteurStatutProgression({
   }
 
   return (
-    <div>
+    <div className="flex items-center gap-2">
       <select
-        defaultValue={statutActuelCode}
-        onChange={gererChangement}
+        value={valeur}
+        onChange={(e) => {
+          setValeur(e.target.value);
+          setConfirme(false);
+        }}
         disabled={enCours}
         className="rounded-doux border border-trait bg-white px-2.5 py-1.5 text-xs text-encre focus:border-mousse focus:outline-none disabled:opacity-60"
       >
@@ -56,7 +63,17 @@ export function SelecteurStatutProgression({
           </option>
         ))}
       </select>
-      {erreur && <p className="mt-1 text-xs text-alerte">{erreur}</p>}
+      {!confirme && (
+        <button
+          type="button"
+          onClick={gererConfirmation}
+          disabled={enCours}
+          className="rounded-doux bg-mousse-fonce px-2.5 py-1.5 text-xs font-medium text-white hover:bg-mousse disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {enCours ? "…" : "Confirmer"}
+        </button>
+      )}
+      {erreur && <p className="text-xs text-alerte">{erreur}</p>}
     </div>
   );
 }

@@ -5,6 +5,19 @@ import { GraphiqueProgression, type DonneesDomaine } from "./GraphiqueProgressio
 
 const STATUT_PAR_DEFAUT = "non_encore_observe";
 
+// Suggestion de depart pour le statut global, derivee du meilleur niveau
+// d'autonomie deja indique lors des observations. Reste une simple
+// pre-selection : le parent doit toujours cliquer "Confirmer" pour que ce
+// soit reellement enregistre (voir SelecteurStatutProgression).
+const SUGGESTION_DEPUIS_AUTONOMIE: Record<string, string> = {
+  observation_uniquement: "premiere_observation",
+  accompagnement_important: "realise_avec_accompagnement",
+  avec_quelques_aides: "realise_avec_accompagnement",
+  a_partir_consigne: "en_cours_exploration",
+  autonome: "realise_autonome",
+  initie_spontanement: "mobilise_spontanement",
+};
+
 export default async function PageProgression({
   searchParams,
 }: {
@@ -49,6 +62,7 @@ export default async function PageProgression({
     { data: synthesesBrutes },
     { data: totauxDomaine },
     { data: repartitionDomaine },
+    { data: observationsAutonomie },
   ] = await Promise.all([
     supabase
       .from("v_indicateurs_observation")
@@ -68,7 +82,31 @@ export default async function PageProgression({
       .from("v_progression_par_domaine")
       .select("domaine, statut_code, nb")
       .eq("parcours_id", parcoursId),
+    supabase
+      .from("observations_elements_programme")
+      .select("element_programme_id, niveaux_autonomie(code, ordre), activites!inner(parcours_id)")
+      .eq("activites.parcours_id", parcoursId),
   ]);
+
+  // Pour chaque element deja observe, on retient le niveau d'autonomie le
+  // plus avance parmi toutes ses observations, pour en deriver une
+  // suggestion de statut global (jamais enregistree tant que le parent n'a
+  // pas cliqué "Confirmer").
+  const meilleurNiveauParElement = new Map<string, { code: string; ordre: number }>();
+  for (const o of observationsAutonomie ?? []) {
+    const elementId = o.element_programme_id as string;
+    const niveau = Array.isArray(o.niveaux_autonomie)
+      ? o.niveaux_autonomie[0]
+      : o.niveaux_autonomie;
+    if (!niveau) continue;
+    const actuel = meilleurNiveauParElement.get(elementId);
+    if (!actuel || (niveau.ordre as number) > actuel.ordre) {
+      meilleurNiveauParElement.set(elementId, {
+        code: niveau.code as string,
+        ordre: niveau.ordre as number,
+      });
+    }
+  }
 
   const donneesGraphique: DonneesDomaine[] = (totauxDomaine ?? []).map((t) => {
     const domaine = t.domaine as string;
@@ -112,6 +150,12 @@ export default async function PageProgression({
       const nbContextes = indic.nb_contextes_distincts as number;
       const aRevoir = nbObs >= 3 && nbDates >= 2 && nbContextes >= 2;
 
+      const dejaValide = statutsParElement.has(elementId);
+      const meilleurNiveau = meilleurNiveauParElement.get(elementId);
+      const suggestion = meilleurNiveau
+        ? SUGGESTION_DEPUIS_AUTONOMIE[meilleurNiveau.code] ?? STATUT_PAR_DEFAUT
+        : STATUT_PAR_DEFAUT;
+
       return {
         elementId,
         libelle: element?.libelle as string | undefined,
@@ -120,7 +164,8 @@ export default async function PageProgression({
         nbDates,
         nbContextes,
         aRevoir,
-        statutCode: statutsParElement.get(elementId) ?? STATUT_PAR_DEFAUT,
+        dejaValide,
+        statutCode: statutsParElement.get(elementId) ?? suggestion,
       };
     })
   );
@@ -169,12 +214,18 @@ export default async function PageProgression({
                         à réexaminer
                       </span>
                     )}
+                    {!l.dejaValide && (
+                      <span className="ml-2 rounded-full bg-trait px-2 py-0.5 text-ardoise">
+                        suggestion à confirmer
+                      </span>
+                    )}
                   </p>
                 </div>
                 <SelecteurStatutProgression
                   parcoursId={parcoursId}
                   elementProgrammeId={l.elementId}
                   statutActuelCode={l.statutCode}
+                  dejaValide={l.dejaValide}
                   statuts={statuts ?? []}
                 />
               </div>
