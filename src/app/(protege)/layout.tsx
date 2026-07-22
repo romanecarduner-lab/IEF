@@ -10,6 +10,7 @@ const LIENS_NAVIGATION = [
   { href: "/parcours", libelle: "Parcours" },
   { href: "/journal", libelle: "Journal" },
   { href: "/progression", libelle: "Progression" },
+  { href: "/export", libelle: "Export" },
 ];
 
 // Ces pages dépendent systématiquement de la session de l'utilisateur

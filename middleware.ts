@@ -15,6 +15,7 @@ const PAGES_PROTEGEES = [
   "/parcours",
   "/journal",
   "/progression",
+  "/export",
 ];
 
 export async function middleware(request: NextRequest) {

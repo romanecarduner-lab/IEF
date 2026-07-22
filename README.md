@@ -296,6 +296,29 @@ officiel, la proportion d'objectifs déjà validés à chaque niveau (de
 - Tests pgTAP (`0007_isolation_progression.sql`) : isolation entre
   familles sur les synthèses et sur la vue
 
+## Ce qui est inclus — Lot 10 (export du dossier annuel)
+
+- Nouvelles tables `dossiers_export` et `dossiers_export_elements`
+  (sélection d'activités/traces, texte de synthèse modifiable, snapshot
+  figé à la finalisation)
+- Page **Export** : liste des dossiers par parcours, création, suppression
+  (retire aussi le PDF du bucket avant la ligne)
+- Éditeur de dossier (`/export/[id]`) : coche les activités et traces à
+  inclure, modifie le texte affiché pour chaque activité, tant que le
+  dossier est en **brouillon**
+- **Finalisation** : génère un PDF réel (bibliothèque `@react-pdf/renderer`,
+  génération côté serveur sans navigateur headless — cohérent avec le
+  choix "Route Handler / Server Action Next.js" acté précédemment),
+  photos intégrées directement dans le PDF, copie un instantané figé des
+  données dans `dossiers_export_elements` — **les deux mécanismes
+  combinés**, comme convenu. Un dossier finalisé n'est plus jamais
+  recalculé à partir des sources.
+- Le PDF est stocké dans le même bucket privé que les traces
+  (`traces-pedagogiques`), sous `{famille_id}/dossiers/{dossier_id}.pdf`,
+  accessible via URL signée temporaire
+- Tests pgTAP (`0008_isolation_dossiers_export.sql`) : isolation entre
+  familles
+
 ## Ce qui n'est volontairement pas inclus
 
 Import réel du programme officiel, journal pédagogique, traces,
