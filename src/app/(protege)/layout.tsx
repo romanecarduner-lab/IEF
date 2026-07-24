@@ -9,8 +9,11 @@ const LIENS_NAVIGATION = [
   { href: "/annees-scolaires", libelle: "Années scolaires" },
   { href: "/parcours", libelle: "Parcours" },
   { href: "/journal", libelle: "Journal" },
+  { href: "/recherche", libelle: "Recherche" },
+  { href: "/portfolio", libelle: "Portfolio" },
   { href: "/progression", libelle: "Progression" },
   { href: "/export", libelle: "Export" },
+  { href: "/confidentialite", libelle: "Confidentialité" },
 ];
 
 // Ces pages dépendent systématiquement de la session de l'utilisateur

@@ -55,6 +55,42 @@ export async function creerEnfant(
 
 export async function supprimerEnfant(id: string) {
   const supabase = creerClientServeur();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: enfant } = await supabase
+    .from("enfants")
+    .select("prenom, famille_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  // Retrouve tous les fichiers (traces) rattaches a cet enfant, via ses
+  // parcours et activites, pour les purger reellement du Storage avant
+  // de supprimer la ligne (la cascade SQL ne touche jamais aux fichiers).
+  const { data: traces } = await supabase
+    .from("traces")
+    .select("chemin_stockage, miniature_chemin_stockage, activites!inner(parcours_scolaires!inner(enfant_id))")
+    .eq("activites.parcours_scolaires.enfant_id", id);
+
+  const chemins = (traces ?? [])
+    .flatMap((t) => [t.chemin_stockage, t.miniature_chemin_stockage])
+    .filter((c): c is string => Boolean(c));
+
+  if (chemins.length > 0) {
+    await supabase.storage.from("traces-pedagogiques").remove(chemins);
+  }
+
+  if (enfant && user) {
+    await supabase.rpc("rpc_journal_auditer", {
+      p_famille_id: enfant.famille_id,
+      p_type_action: "suppression_enfant",
+      p_cible_type: "enfant",
+      p_cible_id: id,
+      p_details: { prenom: enfant.prenom, fichiers_purges: chemins.length },
+    });
+  }
+
   await supabase.from("enfants").delete().eq("id", id);
   revalidatePath("/enfants");
 }
