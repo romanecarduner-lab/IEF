@@ -296,6 +296,25 @@ officiel, la proportion d'objectifs déjà validés à chaque niveau (de
 - Tests pgTAP (`0007_isolation_progression.sql`) : isolation entre
   familles sur les synthèses et sur la vue
 
+## Refonte — un vrai dossier pédagogique, pas un listing
+
+Le PDF généré à la finalisation d'un dossier d'export a été entièrement
+repensé :
+- **Page de garde** : titre, enfant, année, cycle, compteurs (activités,
+  traces, domaines abordés), date de génération
+- **Page de synthèse de progression** : un graphique en barres par
+  domaine (mêmes couleurs que la page Progression), dessiné directement
+  en PDF (pas une image de graphique, du vrai contenu vectoriel)
+- **Une section par domaine du programme officiel** plutôt qu'une liste
+  chronologique : chaque activité apparaît sous le ou les domaines
+  auxquels ses compétences reliées appartiennent, avec ces compétences et
+  leur niveau d'autonomie affichés juste en dessous du texte
+- **Photos intégrées directement sous leur activité** (grille 2 colonnes),
+  au lieu d'une section "Traces" séparée
+- Les activités non reliées à des compétences apparaissent dans une
+  dernière section "Autres activités", pour ne rien perdre silencieusement
+- Pagination en pied de page
+
 ## Ce qui est inclus — Lot 10 (export du dossier annuel)
 
 - Nouvelles tables `dossiers_export` et `dossiers_export_elements`
@@ -318,6 +337,59 @@ officiel, la proportion d'objectifs déjà validés à chaque niveau (de
   accessible via URL signée temporaire
 - Tests pgTAP (`0008_isolation_dossiers_export.sql`) : isolation entre
   familles
+
+## Ce qui est inclus — Lot 11 (droits des familles)
+
+- Nouvelle table `journal_audit` (indépendante, sans cascade — survit à la
+  suppression d'une famille), alimentée uniquement via la fonction
+  `rpc_journal_auditer` (SECURITY DEFINER, aucune lecture directe possible
+  depuis le client)
+- Page **Confidentialité** :
+  - **Exporter mes données** : toutes les tables de la famille (enfants,
+    parcours, journal, traces, compétences, progression, dossiers) en un
+    fichier JSON téléchargé directement
+  - **Exporter mes fichiers** : toutes les photos/documents/PDF de
+    dossiers, réunis dans une archive ZIP
+  - **Suppression complète et irréversible** de l'espace familial :
+    purge réelle des fichiers Storage, journalisation avant suppression,
+    cascade SQL, **et suppression du compte d'authentification** —
+    confirmation obligatoire en retapant le nom exact de l'espace
+- La suppression d'un enfant purge maintenant réellement ses fichiers
+  associés (photos/documents des activités liées à ses parcours), pas
+  seulement les lignes en base
+- **Nouvelle variable d'environnement `SUPABASE_SERVICE_ROLE_KEY`** :
+  seule et unique exception à la règle "jamais de service_role" suivie
+  partout ailleurs — nécessaire car Supabase n'offre aucun autre moyen de
+  supprimer un compte d'authentification. Utilisée dans un seul fichier
+  (`src/lib/supabase/admin.ts`), pour un seul appel
+  (`auth.admin.deleteUser`), jamais exposée au client.
+- Tests pgTAP (`0008_isolation_dossiers_export.sql` déjà couvrait les
+  dossiers ; le journal d'audit n'a pas de policy de lecture testable
+  côté client par conception)
+
+## Ce qui est inclus — Lot 8 (tableau de bord et recherche)
+
+- **Tableau de bord** réel (remplace le squelette du lot 1) : nombre
+  d'enfants, d'activités, de traces et de dossiers finalisés ; répartition
+  par enfant/année avec nombre d'activités ; les 5 activités les plus
+  récentes de toute la famille, cliquables
+- Page **Recherche** : mot-clé (titre, description, observations, paroles
+  de l'enfant), filtrable par enfant et par plage de dates ; jusqu'à 50
+  résultats, chacun cliquable vers sa fiche
+
+## Ce qui est inclus — Lot 9 (portfolio)
+
+- Page **Portfolio** : galerie de toutes les traces (photos, productions,
+  documents, citations), filtrable par enfant, année scolaire et type,
+  jusqu'à 100 résultats les plus récents
+- Les photos/productions s'affichent en vignette (URL signée) ; les
+  citations et observations affichent un extrait du texte ; les documents
+  affichent une icône — chaque carte renvoie vers la fiche de l'activité
+  d'origine
+- **Non inclus dans cette première version** : filtre par domaine du
+  programme (nécessiterait de relier chaque trace aux compétences via
+  `traces_elements_programme`, dont l'interface n'existe pas encore — la
+  table existe depuis le lot 5)
 
 ## Ce qui n'est volontairement pas inclus
 

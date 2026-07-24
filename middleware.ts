@@ -14,8 +14,11 @@ const PAGES_PROTEGEES = [
   "/annees-scolaires",
   "/parcours",
   "/journal",
+  "/recherche",
+  "/portfolio",
   "/progression",
   "/export",
+  "/confidentialite",
 ];
 
 export async function middleware(request: NextRequest) {
