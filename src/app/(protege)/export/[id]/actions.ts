@@ -62,6 +62,134 @@ export async function modifierTexteElement(
 }
 
 /**
+ * Remplit automatiquement le dossier pour un bilan de controle complet
+ * mais volontairement limite : selectionne, pour chaque domaine du
+ * programme aborde par ce parcours, au plus `maxParDomaine` activites
+ * (les favorites en priorite, puis les plus recentes), plutot que
+ * d'inclure toutes les activites (qui produirait un document trop long).
+ * Aucune IA n'est utilisee : uniquement les signaux deja fournis par le
+ * parent (favori, date) et les competences deja reliees (lot 6).
+ *
+ * N'ecrase jamais une selection existante : les activites deja incluses
+ * dans le dossier le restent, on ajoute seulement ce qui manque.
+ */
+export async function remplirBilanAutomatique(
+  dossierId: string,
+  parcoursId: string,
+  maxParDomaine: number
+): Promise<{ erreur: string } | { ok: true; nbAjoutees: number }> {
+  const supabase = creerClientServeur();
+
+  const { data: activites } = await supabase
+    .from("activites")
+    .select("id, favori, date_activite")
+    .eq("parcours_id", parcoursId);
+
+  if (!activites || activites.length === 0) {
+    return { erreur: "Aucune activité enregistrée pour ce parcours." };
+  }
+
+  // Determine le ou les domaines touches par chaque activite, via les
+  // competences deja reliees (lot 6). Une activite sans competence reliee
+  // ne peut pas etre selectionnee automatiquement : elle reste a ajouter
+  // a la main si besoin.
+  const candidatsParDomaine = new Map<
+    string,
+    { id: string; favori: boolean; date: string }[]
+  >();
+
+  for (const a of activites) {
+    const { data: obs } = await supabase
+      .from("observations_elements_programme")
+      .select("elements_programme(parent_id)")
+      .eq("activite_id", a.id);
+
+    const domainesActivite = new Set<string>();
+    for (const o of obs ?? []) {
+      const element = Array.isArray(o.elements_programme)
+        ? o.elements_programme[0]
+        : o.elements_programme;
+      if (!element?.parent_id) continue;
+      const { data: chemin } = await supabase.rpc("chemin_element_programme", {
+        p_element_id: element.parent_id as string,
+      });
+      const domaine = (chemin as string | null)?.split(" > ")[0];
+      if (domaine) domainesActivite.add(domaine);
+    }
+
+    for (const domaine of domainesActivite) {
+      const liste = candidatsParDomaine.get(domaine) ?? [];
+      liste.push({ id: a.id as string, favori: Boolean(a.favori), date: a.date_activite as string });
+      candidatsParDomaine.set(domaine, liste);
+    }
+  }
+
+  const idsRetenus = new Set<string>();
+  for (const [, candidats] of candidatsParDomaine) {
+    const tries = [...candidats]
+      .sort((x, y) => {
+        if (x.favori !== y.favori) return x.favori ? -1 : 1;
+        return new Date(y.date).getTime() - new Date(x.date).getTime();
+      })
+      .slice(0, maxParDomaine);
+    for (const c of tries) idsRetenus.add(c.id);
+  }
+
+  if (idsRetenus.size === 0) {
+    return {
+      erreur:
+        "Aucune activité reliée à une compétence pour l'instant : reliez-en depuis le journal avant de générer le bilan automatiquement.",
+    };
+  }
+
+  const { data: dejaInclus } = await supabase
+    .from("dossiers_export_elements")
+    .select("activite_id")
+    .eq("dossier_id", dossierId)
+    .eq("type_element", "activite");
+  const dejaSet = new Set((dejaInclus ?? []).map((d) => d.activite_id));
+
+  const activitesAInserer = Array.from(idsRetenus).filter((id) => !dejaSet.has(id));
+  if (activitesAInserer.length > 0) {
+    await supabase.from("dossiers_export_elements").insert(
+      activitesAInserer.map((activite_id) => ({
+        dossier_id: dossierId,
+        type_element: "activite",
+        activite_id,
+      }))
+    );
+  }
+
+  // Inclut aussi les traces de ces activites, pour que les exemples
+  // retenus soient illustres, pas seulement du texte.
+  const { data: traces } = await supabase
+    .from("traces")
+    .select("id, activite_id")
+    .in("activite_id", Array.from(idsRetenus));
+
+  const { data: dejaTraces } = await supabase
+    .from("dossiers_export_elements")
+    .select("trace_id")
+    .eq("dossier_id", dossierId)
+    .eq("type_element", "trace");
+  const dejaTracesSet = new Set((dejaTraces ?? []).map((d) => d.trace_id));
+
+  const tracesAInserer = (traces ?? []).filter((t) => !dejaTracesSet.has(t.id));
+  if (tracesAInserer.length > 0) {
+    await supabase.from("dossiers_export_elements").insert(
+      tracesAInserer.map((t) => ({
+        dossier_id: dossierId,
+        type_element: "trace",
+        trace_id: t.id,
+      }))
+    );
+  }
+
+  revalidatePath(`/export/${dossierId}`);
+  return { ok: true, nbAjoutees: activitesAInserer.length };
+}
+
+/**
  * Finalise le dossier : rassemble les activites par domaine du programme
  * (via les competences reliees), integre les photos, calcule la synthese
  * de progression, genere un vrai PDF (page de garde, sections par
@@ -236,11 +364,7 @@ export async function finaliserDossier(
       .eq("id", el.id);
   }
 
-  const domaines: DomaineDocument[] = Array.from(domainesMap.entries()).map(
-    ([nom, activites]) => ({ nom, activites })
-  );
-
-  // --- Synthese de progression par domaine, pour ce parcours ---
+  // --- Synthese de progression par domaine, pour ce parcours (graphique) ---
   const [{ data: totauxDomaine }, { data: repartitionDomaine }] = await Promise.all([
     supabase.from("v_total_objectifs_par_domaine").select("domaine, total_objectifs"),
     supabase
@@ -256,6 +380,80 @@ export async function finaliserDossier(
       if (r.domaine === domaine) parStatut[r.statut_code as string] = r.nb as number;
     }
     return { domaine, totalObjectifs: t.total_objectifs as number, parStatut };
+  });
+
+  // --- Synthese ECRITE et complete par domaine : toutes les competences
+  // validees (syntheses_progression), pas seulement celles illustrees par
+  // les activites-exemples retenues plus haut. C'est ce qui garantit que
+  // le bilan reflete le domaine dans son ensemble.
+  const { data: syntheseDetail } = await supabase
+    .from("syntheses_progression")
+    .select("statuts_progression(code, libelle, ordre), elements_programme(libelle, parent_id)")
+    .eq("parcours_id", dossier.parcours_id);
+
+  type GroupeStatut = { code: string; ordre: number; statutLibelle: string; competences: string[] };
+  const detailParDomaine = new Map<string, Map<string, GroupeStatut>>();
+
+  for (const s of syntheseDetail ?? []) {
+    const statut = Array.isArray(s.statuts_progression)
+      ? s.statuts_progression[0]
+      : s.statuts_progression;
+    const element = Array.isArray(s.elements_programme)
+      ? s.elements_programme[0]
+      : s.elements_programme;
+    if (!statut || !element?.parent_id) continue;
+    if (statut.code === "non_encore_observe") continue; // rien de significatif a lister
+
+    const { data: chemin } = await supabase.rpc("chemin_element_programme", {
+      p_element_id: element.parent_id as string,
+    });
+    const domaineNom = (chemin as string | null)?.split(" > ")[0];
+    if (!domaineNom) continue;
+
+    const groupes = detailParDomaine.get(domaineNom) ?? new Map<string, GroupeStatut>();
+    const groupe =
+      groupes.get(statut.code as string) ??
+      ({
+        code: statut.code as string,
+        ordre: statut.ordre as number,
+        statutLibelle: statut.libelle as string,
+        competences: [] as string[],
+      } satisfies GroupeStatut);
+    groupe.competences.push(element.libelle as string);
+    groupes.set(statut.code as string, groupe);
+    detailParDomaine.set(domaineNom, groupes);
+  }
+
+  const totalParDomaine = new Map(
+    (totauxDomaine ?? []).map((t) => [t.domaine as string, t.total_objectifs as number])
+  );
+
+  // Union des domaines illustres par des exemples ET des domaines qui ont
+  // une synthese validee mais pas encore d'exemple choisi : les deux
+  // doivent apparaitre, pour ne rien passer sous silence.
+  const nomsDomaines = new Set([...domainesMap.keys(), ...detailParDomaine.keys()]);
+
+  const domaines: DomaineDocument[] = Array.from(nomsDomaines).map((nom) => {
+    const groupesMap = detailParDomaine.get(nom);
+    const groupes = groupesMap
+      ? Array.from(groupesMap.values()).sort((a, b) => b.ordre - a.ordre)
+      : [];
+    const nbValides = groupes.reduce((acc, g) => acc + g.competences.length, 0);
+
+    return {
+      nom,
+      activites: domainesMap.get(nom) ?? [],
+      syntheseTexte: groupesMap
+        ? {
+            totalObjectifs: totalParDomaine.get(nom) ?? 0,
+            nbValides,
+            parStatut: groupes.map((g) => ({
+              statutLibelle: g.statutLibelle,
+              competences: g.competences,
+            })),
+          }
+        : undefined,
+    };
   });
 
   const nbTracesTotal = traceEls.length;

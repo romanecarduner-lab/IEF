@@ -4,6 +4,7 @@ import { creerClientServeur } from "@/lib/supabase/server";
 import { BasculeElement } from "./BasculeElement";
 import { EditeurTexteElement } from "./EditeurTexteElement";
 import { BoutonFinaliser } from "./BoutonFinaliser";
+import { BoutonRemplissageAutomatique } from "./BoutonRemplissageAutomatique";
 
 const DUREE_SIGNATURE_SECONDES = 60 * 60;
 
@@ -174,6 +175,8 @@ export default async function PageDossierExport({
         pouvez modifier le texte affiché pour chaque activité avant de
         finaliser.
       </p>
+
+      <BoutonRemplissageAutomatique dossierId={params.id} parcoursId={dossier.parcours_id} />
 
       {(activitesBrutes ?? []).length === 0 ? (
         <p className="rounded-doux border border-dashed border-trait bg-white/50 p-8 text-center text-sm text-ardoise">

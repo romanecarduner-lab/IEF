@@ -13,9 +13,16 @@ export type ActiviteDocument = {
   traces: TraceImage[];
 };
 
+export type SyntheseTexteDomaine = {
+  totalObjectifs: number;
+  nbValides: number;
+  parStatut: { statutLibelle: string; competences: string[] }[];
+};
+
 export type DomaineDocument = {
   nom: string;
   activites: ActiviteDocument[];
+  syntheseTexte?: SyntheseTexteDomaine;
 };
 
 export type SyntheseDomaineDocument = {
@@ -63,6 +70,15 @@ const styles = StyleSheet.create({
 
   // Domaines / activites
   domaineTitre: { fontSize: 15, marginBottom: 12, marginTop: 4, color: "#3E5442" },
+  syntheseTexteBloc: {
+    marginBottom: 16,
+    padding: 10,
+    backgroundColor: "#F4F6F3",
+    borderRadius: 4,
+  },
+  syntheseTextePhrase: { fontSize: 10, marginBottom: 6, color: "#2B3230" },
+  syntheseTexteGroupe: { fontSize: 9, color: "#2B3230", marginBottom: 3, lineHeight: 1.4 },
+  syntheseTexteGroupeLabel: { color: "#3E5442" },
   activite: { marginBottom: 18 },
   activiteTitre: { fontSize: 12, marginBottom: 2 },
   activiteMeta: { fontSize: 8, color: "#6B7570", marginBottom: 4 },
@@ -206,6 +222,31 @@ export function DocumentDossier({
       {domaines.map((domaine) => (
         <Page key={domaine.nom} size="A4" style={styles.page}>
           <Text style={styles.domaineTitre}>{domaine.nom}</Text>
+
+          {domaine.syntheseTexte && (
+            <View style={styles.syntheseTexteBloc} wrap={false}>
+              <Text style={styles.syntheseTextePhrase}>
+                {domaine.syntheseTexte.nbValides} objectif
+                {domaine.syntheseTexte.nbValides > 1 ? "s" : ""} validé
+                {domaine.syntheseTexte.nbValides > 1 ? "s" : ""} sur{" "}
+                {domaine.syntheseTexte.totalObjectifs} au total dans ce domaine.
+              </Text>
+              {domaine.syntheseTexte.parStatut.map((groupe, i) => (
+                <Text key={i} style={styles.syntheseTexteGroupe}>
+                  <Text style={styles.syntheseTexteGroupeLabel}>
+                    {groupe.statutLibelle} ({groupe.competences.length}) :{" "}
+                  </Text>
+                  {groupe.competences.join(" · ")}
+                </Text>
+              ))}
+            </View>
+          )}
+
+          {domaine.activites.length > 0 && (
+            <Text style={[styles.syntheseTextePhrase, { marginTop: 4 }]}>
+              Exemples illustratifs :
+            </Text>
+          )}
 
           {domaine.activites.map((a, i) => (
             <View key={i} style={styles.activite} wrap={false}>
