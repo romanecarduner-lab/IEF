@@ -296,6 +296,29 @@ officiel, la proportion d'objectifs déjà validés à chaque niveau (de
 - Tests pgTAP (`0007_isolation_progression.sql`) : isolation entre
   familles sur les synthèses et sur la vue
 
+## Amélioration — synthèse écrite complète par domaine (pas seulement les exemples)
+
+Chaque section domaine du PDF affiche maintenant, avant les exemples
+d'activités, un vrai paragraphe de synthèse calculé sur **l'ensemble**
+des compétences validées de ce domaine (table `syntheses_progression`,
+toutes les activités confondues) — pas seulement celles illustrées par
+les exemples retenus. Il indique le nombre d'objectifs validés sur le
+total du domaine, puis liste les compétences par niveau atteint
+("Autonome (4) : ...", "Mobilisé spontanément (2) : ..."). Un domaine
+apparaît désormais dans le PDF dès qu'il a des compétences validées,
+même si aucun exemple n'a encore été choisi pour l'illustrer. Aucune IA :
+uniquement des données agrégées mises en phrase.
+
+## Amélioration — remplissage automatique pour un bilan de contrôle (sans IA)
+
+Sur un dossier en brouillon, un nouveau bouton "Remplir automatiquement"
+sélectionne, pour chaque domaine déjà abordé par le parcours, un nombre
+limité d'exemples (réglable, 3 par défaut) : les activités marquées
+favorites en priorité, puis les plus récentes. Objectif : un bilan
+complet (tous les domaines représentés) mais volontairement court (pas
+toutes les activités), sans dépendre d'une IA. Le parent garde la main
+pour ajuster ensuite la sélection avant de finaliser.
+
 ## Refonte — un vrai dossier pédagogique, pas un listing
 
 Le PDF généré à la finalisation d'un dossier d'export a été entièrement
