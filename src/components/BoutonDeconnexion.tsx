@@ -20,7 +20,7 @@ export function BoutonDeconnexion() {
     <button
       onClick={seDeconnecter}
       disabled={chargement}
-      className="text-sm font-medium text-ardoise underline decoration-trait underline-offset-2 hover:text-encre disabled:opacity-60"
+      className="block w-full rounded-doux px-3 py-2 text-left text-sm text-encre hover:bg-lin disabled:opacity-60"
     >
       {chargement ? "…" : "Se déconnecter"}
     </button>

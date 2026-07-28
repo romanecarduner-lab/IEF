@@ -6,22 +6,50 @@ const DUREE_SIGNATURE_SECONDES = 60 * 60;
 export default async function PagePortfolio({
   searchParams,
 }: {
-  searchParams: { enfant?: string; annee?: string; type?: string };
+  searchParams: { enfant?: string; annee?: string; type?: string; domaine?: string };
 }) {
   const supabase = creerClientServeur();
 
-  const [{ data: enfants }, { data: annees }, { data: types }] = await Promise.all([
-    supabase.from("enfants").select("id, prenom").order("prenom"),
-    supabase
-      .from("annees_scolaires")
-      .select("id, libelle")
-      .order("date_debut", { ascending: false }),
-    supabase.from("types_trace").select("code, libelle").eq("actif", true).order("ordre"),
-  ]);
+  const [{ data: enfants }, { data: annees }, { data: types }, { data: domainesBruts }] =
+    await Promise.all([
+      supabase.from("enfants").select("id, prenom").order("prenom"),
+      supabase
+        .from("annees_scolaires")
+        .select("id, libelle")
+        .order("date_debut", { ascending: false }),
+      supabase.from("types_trace").select("code, libelle").eq("actif", true).order("ordre"),
+      supabase.from("v_total_objectifs_par_domaine").select("domaine").order("domaine"),
+    ]);
 
   const enfantId = searchParams.enfant ?? "";
   const anneeId = searchParams.annee ?? "";
   const typeCode = searchParams.type ?? "";
+  const domaineChoisi = searchParams.domaine ?? "";
+
+  // Le filtre par domaine passe par les competences deja reliees aux
+  // activites (lot 6) : on determine d'abord quelles activites touchent
+  // le domaine choisi, avant de filtrer les traces qui en dependent.
+  let activiteIdsDuDomaine: string[] | null = null;
+  if (domaineChoisi) {
+    const { data: observations } = await supabase
+      .from("observations_elements_programme")
+      .select("activite_id, elements_programme(parent_id)");
+
+    const idsRetenus = new Set<string>();
+    for (const o of observations ?? []) {
+      const element = Array.isArray(o.elements_programme)
+        ? o.elements_programme[0]
+        : o.elements_programme;
+      if (!element?.parent_id) continue;
+      const { data: chemin } = await supabase.rpc("chemin_element_programme", {
+        p_element_id: element.parent_id as string,
+      });
+      if ((chemin as string | null)?.split(" > ")[0] === domaineChoisi) {
+        idsRetenus.add(o.activite_id as string);
+      }
+    }
+    activiteIdsDuDomaine = Array.from(idsRetenus);
+  }
 
   let requete = supabase
     .from("traces")
@@ -36,6 +64,9 @@ export default async function PagePortfolio({
   if (enfantId) requete = requete.eq("activites.parcours_scolaires.enfant_id", enfantId);
   if (anneeId) requete = requete.eq("activites.parcours_scolaires.annee_scolaire_id", anneeId);
   if (typeCode) requete = requete.eq("types_trace.code", typeCode);
+  if (activiteIdsDuDomaine !== null) {
+    requete = requete.in("activite_id", activiteIdsDuDomaine.length > 0 ? activiteIdsDuDomaine : ["00000000-0000-0000-0000-000000000000"]);
+  }
 
   const { data: tracesBrutes } = await requete;
 
@@ -83,8 +114,26 @@ export default async function PagePortfolio({
 
       <form
         method="get"
-        className="mb-8 grid gap-3 rounded-doux border border-trait bg-white/80 p-4 shadow-doux sm:grid-cols-3"
+        className="mb-8 grid gap-3 rounded-doux border border-trait bg-white/80 p-4 shadow-doux sm:grid-cols-4"
       >
+        <div>
+          <label htmlFor="domaine" className="mb-1.5 block text-sm font-medium text-encre">
+            Domaine
+          </label>
+          <select
+            id="domaine"
+            name="domaine"
+            defaultValue={domaineChoisi}
+            className="w-full rounded-doux border border-trait bg-white px-3 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
+          >
+            <option value="">Tous</option>
+            {(domainesBruts ?? []).map((d) => (
+              <option key={d.domaine as string} value={d.domaine as string}>
+                {d.domaine as string}
+              </option>
+            ))}
+          </select>
+        </div>
         <div>
           <label htmlFor="enfant" className="mb-1.5 block text-sm font-medium text-encre">
             Enfant
@@ -139,7 +188,7 @@ export default async function PagePortfolio({
             ))}
           </select>
         </div>
-        <div className="sm:col-span-3">
+        <div className="sm:col-span-4">
           <button
             type="submit"
             className="rounded-doux bg-mousse-fonce px-4 py-2 text-sm font-medium text-white hover:bg-mousse"

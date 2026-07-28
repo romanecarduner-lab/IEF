@@ -2,17 +2,43 @@ import Link from "next/link";
 import { creerClientServeur } from "@/lib/supabase/server";
 import { supprimerActivite, basculerFavori, basculerStatutActivite } from "./actions";
 
-export default async function PageJournal() {
+export default async function PageJournal({
+  searchParams,
+}: {
+  searchParams: { q?: string; enfant?: string; du?: string; au?: string };
+}) {
   const supabase = creerClientServeur();
 
-  const { data: activitesBrutes } = await supabase
+  const { data: enfantsOptions } = await supabase
+    .from("enfants")
+    .select("id, prenom")
+    .order("prenom");
+
+  const texte = searchParams.q?.trim() ?? "";
+  const enfantId = searchParams.enfant ?? "";
+  const du = searchParams.du ?? "";
+  const au = searchParams.au ?? "";
+  const filtresActifs = Boolean(texte || enfantId || du || au);
+
+  let requete = supabase
     .from("activites")
     .select(
       `id, date_activite, titre, description, favori,
        contextes_activite(libelle), statuts_activite(code, libelle),
-       parcours_scolaires(enfants(prenom), annees_scolaires(libelle))`
+       parcours_scolaires!inner(enfant_id, enfants(prenom), annees_scolaires(libelle))`
     )
     .order("date_activite", { ascending: false });
+
+  if (texte) {
+    requete = requete.or(
+      `titre.ilike.%${texte}%,description.ilike.%${texte}%,observations.ilike.%${texte}%,paroles_enfant.ilike.%${texte}%`
+    );
+  }
+  if (enfantId) requete = requete.eq("parcours_scolaires.enfant_id", enfantId);
+  if (du) requete = requete.gte("date_activite", du);
+  if (au) requete = requete.lte("date_activite", au);
+
+  const { data: activitesBrutes } = await requete;
 
   const activites = (activitesBrutes ?? []).map((a) => {
     const contexte = Array.isArray(a.contextes_activite)
@@ -63,9 +89,85 @@ export default async function PageJournal() {
         </Link>
       </div>
 
+      <form
+        method="get"
+        className="mb-6 grid gap-3 rounded-doux border border-trait bg-white/80 p-4 shadow-doux sm:grid-cols-2 md:grid-cols-4"
+      >
+        <div className="sm:col-span-2 md:col-span-1">
+          <label htmlFor="q" className="mb-1.5 block text-sm font-medium text-encre">
+            Mot-clé
+          </label>
+          <input
+            type="search"
+            id="q"
+            name="q"
+            defaultValue={texte}
+            placeholder="cabane, comptine…"
+            className="w-full rounded-doux border border-trait bg-white px-3 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
+          />
+        </div>
+        <div>
+          <label htmlFor="enfant" className="mb-1.5 block text-sm font-medium text-encre">
+            Enfant
+          </label>
+          <select
+            id="enfant"
+            name="enfant"
+            defaultValue={enfantId}
+            className="w-full rounded-doux border border-trait bg-white px-3 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
+          >
+            <option value="">Tous</option>
+            {(enfantsOptions ?? []).map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.prenom}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="du" className="mb-1.5 block text-sm font-medium text-encre">
+            Du
+          </label>
+          <input
+            type="date"
+            id="du"
+            name="du"
+            defaultValue={du}
+            className="w-full rounded-doux border border-trait bg-white px-3 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
+          />
+        </div>
+        <div>
+          <label htmlFor="au" className="mb-1.5 block text-sm font-medium text-encre">
+            Au
+          </label>
+          <input
+            type="date"
+            id="au"
+            name="au"
+            defaultValue={au}
+            className="w-full rounded-doux border border-trait bg-white px-3 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
+          />
+        </div>
+        <div className="sm:col-span-2 md:col-span-4 flex items-center gap-3">
+          <button
+            type="submit"
+            className="rounded-doux bg-mousse-fonce px-4 py-2 text-sm font-medium text-white hover:bg-mousse"
+          >
+            Filtrer
+          </button>
+          {filtresActifs && (
+            <Link href="/journal" className="text-sm text-ardoise underline underline-offset-2">
+              Réinitialiser
+            </Link>
+          )}
+        </div>
+      </form>
+
       {activites.length === 0 ? (
         <p className="rounded-doux border border-dashed border-trait bg-white/50 p-8 text-center text-sm text-ardoise">
-          Aucune activité enregistrée pour l&rsquo;instant.
+          {filtresActifs
+            ? "Aucune activité ne correspond à ces critères."
+            : "Aucune activité enregistrée pour l\u2019instant."}
         </p>
       ) : (
         <ul className="space-y-3">

@@ -51,6 +51,89 @@ export default async function PageDossierExport({
     </div>
   );
 
+  // --- Points cles pour en parler a l'oral : calcules sur l'ensemble du
+  // parcours (pas seulement les elements retenus dans ce dossier), pour
+  // donner une vue complete avant le controle. Aucune IA : uniquement des
+  // donnees agregees deja disponibles (lot 7).
+  const [
+    { count: nbActivitesTotal },
+    { count: nbTracesTotal },
+    { data: totauxDomaine },
+    { data: repartitionDomaine },
+    { data: statutsProgression },
+  ] = await Promise.all([
+    supabase
+      .from("activites")
+      .select("id", { count: "exact", head: true })
+      .eq("parcours_id", dossier.parcours_id),
+    supabase
+      .from("traces")
+      .select("id, activites!inner(parcours_id)", { count: "exact", head: true })
+      .eq("activites.parcours_id", dossier.parcours_id),
+    supabase.from("v_total_objectifs_par_domaine").select("domaine, total_objectifs"),
+    supabase
+      .from("v_progression_par_domaine")
+      .select("domaine, statut_code, statut_ordre, nb")
+      .eq("parcours_id", dossier.parcours_id),
+    supabase.from("statuts_progression").select("code, libelle"),
+  ]);
+
+  const libellesStatuts = new Map(
+    (statutsProgression ?? []).map((s) => [s.code as string, s.libelle as string])
+  );
+
+  const pointsParDomaine = (totauxDomaine ?? [])
+    .map((t) => {
+      const domaine = t.domaine as string;
+      const lignes = (repartitionDomaine ?? []).filter((r) => r.domaine === domaine);
+      const nbValides = lignes.reduce((acc, l) => acc + (l.nb as number), 0);
+      const meilleure = lignes.sort((a, b) => (b.statut_ordre as number) - (a.statut_ordre as number))[0];
+      return {
+        domaine,
+        total: t.total_objectifs as number,
+        nbValides,
+        niveauLePlusAvance: meilleure
+          ? libellesStatuts.get(meilleure.statut_code as string)
+          : undefined,
+      };
+    })
+    .filter((d) => d.nbValides > 0)
+    .sort((a, b) => b.nbValides / b.total - a.nbValides / a.total);
+
+  const nombreDomainesAbordes = pointsParDomaine.length;
+
+  const pointsCles = (
+    <div className="mb-8 rounded-doux border border-argile/30 bg-argile/5 p-5">
+      <p className="mb-3 text-sm font-medium text-encre">
+        Points clés pour en parler à l&rsquo;oral
+      </p>
+      <p className="mb-3 text-sm text-encre">
+        {nbActivitesTotal ?? 0} activité{(nbActivitesTotal ?? 0) > 1 ? "s" : ""} enregistrée
+        {(nbActivitesTotal ?? 0) > 1 ? "s" : ""}, {nbTracesTotal ?? 0} trace
+        {(nbTracesTotal ?? 0) > 1 ? "s" : ""}, {nombreDomainesAbordes} domaine
+        {nombreDomainesAbordes > 1 ? "s" : ""} du programme officiel abordé
+        {nombreDomainesAbordes > 1 ? "s" : ""} sur 6.
+      </p>
+      {pointsParDomaine.length > 0 && (
+        <ul className="space-y-1.5">
+          {pointsParDomaine.map((d) => (
+            <li key={d.domaine} className="text-sm text-encre">
+              <span className="font-medium">{d.domaine}</span> — {d.nbValides} objectif
+              {d.nbValides > 1 ? "s" : ""} validé{d.nbValides > 1 ? "s" : ""} sur {d.total}
+              {d.niveauLePlusAvance ? ` · niveau le plus avancé : ${d.niveauLePlusAvance}` : ""}
+            </li>
+          ))}
+        </ul>
+      )}
+      {pointsParDomaine.length === 0 && (
+        <p className="text-sm text-ardoise">
+          Aucun statut de progression validé pour l&rsquo;instant — pensez à
+          les confirmer sur la page Progression avant le contrôle.
+        </p>
+      )}
+    </div>
+  );
+
   if (dossier.statut === "finalise") {
     let urlPdf: string | null = null;
     if (dossier.pdf_final_storage_path) {
@@ -71,6 +154,8 @@ export default async function PageDossierExport({
         <span className="mb-6 inline-block rounded-full bg-mousse/10 px-2.5 py-0.5 text-xs text-mousse-fonce">
           Finalisé
         </span>
+
+        {pointsCles}
 
         {urlPdf && (
           <p className="mb-6">
@@ -169,6 +254,8 @@ export default async function PageDossierExport({
       <span className="mb-6 inline-block rounded-full bg-trait px-2.5 py-0.5 text-xs text-ardoise">
         Brouillon
       </span>
+
+      {pointsCles}
 
       <p className="mb-4 text-sm text-ardoise">
         Choisissez les activités et traces à inclure dans ce dossier. Vous

@@ -80,6 +80,7 @@ export function FormulaireActivite({
   const [suggestionsChoisies, setSuggestionsChoisies] = useState<Map<string, string>>(
     new Map()
   );
+  const [niveauCompetencesId, setNiveauCompetencesId] = useState(autonomies[0]?.id ?? "");
   const delaiSuggestionsRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [suggestionsIA, setSuggestionsIA] = useState<
@@ -292,7 +293,7 @@ export function FormulaireActivite({
           await creerObservations({
             activiteId: resultat.id,
             elementProgrammeIds: Array.from(suggestionsChoisies.keys()),
-            niveauAutonomieId: donnees.autonomieGeneraleId || autonomies[0]?.id || "",
+            niveauAutonomieId: niveauCompetencesId || autonomies[0]?.id || "",
             justification: "",
             commentairePedagogique: "",
           });
@@ -449,12 +450,6 @@ export function FormulaireActivite({
                 </li>
               ))}
             </ul>
-            {suggestionsChoisies.size > 0 && (
-              <p className="mt-2 text-xs text-mousse-fonce">
-                {suggestionsChoisies.size} compétence(s) sera(ont) enregistrée(s)
-                avec cette activité.
-              </p>
-            )}
           </div>
         )}
 
@@ -506,6 +501,41 @@ export function FormulaireActivite({
             </div>
           )}
         </div>
+
+        {suggestionsChoisies.size > 0 && (
+          <div className="mb-4 rounded-doux border border-trait bg-white/60 p-3">
+            <p className="mb-2 text-xs text-encre">
+              {suggestionsChoisies.size} compétence
+              {suggestionsChoisies.size > 1 ? "s" : ""} sélectionnée
+              {suggestionsChoisies.size > 1 ? "s" : ""} (mots-clés et/ou IA) —
+              sera{suggestionsChoisies.size > 1 ? "ont" : ""} enregistrée
+              {suggestionsChoisies.size > 1 ? "s" : ""} avec cette activité.
+            </p>
+            <label
+              htmlFor="niveau-competences"
+              className="mb-1 block text-xs font-medium text-encre"
+            >
+              Niveau d&rsquo;autonomie pour ces compétences précises
+            </label>
+            <select
+              id="niveau-competences"
+              value={niveauCompetencesId}
+              onChange={(e) => setNiveauCompetencesId(e.target.value)}
+              className="w-full rounded-doux border border-trait bg-white px-3 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
+            >
+              {autonomies.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.libelle}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-ardoise">
+              Décrit comment l&rsquo;enfant a mobilisé ces compétences
+              précises — peut différer de l&rsquo;autonomie générale de
+              l&rsquo;activité, réglée plus bas.
+            </p>
+          </div>
+        )}
 
         <div className="mb-4">
           <label
@@ -667,9 +697,14 @@ export function FormulaireActivite({
             }
             className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
           >
-            <option value="brouillon">Brouillon</option>
-            <option value="valide">Validé</option>
+            <option value="brouillon">En cours de rédaction</option>
+            <option value="valide">Rédaction terminée</option>
           </select>
+          <p className="mt-1.5 text-xs text-ardoise">
+            Concerne uniquement cette fiche (avez-vous fini de la remplir ?)
+            — sans rapport avec le niveau atteint par l&rsquo;enfant, qui se
+            règle depuis la page Progression.
+          </p>
         </div>
 
         <div className="flex items-center justify-between">

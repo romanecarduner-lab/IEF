@@ -52,12 +52,12 @@ export async function creerParcours(
     };
   }
 
-  revalidatePath("/parcours");
+  revalidatePath("/famille");
   return {};
 }
 
 export async function supprimerParcours(id: string) {
   const supabase = creerClientServeur();
   await supabase.from("parcours_scolaires").delete().eq("id", id);
-  revalidatePath("/parcours");
+  revalidatePath("/famille");
 }

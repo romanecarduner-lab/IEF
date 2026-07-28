@@ -2,18 +2,18 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { creerClientServeur } from "@/lib/supabase/server";
 import { BoutonDeconnexion } from "@/components/BoutonDeconnexion";
+import { MenuDeroulant } from "@/components/MenuDeroulant";
+
+const LIEN_STYLE =
+  "block rounded-doux px-3 py-2 text-sm text-encre hover:bg-lin";
 
 const LIENS_NAVIGATION = [
   { href: "/tableau-de-bord", libelle: "Tableau de bord" },
-  { href: "/enfants", libelle: "Enfants" },
-  { href: "/annees-scolaires", libelle: "Années scolaires" },
-  { href: "/parcours", libelle: "Parcours" },
+  { href: "/famille", libelle: "Famille" },
   { href: "/journal", libelle: "Journal" },
-  { href: "/recherche", libelle: "Recherche" },
   { href: "/portfolio", libelle: "Portfolio" },
   { href: "/progression", libelle: "Progression" },
   { href: "/export", libelle: "Export" },
-  { href: "/confidentialite", libelle: "Confidentialité" },
 ];
 
 // Ces pages dépendent systématiquement de la session de l'utilisateur
@@ -88,9 +88,9 @@ export default async function LayoutProtege({
     <div className="min-h-screen bg-brume">
       <header className="border-b border-trait bg-white/60">
         <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-4 px-6 py-4">
-          <p className="font-display text-lg italic text-encre">
+          <Link href="/tableau-de-bord" className="font-display text-lg italic text-encre">
             {nomFamille}
-          </p>
+          </Link>
           <nav className="flex flex-wrap items-center gap-5">
             {LIENS_NAVIGATION.map((lien) => (
               <Link
@@ -101,7 +101,15 @@ export default async function LayoutProtege({
                 {lien.libelle}
               </Link>
             ))}
-            <BoutonDeconnexion />
+
+            <MenuDeroulant libelle="Compte">
+              <Link href="/confidentialite" className={LIEN_STYLE}>
+                Confidentialité
+              </Link>
+              <div className="mt-1 border-t border-trait pt-1">
+                <BoutonDeconnexion />
+              </div>
+            </MenuDeroulant>
           </nav>
         </div>
       </header>

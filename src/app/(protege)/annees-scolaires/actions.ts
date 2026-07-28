@@ -54,12 +54,12 @@ export async function creerAnneeScolaire(
     };
   }
 
-  revalidatePath("/annees-scolaires");
+  revalidatePath("/famille");
   return {};
 }
 
 export async function supprimerAnneeScolaire(id: string) {
   const supabase = creerClientServeur();
   await supabase.from("annees_scolaires").delete().eq("id", id);
-  revalidatePath("/annees-scolaires");
+  revalidatePath("/famille");
 }

@@ -49,8 +49,8 @@ export async function creerEnfant(
     return { erreur: "Impossible d'enregistrer cet enfant. Merci de réessayer." };
   }
 
-  revalidatePath("/enfants");
-  redirect("/enfants");
+  revalidatePath("/famille");
+  redirect("/famille");
 }
 
 export async function supprimerEnfant(id: string) {
@@ -92,5 +92,5 @@ export async function supprimerEnfant(id: string) {
   }
 
   await supabase.from("enfants").delete().eq("id", id);
-  revalidatePath("/enfants");
+  revalidatePath("/famille");
 }
