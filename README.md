@@ -309,6 +309,23 @@ apparaît désormais dans le PDF dès qu'il a des compétences validées,
 même si aucun exemple n'a encore été choisi pour l'illustrer. Aucune IA :
 uniquement des données agrégées mises en phrase.
 
+## Écran "Préparer mon contrôle" (sans IA)
+
+Sur la page **Export**, un bouton **"✨ Préparer mon contrôle"** ouvre un
+petit formulaire (enfant/année + nombre d'exemples par domaine) et, en un
+clic, enchaîne : création du dossier, remplissage automatique (favoris
+puis récents, par domaine — `remplirBilanAutomatique`), redirection vers
+l'éditeur déjà prêt à être ajusté puis finalisé.
+
+Sur l'éditeur du dossier (brouillon ou finalisé), un bloc **"Points clés
+pour en parler à l'oral"** résume, à partir des statuts de progression
+déjà validés sur l'ensemble du parcours (pas seulement les éléments
+retenus dans ce dossier précis) : nombre total d'activités et de traces,
+nombre de domaines abordés sur 6, et pour chaque domaine le nombre
+d'objectifs validés sur le total ainsi que le niveau le plus avancé
+atteint. Aucune IA — uniquement des données déjà en base, mises en
+phrase.
+
 ## Amélioration — remplissage automatique pour un bilan de contrôle (sans IA)
 
 Sur un dossier en brouillon, un nouveau bouton "Remplir automatiquement"
@@ -318,6 +335,81 @@ favorites en priorité, puis les plus récentes. Objectif : un bilan
 complet (tous les domaines représentés) mais volontairement court (pas
 toutes les activités), sans dépendre d'une IA. Le parent garde la main
 pour ajuster ensuite la sélection avant de finaliser.
+
+## Nouveauté — "Préparer mon contrôle" en un clic
+
+Un bouton **"✨ Préparer mon contrôle"** en haut de la page Export
+enchaîne en une seule action : création d'un dossier titré
+automatiquement, puis remplissage automatique (favoris puis récents, par
+domaine — voir le remplissage automatique du lot précédent), avant de
+rediriger vers l'éditeur du dossier pour vérification. Aucune
+finalisation automatique : le parent garde la main pour ajuster et
+valider avant de générer le PDF final.
+
+Sur la fiche de chaque dossier (brouillon ou finalisé) apparaît aussi un
+nouvel encart **"Points clés pour en parler à l'oral"** : nombre
+d'activités/traces, nombre de domaines abordés sur 6, et pour chaque
+domaine le nombre d'objectifs validés sur le total ainsi que le niveau le
+plus avancé atteint. Calculé sur l'ensemble du parcours (pas seulement le
+contenu du dossier), à partir des données déjà en base — aucune IA.
+
+## Complément — filtre par domaine sur le Portfolio
+
+Le filtre "Domaine" prévu depuis le premier document du projet est
+maintenant en place sur `/portfolio` (en plus d'enfant, année, type). Il
+s'appuie sur les compétences déjà reliées aux activités (lot 6) : une
+trace apparaît sous un domaine si son activité a au moins une observation
+liée à ce domaine. `traces_elements_programme` (lien direct trace ↔
+compétence, plus fin que via l'activité) reste en base, inutilisée —
+laissée telle quelle plutôt que de construire un écran dédié sans besoin
+exprimé, activable plus tard si nécessaire.
+
+## Nettoyage — vocabulaire clarifié, deux chemins vers les compétences unifiés (audit)
+
+- Le statut d'activité "Brouillon/Validé" est renommé **"En cours de
+  rédaction / Rédaction terminée"** partout (données + formulaire), pour
+  ne plus entrer en collision avec le "Validé" utilisé sur la page
+  Progression (deux notions différentes : la fiche est-elle remplie ? vs
+  la compétence est-elle acquise ?). Une légende rappelle maintenant
+  explicitement cette distinction sous le champ.
+- Le formulaire de création d'activité demande maintenant explicitement
+  un **niveau d'autonomie pour les compétences sélectionnées**
+  (mots-clés et/ou IA confondus), au lieu de réutiliser silencieusement
+  la valeur du champ "Autonomie générale". Les deux chemins vers les
+  compétences (création rapide et page "Relier à des compétences")
+  demandent désormais tous les deux ce niveau de façon visible.
+- Les 5 signaux de statut (niveau d'autonomie par compétence, autonomie
+  générale de l'activité, statut de la fiche, statut de progression,
+  favori) restent **distincts par conception** — ils répondent à des
+  questions réellement différentes — mais le vocabulaire ne se recouvre
+  plus.
+
+## Nettoyage — fusion des pages redondantes (audit)
+
+- **Enfants + Années scolaires + Parcours** fusionnés en une seule page
+  **`/famille`** (trois sections empilées, chacune avec sa liste et son
+  formulaire d'ajout — rien n'a changé dans le fonctionnement, juste
+  l'endroit). Les anciennes routes `/enfants`, `/annees-scolaires`,
+  `/parcours` n'existent plus.
+- **Recherche fusionnée dans Journal** : la barre de mot-clé/enfant/dates
+  est maintenant en haut de `/journal` directement, au lieu d'une page à
+  part. La route `/recherche` n'existe plus.
+- Navigation revenue à une liste plate (plus besoin de menus déroulants
+  pour seulement 6 destinations) : **Tableau de bord · Famille · Journal
+  · Portfolio · Progression · Export**, plus le menu **Compte**.
+
+## Nettoyage — navigation réorganisée (audit)
+
+Les 10 liens à plat ("Tableau de bord, Enfants, Années scolaires,
+Parcours, Journal, Recherche, Portfolio, Progression, Export,
+Confidentialité") sont devenus 4 entrées : **Tableau de bord** (seul,
+toujours visible), puis trois menus déroulants — **Famille** (Enfants,
+Années scolaires, Parcours), **Suivi** (Journal, Recherche, Portfolio),
+**Bilan** (Progression, Export) — et un menu **Compte** (Confidentialité,
+Se déconnecter) à la place du bouton de déconnexion isolé. Nouveau
+composant réutilisable `src/components/MenuDeroulant.tsx` (se ferme au
+clic extérieur ou dès qu'on change de page). Aucune route n'a changé —
+uniquement la façon d'y accéder.
 
 ## Refonte — un vrai dossier pédagogique, pas un listing
 

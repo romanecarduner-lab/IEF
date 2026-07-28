@@ -10,11 +10,8 @@ const PAGES_AUTH = [
 
 const PAGES_PROTEGEES = [
   "/tableau-de-bord",
-  "/enfants",
-  "/annees-scolaires",
-  "/parcours",
+  "/famille",
   "/journal",
-  "/recherche",
   "/portfolio",
   "/progression",
   "/export",
