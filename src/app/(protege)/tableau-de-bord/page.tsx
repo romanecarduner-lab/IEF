@@ -100,19 +100,39 @@ export default async function PageTableauDeBord() {
 
   return (
     <div>
-      <h1 className="mb-1 font-display text-3xl italic text-encre">Bonjour,</h1>
-      <p className="mb-6 text-ardoise">
-        {parcoursPrincipal
-          ? `Un regard sur le chemin parcouru par ${parcoursPrincipal.enfant}.`
-          : "Un regard sur le chemin parcouru par votre enfant."}
-      </p>
+      <div className="relative mb-2 overflow-hidden">
+        <div className="relative z-10 max-w-md">
+          <h1 className="mb-1 font-display text-3xl italic text-encre">Bonjour,</h1>
+          <p className="text-ardoise">
+            {parcoursPrincipal
+              ? `Un regard sur le chemin parcouru par ${parcoursPrincipal.enfant}.`
+              : "Un regard sur le chemin parcouru par votre enfant."}
+          </p>
+        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/illustrations/chemin-vegetal.png"
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-6 -top-6 hidden w-72 opacity-90 sm:block"
+        />
+      </div>
 
-      <Link
-        href="/journal/nouvelle"
-        className="mb-8 flex items-center justify-center rounded-doux bg-mousse-fonce px-6 py-4 text-lg font-medium text-white shadow-doux transition-colors hover:bg-mousse"
-      >
-        + Ajouter une activité
-      </Link>
+      <div className="mb-8 mt-6 flex flex-wrap items-center gap-6">
+        <Link
+          href="/journal/nouvelle"
+          className="flex flex-1 items-center justify-center rounded-doux bg-mousse-fonce px-6 py-4 text-lg font-medium text-white shadow-doux transition-colors hover:bg-mousse"
+        >
+          + Ajouter une activité
+        </Link>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/illustrations/pot-plante.png"
+          alt=""
+          aria-hidden="true"
+          className="hidden h-20 w-auto md:block"
+        />
+      </div>
 
       <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {cartes.map((c) => (
