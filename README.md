@@ -244,6 +244,14 @@ et la navigation par domaine (page "Relier à des compétences") — le pont
 concret entre "ce qui a été observé" et "pourquoi ça compte comme preuve
 de la compétence", tel qu'attendu par l'Éducation Nationale.
 
+## Illustrations intégrées
+
+Les trois images fournies sont dans `public/illustrations/` (redimensionnées
+pour le web — passées de 1-1,7 Mo à 70-175 Ko chacune, sans perte visible) :
+- `chemin-vegetal.png` — en haut à droite du Tableau de bord
+- `pot-plante.png` — à côté du bouton "+ Ajouter une activité"
+- `branche.png` — en fond discret des pages de connexion/inscription
+
 ## Nouvelle direction graphique — "Chemins d'apprentissage"
 
 Palette, typographies et nom de l'application repris intégralement selon
