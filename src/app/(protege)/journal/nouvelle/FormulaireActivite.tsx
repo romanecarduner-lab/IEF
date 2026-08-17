@@ -6,7 +6,7 @@ import { Champ, MessageStatut } from "@/components/Formulaire";
 import { creerActivite, type DonneesActivite } from "../actions";
 import { creerTrace } from "../[id]/actions";
 import { creerObservations } from "../[id]/competences/actions";
-import { suggererObjectifsIA, proposerFormulationPedagogique, genererDescriptionDepuisPhoto } from "./actionsIA";
+import { genererDescriptionEtCompetencesIA, proposerFormulationPedagogique } from "./actionsIA";
 import { preparerImage, estImage } from "@/lib/compressionImage";
 import { creerClientNavigateur } from "@/lib/supabase/client";
 import { televerserFichierTrace } from "@/lib/televersementTrace";
@@ -19,6 +19,7 @@ import {
 import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaximal";
 
 type Option = { id: string; libelle: string };
+type OptionParcours = Option & { prenomEnfant: string };
 
 const DONNEES_VIDES: DonneesBrouillonActivite = {
   parcoursId: "",
@@ -50,7 +51,7 @@ export function FormulaireActivite({
   autonomies,
   familleId,
 }: {
-  parcours: Option[];
+  parcours: OptionParcours[];
   contextes: Option[];
   autonomies: Option[];
   familleId: string;
@@ -86,8 +87,6 @@ export function FormulaireActivite({
   const [suggestionsIA, setSuggestionsIA] = useState<
     { id: string; libelle: string; chemin: string | null }[]
   >([]);
-  const [chargementIA, setChargementIA] = useState(false);
-  const [erreurIA, setErreurIA] = useState<string | null>(null);
   const [demandeIAFaite, setDemandeIAFaite] = useState(false);
 
   const [chargementDescriptionIA, setChargementDescriptionIA] = useState(false);
@@ -151,59 +150,44 @@ export function FormulaireActivite({
     return btoa(binaire);
   }
 
-  async function demanderDescriptionIA() {
+  async function demanderDescriptionEtCompetencesIA() {
     if (!donnees.titre.trim()) return;
     setChargementDescriptionIA(true);
     setErreurDescriptionIA(null);
+    setDemandeIAFaite(true);
     try {
-      const fichier = inputPhotoRef.current?.files?.[0] ?? null;
-      let imageBase64: string | null = null;
-      let mediaType: string | null = null;
+      const fichiers = Array.from(inputPhotoRef.current?.files ?? []).filter(estImage);
+      const images = await Promise.all(
+        fichiers.map(async (fichier) => {
+          const { miniature } = await preparerImage(fichier);
+          return {
+            base64: arrayBufferVersBase64(await miniature.arrayBuffer()),
+            mediaType: "image/jpeg",
+          };
+        })
+      );
 
-      if (fichier && estImage(fichier)) {
-        const { miniature } = await preparerImage(fichier);
-        imageBase64 = arrayBufferVersBase64(await miniature.arrayBuffer());
-        mediaType = "image/jpeg";
-      }
+      const prenomEnfant =
+        parcours.find((p) => p.id === donnees.parcoursId)?.prenomEnfant ?? "";
 
       const resultat = await avecDelaiMaximal(
-        genererDescriptionDepuisPhoto(donnees.titre, imageBase64, mediaType),
-        30000
+        genererDescriptionEtCompetencesIA(donnees.titre, prenomEnfant, images),
+        45000
       );
       if ("erreur" in resultat) {
         setErreurDescriptionIA(resultat.erreur);
         return;
       }
-      modifierChamp("description", resultat.texte);
+      modifierChamp("description", resultat.description);
+      setSuggestionsIA(resultat.suggestions);
     } catch (erreurInattendue) {
-      console.error("Erreur lors de la génération de la description IA", erreurInattendue);
+      console.error(
+        "Erreur lors de la génération de la description et des compétences IA",
+        erreurInattendue
+      );
       setErreurDescriptionIA(messagePourErreurInattendue(erreurInattendue));
     } finally {
       setChargementDescriptionIA(false);
-    }
-  }
-
-  async function demanderSuggestionsIA() {
-    if (!donnees.titre.trim()) return;
-    setChargementIA(true);
-    setErreurIA(null);
-    setDemandeIAFaite(true);
-    try {
-      const resultat = await avecDelaiMaximal(
-        suggererObjectifsIA(donnees.titre, donnees.description),
-        20000
-      );
-      if ("erreur" in resultat) {
-        setErreurIA(resultat.erreur);
-        setSuggestionsIA([]);
-        return;
-      }
-      setSuggestionsIA(resultat.suggestions);
-    } catch (erreurInattendue) {
-      console.error("Erreur inattendue lors de la demande de suggestions IA", erreurInattendue);
-      setErreurIA(messagePourErreurInattendue(erreurInattendue));
-    } finally {
-      setChargementIA(false);
     }
   }
 
@@ -298,8 +282,9 @@ export function FormulaireActivite({
       setStatutSync("synchronise");
       await supprimerBrouillon().catch(() => {});
 
-      const fichier = inputPhotoRef.current?.files?.[0] ?? null;
-      if (fichier) {
+      const fichiers = Array.from(inputPhotoRef.current?.files ?? []);
+      let auMoinsUneErreurPhoto = false;
+      for (const fichier of fichiers) {
         try {
           const supabase = creerClientNavigateur();
           const televersement = await televerserFichierTrace(
@@ -318,16 +303,19 @@ export function FormulaireActivite({
             dateTrace: donnees.dateActivite,
           });
         } catch (erreurPhoto) {
-          console.error("Erreur lors de l'ajout de la photo", erreurPhoto);
-          // L'activité est déjà enregistrée : on ne bloque jamais sur l'échec
-          // de la photo, on redirige vers la fiche pour permettre de réessayer.
-          router.push(`/journal/${resultat.id}`);
-          router.refresh();
-          setErreur(
-            "L'activité a été enregistrée, mais l'ajout de la photo a échoué. Vous pouvez réessayer depuis la fiche de l'activité."
-          );
-          return;
+          console.error("Erreur lors de l'ajout d'une photo", erreurPhoto);
+          auMoinsUneErreurPhoto = true;
         }
+      }
+      if (auMoinsUneErreurPhoto) {
+        // L'activité est déjà enregistrée : on ne bloque jamais sur l'échec
+        // d'une photo, on redirige vers la fiche pour permettre de réessayer.
+        router.push(`/journal/${resultat.id}`);
+        router.refresh();
+        setErreur(
+          "L'activité a été enregistrée, mais au moins une photo n'a pas pu être ajoutée. Vous pouvez réessayer depuis la fiche de l'activité."
+        );
+        return;
       }
 
       if (suggestionsChoisies.size > 0) {
@@ -350,7 +338,7 @@ export function FormulaireActivite({
         }
       }
 
-      router.push(fichier || suggestionsChoisies.size > 0 ? `/journal/${resultat.id}` : "/journal");
+      router.push(fichiers.length > 0 || suggestionsChoisies.size > 0 ? `/journal/${resultat.id}` : "/journal");
       router.refresh();
     } catch (erreurInattendue) {
       console.error("Erreur inattendue lors de la création de l'activité", erreurInattendue);
@@ -473,33 +461,17 @@ export function FormulaireActivite({
             ref={inputPhotoRef}
             id="photo"
             type="file"
+            multiple
             accept="image/jpeg,image/png,image/webp,application/pdf,application/msword,.docx"
             onChange={() => setErreurDescriptionIA(null)}
             className="w-full text-sm text-encre"
           />
           <p className="mt-1.5 text-xs text-ardoise">
-            Ajoutée automatiquement comme première trace de l&rsquo;activité.
-            D&rsquo;autres traces pourront être ajoutées ensuite depuis la
-            fiche de l&rsquo;activité.
+            Ajoutées automatiquement comme premières traces de
+            l&rsquo;activité (plusieurs fichiers possibles). D&rsquo;autres
+            traces pourront être ajoutées ensuite depuis la fiche de
+            l&rsquo;activité.
           </p>
-
-          <button
-            type="button"
-            onClick={demanderDescriptionIA}
-            disabled={chargementDescriptionIA || !donnees.titre.trim()}
-            className="mt-2 text-xs font-medium text-mousse-fonce underline decoration-mousse-clair/60 underline-offset-2 hover:text-mousse disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {chargementDescriptionIA
-              ? "L'IA regarde la photo…"
-              : "✨ Décrire l'activité à partir de la photo"}
-          </button>
-          <p className="mt-1 text-xs text-ardoise">
-            Remplit automatiquement le champ « Description » ci-dessous à
-            partir de ce que montre la photo.
-          </p>
-          {erreurDescriptionIA && (
-            <p className="mt-1.5 text-xs text-alerte">{erreurDescriptionIA}</p>
-          )}
         </div>
 
         <div className="mb-6 border-t border-trait pt-5">
@@ -549,22 +521,32 @@ export function FormulaireActivite({
         <div className="mb-4 -mt-2">
           <button
             type="button"
-            onClick={demanderSuggestionsIA}
-            disabled={chargementIA || !donnees.titre.trim()}
+            onClick={demanderDescriptionEtCompetencesIA}
+            disabled={chargementDescriptionIA || !donnees.titre.trim()}
             className="text-xs font-medium text-mousse-fonce underline decoration-mousse-clair/60 underline-offset-2 hover:text-mousse disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {chargementIA ? "L'IA réfléchit…" : "✨ Suggestions de compétences par IA"}
+            {chargementDescriptionIA
+              ? "L'IA réfléchit…"
+              : "✨ Décrire l'activité et identifier les compétences (photo + attendus)"}
           </button>
+          <p className="mt-1 text-xs text-ardoise">
+            Regarde le titre et la ou les photo(s), rédige une courte
+            description et propose directement les compétences officielles
+            concernées — en une seule fois.
+          </p>
 
-          {erreurIA && (
-            <p className="mt-1.5 text-xs text-alerte">{erreurIA}</p>
+          {erreurDescriptionIA && (
+            <p className="mt-1.5 text-xs text-alerte">{erreurDescriptionIA}</p>
           )}
 
-          {!chargementIA && demandeIAFaite && !erreurIA && suggestionsIA.length === 0 && (
-            <p className="mt-1.5 text-xs text-ardoise">
-              L&rsquo;IA n&rsquo;a trouvé aucun objectif clairement lié.
-            </p>
-          )}
+          {!chargementDescriptionIA &&
+            demandeIAFaite &&
+            !erreurDescriptionIA &&
+            suggestionsIA.length === 0 && (
+              <p className="mt-1.5 text-xs text-ardoise">
+                L&rsquo;IA n&rsquo;a trouvé aucun objectif clairement lié.
+              </p>
+            )}
 
           {suggestionsIA.length > 0 && (
             <div className="mt-2 rounded-doux border border-argile/30 bg-argile/5 p-3">

@@ -2,20 +2,26 @@
 
 import { creerClientServeur } from "@/lib/supabase/server";
 
-const MODELE_SUGGESTION = "claude-haiku-4-5-20251001"; // classification simple : rapide et economique
-const MODELE_REDACTION = "claude-sonnet-5"; // redaction : qualite superieure, cout toujours minime vu la taille du prompt
+const MODELE_REDACTION = "claude-sonnet-5"; // vision + redaction : qualite superieure, cout minime vu la taille du prompt
 
 export type SuggestionIA = { id: string; libelle: string; chemin: string | null };
-export type ResultatSuggestionIA = { erreur: string } | { suggestions: SuggestionIA[] };
 export type ResultatFormulation = { erreur: string } | { texte: string };
+export type ResultatDescriptionCompetences =
+  | { erreur: string }
+  | { description: string; suggestions: SuggestionIA[] };
+
+type BlocContenu =
+  | { type: "text"; text: string }
+  | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
 
 /**
  * Appelle l'API Anthropic et renvoie le texte de la reponse, ou leve une
- * erreur avec un message deja adapte a l'affichage utilisateur.
+ * erreur avec un message deja adapte a l'affichage utilisateur. Accepte
+ * soit un simple texte, soit un tableau de blocs (texte + images) pour
+ * les appels utilisant la vision.
  */
 async function appellerClaude(
-  prompt: string,
-  modele: string,
+  contenu: string | BlocContenu[],
   maxTokens: number
 ): Promise<{ texte: string } | { erreur: string }> {
   const cleApi = process.env.ANTHROPIC_API_KEY;
@@ -35,9 +41,9 @@ async function appellerClaude(
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: modele,
+        model: MODELE_REDACTION,
         max_tokens: maxTokens,
-        messages: [{ role: "user", content: prompt }],
+        messages: [{ role: "user", content: contenu }],
       }),
     });
 
@@ -56,23 +62,34 @@ async function appellerClaude(
   }
 }
 
+function nettoyerJSON(texte: string): string {
+  return texte
+    .trim()
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```\s*$/i, "");
+}
+
 /**
- * Demande a Claude d'identifier, parmi tous les objectifs du programme,
- * ceux probablement mobilises par l'activite decrite. Contrairement a
- * suggerer_objectifs_programme (rapprochement de mots-cles, gratuit et
- * automatique), cet appel a un cout et n'est declenche qu'a la demande
- * (bouton), jamais automatiquement pendant la saisie.
+ * Etape unique et fusionnee : a partir du titre, du prenom de l'enfant et
+ * d'une ou plusieurs photos (vision), Claude redige un TRES COURT texte
+ * du point de vue du parent (pas une description visuelle exhaustive) ET
+ * identifie directement les objectifs du programme officiel mobilises --
+ * en une seule reflexion, comme le ferait un parent qui ecrit sur son
+ * enfant en connaissant deja les attendus. Remplace les deux anciennes
+ * etapes separees (description froide puis suggestion a part).
  *
- * Pour limiter le cout et le risque d'erreur, le programme est envoye a
- * Claude sous forme d'une liste numerotee : Claude renvoie des numeros,
- * pas des UUID (plus fiable, moins de tokens).
+ * Regles imperatives imposees au modele : jamais de description de
+ * l'apparence physique de l'enfant, toujours son prenom (jamais
+ * "l'enfant"), rien d'invente au-dela de ce qui est visible/indique.
  */
-export async function suggererObjectifsIA(
+export async function genererDescriptionEtCompetencesIA(
   titre: string,
-  description: string
-): Promise<ResultatSuggestionIA> {
+  prenomEnfant: string,
+  images: { base64: string; mediaType: string }[]
+): Promise<ResultatDescriptionCompetences> {
   if (!titre.trim()) {
-    return { erreur: "Le titre est requis pour demander une suggestion." };
+    return { erreur: "Le titre est requis." };
   }
 
   const supabase = creerClientServeur();
@@ -83,7 +100,7 @@ export async function suggererObjectifsIA(
     .order("libelle");
 
   if (erreurRequete || !objectifsBruts || objectifsBruts.length === 0) {
-    return { erreur: "Impossible de charger le programme pour la suggestion." };
+    return { erreur: "Impossible de charger le programme officiel." };
   }
 
   const objectifs = objectifsBruts.map((o) => ({
@@ -91,47 +108,61 @@ export async function suggererObjectifsIA(
     parentId: o.parent_id as string,
     libelle: o.libelle as string,
   }));
+  const listeNumerotee = objectifs.map((o, i) => `${i + 1}. ${o.libelle}`).join("\n");
 
-  const listeNumerotee = objectifs
-    .map((o, i) => `${i + 1}. ${o.libelle}`)
-    .join("\n");
+  const nomEnfant = prenomEnfant.trim() || "l'enfant";
+  const aDesImages = images.length > 0;
 
-  const prompt = `Tu aides un parent qui pratique l'instruction en famille (cycle 1, école maternelle française) à relier une activité vécue par son enfant aux objectifs du programme officiel.
+  const prompt = `Tu aides un parent qui pratique l'instruction en famille (cycle 1, école maternelle française) à documenter une activité de son enfant, ${nomEnfant}, pour son carnet de suivi pédagogique — en vue d'un contrôle académique.
 
-Titre de l'activité : "${titre.trim()}"
-Description : "${description.trim() || "(aucune)"}"
+${aDesImages ? "Regarde la ou les photo(s) ci-jointe(s). " : ""}Titre donné par le parent : "${titre.trim()}"
 
-Voici la liste numérotée de tous les objectifs possibles :
+Voici la liste numérotée de tous les objectifs du programme officiel :
 ${listeNumerotee}
 
-Réponds UNIQUEMENT avec un tableau JSON des numéros des objectifs les plus probablement mobilisés par cette activité (au maximum 8, du plus au moins pertinent). Si rien ne correspond clairement, réponds [].
-Exemple de réponse valide : [12, 87, 203]
-N'écris rien d'autre que ce tableau JSON.`;
+Fais deux choses en une seule réflexion, comme le ferait le parent lui-même :
 
-  const resultat = await appellerClaude(prompt, MODELE_SUGGESTION, 300);
+1. Rédige un TRÈS COURT texte (2 à 3 phrases maximum), à la première personne du point de vue du parent qui observe ${nomEnfant} — pas une description visuelle exhaustive, mais l'essentiel de l'action et de ce qu'elle mobilise comme apprentissage. Utilise le prénom ${nomEnfant}, jamais "l'enfant". Ne décris JAMAIS l'apparence physique de ${nomEnfant} (couleur des cheveux, vêtements, traits du visage) : ce n'est pas pertinent pour un carnet pédagogique.
+
+2. Identifie, parmi la liste numérotée ci-dessus, les objectifs clairement mobilisés par cette activité (au maximum 5, du plus au moins pertinent).
+
+Règles impératives :
+- Ne décris et n'évoque que ce qui est visible ou clairement suggéré par le titre et la ou les photo(s) : n'invente aucun détail, aucune réaction, aucun résultat.
+- Réponds UNIQUEMENT avec un objet JSON de cette forme exacte, sans rien d'autre autour :
+{"description": "...", "objectifs": [12, 87]}`;
+
+  const contenu: BlocContenu[] = images.map((img) => ({
+    type: "image" as const,
+    source: { type: "base64" as const, media_type: img.mediaType, data: img.base64 },
+  }));
+  contenu.push({ type: "text", text: prompt });
+
+  const resultat = await appellerClaude(contenu, 700);
   if ("erreur" in resultat) return resultat;
 
-  let indices: unknown;
+  let donnees: unknown;
   try {
-    const texteNettoye = resultat.texte
-      .trim()
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/```\s*$/i, "");
-    indices = JSON.parse(texteNettoye);
+    donnees = JSON.parse(nettoyerJSON(resultat.texte));
   } catch {
     console.error("Réponse IA non interprétable comme JSON :", resultat.texte);
     return { erreur: "La réponse de l'IA n'a pas pu être lue. Merci de réessayer." };
   }
 
-  if (!Array.isArray(indices)) {
+  if (typeof donnees !== "object" || donnees === null) {
     return { erreur: "Réponse IA inattendue. Merci de réessayer." };
+  }
+  const objetReponse = donnees as { description?: unknown; objectifs?: unknown };
+  const description =
+    typeof objetReponse.description === "string" ? objetReponse.description.trim() : "";
+  const indices = Array.isArray(objetReponse.objectifs) ? objetReponse.objectifs : [];
+
+  if (!description) {
+    return { erreur: "L'IA n'a pas produit de description. Merci de réessayer." };
   }
 
   const indicesValides = indices.filter(
     (n): n is number => typeof n === "number" && n >= 1 && n <= objectifs.length
   );
-
   const objectifsChoisis = indicesValides
     .map((n) => objectifs[n - 1])
     .filter((o): o is (typeof objectifs)[number] => o !== undefined);
@@ -145,7 +176,7 @@ N'écris rien d'autre que ce tableau JSON.`;
     })
   );
 
-  return { suggestions };
+  return { description, suggestions };
 }
 
 /**
@@ -190,7 +221,7 @@ Règles impératives :
 - Ne recopie jamais le texte du programme officiel mot pour mot : reformule entièrement avec tes propres mots.
 - N'ajoute ni introduction, ni titre, ni commentaire : réponds uniquement avec le paragraphe.`;
 
-  const resultat = await appellerClaude(prompt, MODELE_REDACTION, 400);
+  const resultat = await appellerClaude(prompt, 400);
   if ("erreur" in resultat) return resultat;
 
   const texte = resultat.texte.trim();
@@ -199,85 +230,4 @@ Règles impératives :
   }
 
   return { texte };
-}
-
-type BlocContenu =
-  | { type: "text"; text: string }
-  | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
-
-/**
- * Decrit une activite a partir de sa photo (vision) et de son titre,
- * pour remplir directement le champ Description avec un texte factuel et
- * precis -- plus riche qu'une description tapee a la volee par le
- * parent. Etape volontairement separee de la redaction pedagogique
- * (competences) : ici on decrit ce qui est visible, rien de plus.
- */
-export async function genererDescriptionDepuisPhoto(
-  titre: string,
-  imageBase64: string | null,
-  mediaType: string | null
-): Promise<{ erreur: string } | { texte: string }> {
-  if (!titre.trim() && !imageBase64) {
-    return { erreur: "Un titre ou une photo est nécessaire." };
-  }
-
-  const cleApi = process.env.ANTHROPIC_API_KEY;
-  if (!cleApi) {
-    return {
-      erreur:
-        "Configuration IA manquante : la variable ANTHROPIC_API_KEY n'est pas définie sur le serveur.",
-    };
-  }
-
-  const aUneImage = Boolean(imageBase64 && mediaType);
-
-  const consigne = `Tu aides un parent qui pratique l'instruction en famille (cycle 1, école maternelle française) à décrire une activité réalisée par son enfant, pour son carnet de suivi pédagogique.
-
-${aUneImage ? "Regarde la photo ci-jointe. " : ""}Titre donné par le parent : "${titre.trim() || "(aucun titre)"}"
-
-Rédige une description factuelle et précise de ce que ${aUneImage ? "montre la photo" : "suggère le titre"} : ce que l'enfant est en train de faire, le matériel utilisé, le cadre. 3 à 5 phrases.
-
-Règles impératives :
-- Décris uniquement ce qui est visible ou clairement suggéré ${aUneImage ? "par la photo" : "par le titre"} : n'invente aucun détail que tu ne peux pas observer.
-- N'interprète pas encore les compétences ou apprentissages en jeu (cette étape est séparée) : reste sur la description factuelle de l'activité elle-même.
-- N'ajoute ni introduction, ni titre, ni commentaire : réponds uniquement avec le texte de description.`;
-
-  const contenu: BlocContenu[] = [];
-  if (imageBase64 && mediaType) {
-    contenu.push({
-      type: "image",
-      source: { type: "base64", media_type: mediaType, data: imageBase64 },
-    });
-  }
-  contenu.push({ type: "text", text: consigne });
-
-  try {
-    const reponse = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": cleApi,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: MODELE_REDACTION,
-        max_tokens: 400,
-        messages: [{ role: "user", content: contenu }],
-      }),
-    });
-
-    if (!reponse.ok) {
-      const detail = await reponse.text();
-      console.error("Erreur API Anthropic (vision)", reponse.status, detail);
-      return { erreur: "L'IA n'a pas pu analyser la photo. Merci de réessayer." };
-    }
-
-    const donnees = await reponse.json();
-    const texte = (donnees?.content?.[0]?.text ?? "").trim();
-    if (!texte) return { erreur: "L'IA n'a pas produit de texte. Merci de réessayer." };
-    return { texte };
-  } catch (erreurReseau) {
-    console.error("Erreur réseau vers l'API Anthropic", erreurReseau);
-    return { erreur: "Impossible de contacter l'IA. Vérifiez la connexion et réessayez." };
-  }
 }

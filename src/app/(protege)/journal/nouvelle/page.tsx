@@ -41,6 +41,7 @@ export default async function PageNouvelleActivite() {
     return {
       id: p.id as string,
       libelle: `${enfant?.prenom ?? "?"} — ${annee?.libelle ?? "?"}`,
+      prenomEnfant: (enfant?.prenom as string | undefined) ?? "",
     };
   });
 

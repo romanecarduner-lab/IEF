@@ -123,7 +123,15 @@ export default async function PageActivite({ params }: { params: { id: string } 
           ← Retour au journal
         </Link>
 
-        <h1 className="mb-1 font-display text-2xl italic text-encre">{activite.titre}</h1>
+        <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+          <h1 className="font-display text-2xl italic text-encre">{activite.titre}</h1>
+          <Link
+            href={`/journal/${params.id}/modifier`}
+            className="text-sm font-medium text-mousse-fonce underline underline-offset-2 hover:text-mousse"
+          >
+            Modifier
+          </Link>
+        </div>
         <p className="mb-4 text-sm text-ardoise">
           {enfant?.prenom} · {annee?.libelle} ·{" "}
           {new Date(activite.date_activite as string).toLocaleDateString("fr-FR")}

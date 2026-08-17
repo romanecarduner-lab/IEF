@@ -80,6 +80,55 @@ export async function creerActivite(
   return { id: donnees.idLocal };
 }
 
+export type DonneesModificationActivite = {
+  dateActivite: string;
+  titre: string;
+  description: string;
+  contexteId: string;
+  lieu: string;
+  observations: string;
+  parolesEnfant: string;
+  personnesPresentes: string;
+  autonomieGeneraleId: string;
+};
+
+export async function modifierActivite(
+  id: string,
+  donnees: DonneesModificationActivite
+): Promise<{ erreur: string } | { ok: true }> {
+  if (!donnees.titre.trim()) {
+    return { erreur: "Le titre est requis." };
+  }
+  if (!donnees.dateActivite || !donnees.contexteId) {
+    return { erreur: "La date et le contexte sont requis." };
+  }
+
+  const supabase = creerClientServeur();
+  const { error } = await supabase
+    .from("activites")
+    .update({
+      date_activite: donnees.dateActivite,
+      titre: donnees.titre.trim(),
+      description: donnees.description || null,
+      contexte_id: donnees.contexteId,
+      lieu: donnees.lieu || null,
+      observations: donnees.observations || null,
+      paroles_enfant: donnees.parolesEnfant || null,
+      personnes_presentes: donnees.personnesPresentes || null,
+      autonomie_generale_id: donnees.autonomieGeneraleId || null,
+    })
+    .eq("id", id);
+
+  if (error) {
+    return { erreur: "Impossible d'enregistrer les modifications. Merci de réessayer." };
+  }
+
+  revalidatePath("/journal");
+  revalidatePath(`/journal/${id}`);
+  revalidatePath(`/journal/${id}/modifier`);
+  return { ok: true };
+}
+
 export async function supprimerActivite(id: string) {
   const supabase = creerClientServeur();
   await supabase.from("activites").delete().eq("id", id);
