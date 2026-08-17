@@ -6,6 +6,7 @@ import { creerObservations } from "./actions";
 import { creerClientNavigateur } from "@/lib/supabase/client";
 import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaximal";
 import { MessageStatut } from "@/components/Formulaire";
+import { ExemplesReussite } from "./ExemplesReussite";
 
 type NoeudArbre = { id: string; parentId: string | null; type: string; libelle: string };
 type Objectif = { id: string; libelle: string; groupe: string | null };
@@ -222,6 +223,7 @@ export function SelecteurCompetences({
                     <span className="block text-xs text-ardoise">{r.chemin}</span>
                   )}
                 </button>
+                <ExemplesReussite objectifId={r.id} />
               </li>
             );
           })}
@@ -302,25 +304,27 @@ export function SelecteurCompetences({
                 {liste.map((o) => {
                   const dejaObserve = elementsDejaObserves.has(o.id);
                   return (
-                    <label
-                      key={o.id}
-                      className="mb-1 flex items-start gap-2 text-sm text-encre"
-                    >
-                      <input
-                        type="checkbox"
-                        className="mt-0.5"
-                        checked={selection.has(o.id)}
-                        onChange={() => basculerObjectif(o.id, o.libelle)}
-                      />
-                      <span>
-                        {o.libelle}
-                        {dejaObserve && (
-                          <span className="ml-1.5 text-xs text-mousse-fonce">
-                            (déjà observé)
-                          </span>
-                        )}
-                      </span>
-                    </label>
+                    <div key={o.id} className="mb-1">
+                      <label className="flex items-start gap-2 text-sm text-encre">
+                        <input
+                          type="checkbox"
+                          className="mt-0.5"
+                          checked={selection.has(o.id)}
+                          onChange={() => basculerObjectif(o.id, o.libelle)}
+                        />
+                        <span>
+                          {o.libelle}
+                          {dejaObserve && (
+                            <span className="ml-1.5 text-xs text-mousse-fonce">
+                              (déjà observé)
+                            </span>
+                          )}
+                        </span>
+                      </label>
+                      <div className="pl-6">
+                        <ExemplesReussite objectifId={o.id} />
+                      </div>
+                    </div>
                   );
                 })}
               </div>

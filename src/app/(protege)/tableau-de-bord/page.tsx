@@ -87,17 +87,25 @@ export default async function PageTableauDeBord() {
   });
 
   const cartes = [
-    { libelle: "Enfants", valeur: nbEnfants ?? 0 },
-    { libelle: "Activités", valeur: nbActivites ?? 0 },
-    { libelle: "Traces", valeur: nbTraces ?? 0 },
-    { libelle: "Dossiers finalisés", valeur: nbDossiersFinalises ?? 0 },
+    { libelle: "Enfant", pluriel: "Enfants", icone: "👤", valeur: nbEnfants ?? 0 },
+    { libelle: "Activité", pluriel: "Activités", icone: "📖", valeur: nbActivites ?? 0 },
+    { libelle: "Trace", pluriel: "Traces", icone: "📷", valeur: nbTraces ?? 0 },
+    {
+      libelle: "Dossier finalisé",
+      pluriel: "Dossiers finalisés",
+      icone: "📁",
+      valeur: nbDossiersFinalises ?? 0,
+    },
   ];
 
   return (
     <div>
-      <h1 className="mb-6 font-display text-2xl italic text-encre">
-        Tableau de bord
-      </h1>
+      <h1 className="mb-1 font-display text-3xl italic text-encre">Bonjour,</h1>
+      <p className="mb-6 text-ardoise">
+        {parcoursPrincipal
+          ? `Un regard sur le chemin parcouru par ${parcoursPrincipal.enfant}.`
+          : "Un regard sur le chemin parcouru par votre enfant."}
+      </p>
 
       <Link
         href="/journal/nouvelle"
@@ -112,23 +120,35 @@ export default async function PageTableauDeBord() {
             key={c.libelle}
             className="rounded-doux border border-trait bg-white/80 p-4 text-center shadow-doux"
           >
+            <span className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-lin text-base">
+              {c.icone}
+            </span>
             <p className="font-display text-2xl italic text-encre">{c.valeur}</p>
-            <p className="text-xs text-ardoise">{c.libelle}</p>
+            <p className="text-xs text-ardoise">{c.valeur > 1 ? c.pluriel : c.libelle}</p>
           </div>
         ))}
       </div>
 
       {parcoursPrincipal && donneesGraphique.length > 0 && (
-        <div className="mb-8">
-          <p className="mb-3 text-sm font-medium text-encre">
-            Où en est {parcoursPrincipal.enfant} ({parcoursPrincipal.annee})
+        <div className="mb-8 rounded-doux border border-trait bg-white/80 p-5 shadow-doux">
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <p className="font-display text-lg italic text-encre">
+              Le parcours de {parcoursPrincipal.enfant}
+            </p>
+            <span className="rounded-full bg-lin px-2.5 py-0.5 text-xs text-ardoise">
+              Année {parcoursPrincipal.annee}
+            </span>
+          </div>
+          <p className="mb-4 text-sm text-ardoise">
+            Les apprentissages en mouvement — une vue d&rsquo;ensemble des
+            domaines explorés, à partir des observations validées.
           </p>
           <GraphiqueProgression donnees={donneesGraphique} />
           <Link
             href={`/progression?parcours=${parcoursPrincipal.id}`}
             className="text-xs font-medium text-mousse-fonce underline underline-offset-2"
           >
-            Voir le détail par compétence →
+            Voir le détail des compétences →
           </Link>
         </div>
       )}
@@ -147,7 +167,7 @@ export default async function PageTableauDeBord() {
       </Link>
 
       <div>
-        <p className="mb-3 text-sm font-medium text-encre">Activité récente</p>
+        <p className="mb-3 text-sm font-medium text-encre">Dernières traces</p>
         {recentes.length === 0 ? (
           <p className="text-sm text-ardoise">
             Aucune activité enregistrée pour l&rsquo;instant.

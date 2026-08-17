@@ -491,11 +491,26 @@ export function FormulaireActivite({
           >
             {chargementDescriptionIA
               ? "L'IA regarde la photo…"
-              : "✨ Décrire cette activité avec l'IA (à partir de la photo et du titre)"}
+              : "✨ Décrire l'activité à partir de la photo"}
           </button>
+          <p className="mt-1 text-xs text-ardoise">
+            Remplit automatiquement le champ « Description » ci-dessous à
+            partir de ce que montre la photo.
+          </p>
           {erreurDescriptionIA && (
             <p className="mt-1.5 text-xs text-alerte">{erreurDescriptionIA}</p>
           )}
+        </div>
+
+        <div className="mb-6 border-t border-trait pt-5">
+          <p className="mb-1 text-sm font-medium text-encre">
+            Compétences du programme
+          </p>
+          <p className="mb-3 text-xs text-ardoise">
+            Pour relier cette activité aux compétences officielles qu&rsquo;elle
+            pourrait développer — vous cocherez ensuite celles qui conviennent
+            vraiment.
+          </p>
         </div>
 
         {chargementSuggestions && (
@@ -538,7 +553,7 @@ export function FormulaireActivite({
             disabled={chargementIA || !donnees.titre.trim()}
             className="text-xs font-medium text-mousse-fonce underline decoration-mousse-clair/60 underline-offset-2 hover:text-mousse disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {chargementIA ? "L'IA réfléchit…" : "✨ Demander des suggestions à l'IA"}
+            {chargementIA ? "L'IA réfléchit…" : "✨ Suggestions de compétences par IA"}
           </button>
 
           {erreurIA && (

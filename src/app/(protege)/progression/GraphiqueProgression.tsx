@@ -13,14 +13,14 @@ import {
 // Ordre du degagé, du moins avancé au plus avancé — dérivé de la palette
 // mousse déjà utilisée dans l'application (voir tailwind.config.ts).
 const PALIERS = [
-  { code: "premiere_observation", libelle: "Première observation", couleur: "#C9D6C9" },
-  { code: "en_cours_exploration", libelle: "En cours d'exploration", couleur: "#A9C0AC" },
-  { code: "realise_avec_accompagnement", libelle: "Avec accompagnement", couleur: "#8AA48D" },
-  { code: "realise_autonome", libelle: "Autonome", couleur: "#5F7A63" },
-  { code: "mobilise_spontanement", libelle: "Mobilisé spontanément", couleur: "#48624C" },
-  { code: "mobilise_plusieurs_contextes", libelle: "Plusieurs contextes", couleur: "#3E5442" },
+  { code: "premiere_observation", libelle: "Première observation", couleur: "#D7E0D2" },
+  { code: "en_cours_exploration", libelle: "En cours d'exploration", couleur: "#BFCDBB" },
+  { code: "realise_avec_accompagnement", libelle: "Avec accompagnement", couleur: "#9BAF9C" },
+  { code: "realise_autonome", libelle: "Autonome", couleur: "#6B8870" },
+  { code: "mobilise_spontanement", libelle: "Mobilisé spontanément", couleur: "#3F6350" },
+  { code: "mobilise_plusieurs_contextes", libelle: "Plusieurs contextes", couleur: "#264C3B" },
 ];
-const COULEUR_NON_ABORDE = "#E4E1D6";
+const COULEUR_NON_ABORDE = "#E3DCCB";
 
 export type DonneesDomaine = {
   domaine: string;
@@ -65,20 +65,20 @@ export function GraphiqueProgression({ donnees }: { donnees: DonneesDomaine[] })
             type="number"
             domain={[0, 100]}
             tickFormatter={(v) => `${v}%`}
-            tick={{ fontSize: 11, fill: "#6B7570" }}
+            tick={{ fontSize: 11, fill: "#5C6A62" }}
           />
           <YAxis
             type="category"
             dataKey="domaine"
             width={150}
-            tick={{ fontSize: 11, fill: "#2B3230" }}
+            tick={{ fontSize: 11, fill: "#26312D" }}
           />
           <Tooltip
             formatter={(valeur) => `${Number(valeur).toFixed(0)}%`}
             contentStyle={{
               fontSize: 12,
               borderRadius: 8,
-              border: "1px solid #DCDFD7",
+              border: "1px solid #E3DCCB",
             }}
           />
           <Legend wrapperStyle={{ fontSize: 11 }} />

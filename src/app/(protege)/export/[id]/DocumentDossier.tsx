@@ -35,32 +35,32 @@ export type SyntheseDomaineDocument = {
 };
 
 const PALIERS = [
-  { code: "premiere_observation", libelle: "Première observation", couleur: "#C9D6C9" },
-  { code: "en_cours_exploration", libelle: "En cours d'exploration", couleur: "#A9C0AC" },
-  { code: "realise_avec_accompagnement", libelle: "Avec accompagnement", couleur: "#8AA48D" },
-  { code: "realise_autonome", libelle: "Autonome", couleur: "#5F7A63" },
-  { code: "mobilise_spontanement", libelle: "Mobilisé spontanément", couleur: "#48624C" },
-  { code: "mobilise_plusieurs_contextes", libelle: "Plusieurs contextes", couleur: "#3E5442" },
+  { code: "premiere_observation", libelle: "Première observation", couleur: "#D7E0D2" },
+  { code: "en_cours_exploration", libelle: "En cours d'exploration", couleur: "#BFCDBB" },
+  { code: "realise_avec_accompagnement", libelle: "Avec accompagnement", couleur: "#9BAF9C" },
+  { code: "realise_autonome", libelle: "Autonome", couleur: "#6B8870" },
+  { code: "mobilise_spontanement", libelle: "Mobilisé spontanément", couleur: "#3F6350" },
+  { code: "mobilise_plusieurs_contextes", libelle: "Plusieurs contextes", couleur: "#264C3B" },
 ];
-const COULEUR_NON_ABORDE = "#E4E1D6";
+const COULEUR_NON_ABORDE = "#E3DCCB";
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 11, fontFamily: "Helvetica" },
 
   // Page de garde
   couverture: { flexGrow: 1, alignItems: "center", justifyContent: "center" },
-  couvertureEyebrow: { fontSize: 10, color: "#5F7A63", marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 },
+  couvertureEyebrow: { fontSize: 10, color: "#264C3B", marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 },
   couvertureTitre: { fontSize: 24, marginBottom: 8, textAlign: "center" },
-  couvertureSousTitre: { fontSize: 14, color: "#2B3230", marginBottom: 4, textAlign: "center" },
-  couvertureMeta: { fontSize: 10, color: "#6B7570", marginTop: 24, textAlign: "center" },
+  couvertureSousTitre: { fontSize: 14, color: "#26312D", marginBottom: 4, textAlign: "center" },
+  couvertureMeta: { fontSize: 10, color: "#5C6A62", marginTop: 24, textAlign: "center" },
   couvertureStats: { marginTop: 32, flexDirection: "row", gap: 24 },
   couvertureStatBloc: { alignItems: "center" },
-  couvertureStatValeur: { fontSize: 18, color: "#3E5442" },
-  couvertureStatLabel: { fontSize: 8, color: "#6B7570" },
+  couvertureStatValeur: { fontSize: 18, color: "#264C3B" },
+  couvertureStatLabel: { fontSize: 8, color: "#5C6A62" },
 
   // En-tetes generaux
   titrePage: { fontSize: 16, marginBottom: 16 },
-  sousTitrePage: { fontSize: 9, color: "#6B7570", marginBottom: 16 },
+  sousTitrePage: { fontSize: 9, color: "#5C6A62", marginBottom: 16 },
 
   // Synthese par domaine
   syntheseLigne: { marginBottom: 14 },
@@ -69,32 +69,32 @@ const styles = StyleSheet.create({
   syntheseLegende: { flexDirection: "row", flexWrap: "wrap", marginTop: 16, gap: 10 },
   syntheseLegendeItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   syntheseLegendePuce: { width: 8, height: 8, borderRadius: 2 },
-  syntheseLegendeTexte: { fontSize: 7, color: "#6B7570" },
+  syntheseLegendeTexte: { fontSize: 7, color: "#5C6A62" },
 
   // Domaines / activites
-  domaineTitre: { fontSize: 15, marginBottom: 12, marginTop: 4, color: "#3E5442" },
+  domaineTitre: { fontSize: 15, marginBottom: 12, marginTop: 4, color: "#264C3B" },
   syntheseTexteBloc: {
     marginBottom: 16,
     padding: 10,
-    backgroundColor: "#F4F6F3",
+    backgroundColor: "#F6F1E8",
     borderRadius: 4,
   },
-  syntheseTextePhrase: { fontSize: 10, marginBottom: 6, color: "#2B3230" },
-  syntheseTexteGroupe: { fontSize: 9, color: "#2B3230", marginBottom: 3, lineHeight: 1.4 },
-  syntheseTexteGroupeLabel: { color: "#3E5442" },
+  syntheseTextePhrase: { fontSize: 10, marginBottom: 6, color: "#26312D" },
+  syntheseTexteGroupe: { fontSize: 9, color: "#26312D", marginBottom: 3, lineHeight: 1.4 },
+  syntheseTexteGroupeLabel: { color: "#264C3B" },
   syntheseIABloc: { marginTop: 6, marginBottom: 4, paddingLeft: 8 },
-  syntheseIACompetence: { fontSize: 9, color: "#3E5442", marginBottom: 2 },
-  syntheseIATexte: { fontSize: 9, color: "#2B3230", lineHeight: 1.4 },
+  syntheseIACompetence: { fontSize: 9, color: "#264C3B", marginBottom: 2 },
+  syntheseIATexte: { fontSize: 9, color: "#26312D", lineHeight: 1.4 },
   activite: { marginBottom: 18 },
   activiteTitre: { fontSize: 12, marginBottom: 2 },
-  activiteMeta: { fontSize: 8, color: "#6B7570", marginBottom: 4 },
+  activiteMeta: { fontSize: 8, color: "#5C6A62", marginBottom: 4 },
   activiteTexte: { fontSize: 10, lineHeight: 1.4, marginBottom: 6 },
-  competencesBloc: { marginBottom: 6, paddingLeft: 8, borderLeftWidth: 2, borderLeftColor: "#DCDFD7" },
-  competenceLigne: { fontSize: 8, color: "#2B3230", marginBottom: 2 },
-  competenceNiveau: { color: "#6B7570" },
+  competencesBloc: { marginBottom: 6, paddingLeft: 8, borderLeftWidth: 2, borderLeftColor: "#E3DCCB" },
+  competenceLigne: { fontSize: 8, color: "#26312D", marginBottom: 2 },
+  competenceNiveau: { color: "#5C6A62" },
   tracesGrille: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 },
   traceImage: { width: 130, height: 100, objectFit: "cover", borderRadius: 4 },
-  traceTexte: { fontSize: 9, fontStyle: "italic", color: "#2B3230", marginBottom: 4 },
+  traceTexte: { fontSize: 9, fontStyle: "italic", color: "#26312D", marginBottom: 4 },
 
   piedDePage: {
     position: "absolute",

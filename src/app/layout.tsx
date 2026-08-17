@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fraunces, Public_Sans } from "next/font/google";
+import { Fraunces, Manrope } from "next/font/google";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -10,17 +10,17 @@ const fraunces = Fraunces({
   display: "swap",
 });
 
-const publicSans = Public_Sans({
+const manrope = Manrope({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-corps",
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Suivi pédagogique IEF",
+  title: "Chemins d'apprentissage",
   description:
-    "Un espace calme pour documenter les apprentissages de votre enfant en instruction en famille.",
+    "Un regard sur le chemin parcouru par votre enfant en instruction en famille.",
 };
 
 export default function RootLayout({
@@ -29,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr" className={`${fraunces.variable} ${publicSans.variable}`}>
+    <html lang="fr" className={`${fraunces.variable} ${manrope.variable}`}>
       <body className="font-corps">{children}</body>
     </html>
   );

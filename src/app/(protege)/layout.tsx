@@ -87,9 +87,13 @@ export default async function LayoutProtege({
     <div className="min-h-screen bg-brume">
       <header className="border-b border-trait bg-white/60">
         <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-4 px-6 py-4">
-          <Link href="/tableau-de-bord" className="font-display text-lg italic text-encre">
-            {nomFamille}
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/tableau-de-bord" className="font-display text-lg italic text-mousse-fonce">
+              🌿 Chemins d&rsquo;apprentissage
+            </Link>
+            <span className="text-trait">·</span>
+            <span className="text-sm text-ardoise">{nomFamille}</span>
+          </div>
           <nav className="flex flex-wrap items-center gap-5">
             {LIENS_NAVIGATION.map((lien) => (
               <Link
