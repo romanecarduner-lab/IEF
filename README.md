@@ -244,6 +244,25 @@ et la navigation par domaine (page "Relier à des compétences") — le pont
 concret entre "ce qui a été observé" et "pourquoi ça compte comme preuve
 de la compétence", tel qu'attendu par l'Éducation Nationale.
 
+## Tableau de bord — fidèle à la maquette complète
+
+- **Salutation personnalisée** : "Bonjour [Prénom]," — nouveau champ
+  Prénom à l'inscription, modifiable à tout moment depuis
+  Confidentialité → **Mon profil** (pour les comptes déjà créés)
+- **Icônes** : bibliothèque `lucide-react` ajoutée, utilisée pour les
+  cartes de statistiques et un icône par domaine (langage, physique,
+  artistique, mathématiques, temps/espace, vivant/matière — déduit du nom
+  du domaine)
+- **"Le parcours de [enfant]"** : liste de barres de progression simples
+  (une par domaine, pourcentage d'objectifs validés sur le total), au
+  lieu du graphique empilé — plus proche de la maquette, et plus léger
+  (le Tableau de bord n'a plus besoin de charger `recharts`)
+- **"Dernières traces"** : nouveau bloc à droite, 3 traces les plus
+  récentes avec vignette, légende et date relative ("Aujourd'hui",
+  "Hier", ou date), lien vers la vue Galerie du Journal
+- **"Une observation à noter ?"** : carte avec le pot de plante,
+  invitation à ajouter une activité
+
 ## Illustrations intégrées
 
 Les trois images fournies sont dans `public/illustrations/` (redimensionnées
