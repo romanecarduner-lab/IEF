@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { creerClientServeur } from "@/lib/supabase/server";
 import { SelecteurParcours } from "./SelecteurParcours";
 import { SelecteurStatutProgression } from "./SelecteurStatutProgression";
 import { GraphiqueProgression, type DonneesDomaine } from "./GraphiqueProgression";
+import { BoutonSyntheseIA } from "./BoutonSyntheseIA";
 
 const STATUT_PAR_DEFAUT = "non_encore_observe";
 
@@ -75,7 +77,7 @@ export default async function PageProgression({
       .order("ordre"),
     supabase
       .from("syntheses_progression")
-      .select("element_programme_id, statuts_progression(code)")
+      .select("element_programme_id, statuts_progression(code), synthese_ia, synthese_ia_generee_le")
       .eq("parcours_id", parcoursId),
     supabase.from("v_total_objectifs_par_domaine").select("domaine, total_objectifs"),
     supabase
@@ -124,12 +126,19 @@ export default async function PageProgression({
   });
 
   const statutsParElement = new Map<string, string>();
+  const syntheseIAParElement = new Map<string, { texte: string; genereeLe: string | null }>();
   for (const s of synthesesBrutes ?? []) {
     const statut = Array.isArray(s.statuts_progression)
       ? s.statuts_progression[0]
       : s.statuts_progression;
     if (statut?.code) {
       statutsParElement.set(s.element_programme_id as string, statut.code);
+    }
+    if (s.synthese_ia) {
+      syntheseIAParElement.set(s.element_programme_id as string, {
+        texte: s.synthese_ia as string,
+        genereeLe: s.synthese_ia_generee_le as string | null,
+      });
     }
   }
 
@@ -166,6 +175,7 @@ export default async function PageProgression({
         aRevoir,
         dejaValide,
         statutCode: statutsParElement.get(elementId) ?? suggestion,
+        syntheseIA: syntheseIAParElement.get(elementId) ?? null,
       };
     })
   );
@@ -184,6 +194,13 @@ export default async function PageProgression({
       {donneesGraphique.length > 0 && (
         <GraphiqueProgression donnees={donneesGraphique} />
       )}
+
+      <Link
+        href={`/progression/a-travailler?parcours=${parcoursId}`}
+        className="mb-6 inline-block text-sm font-medium text-mousse-fonce underline underline-offset-2 hover:text-mousse"
+      >
+        → Voir ce qui n&rsquo;a pas encore été abordé
+      </Link>
 
       {lignes.length === 0 ? (
         <p className="rounded-doux border border-dashed border-trait bg-white/50 p-8 text-center text-sm text-ardoise">
@@ -229,6 +246,11 @@ export default async function PageProgression({
                   statuts={statuts ?? []}
                 />
               </div>
+              <BoutonSyntheseIA
+                parcoursId={parcoursId}
+                elementProgrammeId={l.elementId}
+                syntheseExistante={l.syntheseIA}
+              />
             </li>
           ))}
         </ul>

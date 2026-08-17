@@ -6,10 +6,10 @@ import { Champ, MessageStatut } from "@/components/Formulaire";
 import { creerActivite, type DonneesActivite } from "../actions";
 import { creerTrace } from "../[id]/actions";
 import { creerObservations } from "../[id]/competences/actions";
-import { suggererObjectifsIA, proposerFormulationPedagogique } from "./actionsIA";
+import { suggererObjectifsIA, proposerFormulationPedagogique, genererDescriptionDepuisPhoto } from "./actionsIA";
+import { preparerImage, estImage } from "@/lib/compressionImage";
 import { creerClientNavigateur } from "@/lib/supabase/client";
 import { televerserFichierTrace } from "@/lib/televersementTrace";
-import { estImage } from "@/lib/compressionImage";
 import {
   lireBrouillon,
   sauvegarderBrouillon,
@@ -90,6 +90,9 @@ export function FormulaireActivite({
   const [erreurIA, setErreurIA] = useState<string | null>(null);
   const [demandeIAFaite, setDemandeIAFaite] = useState(false);
 
+  const [chargementDescriptionIA, setChargementDescriptionIA] = useState(false);
+  const [erreurDescriptionIA, setErreurDescriptionIA] = useState<string | null>(null);
+
   const [formulationProposee, setFormulationProposee] = useState<string | null>(null);
   const [chargementFormulation, setChargementFormulation] = useState(false);
   const [erreurFormulation, setErreurFormulation] = useState<string | null>(null);
@@ -139,6 +142,45 @@ export function FormulaireActivite({
       else nouveau.set(id, libelle);
       return nouveau;
     });
+  }
+
+  function arrayBufferVersBase64(buffer: ArrayBuffer): string {
+    let binaire = "";
+    const octets = new Uint8Array(buffer);
+    for (let i = 0; i < octets.byteLength; i++) binaire += String.fromCharCode(octets[i] ?? 0);
+    return btoa(binaire);
+  }
+
+  async function demanderDescriptionIA() {
+    if (!donnees.titre.trim()) return;
+    setChargementDescriptionIA(true);
+    setErreurDescriptionIA(null);
+    try {
+      const fichier = inputPhotoRef.current?.files?.[0] ?? null;
+      let imageBase64: string | null = null;
+      let mediaType: string | null = null;
+
+      if (fichier && estImage(fichier)) {
+        const { miniature } = await preparerImage(fichier);
+        imageBase64 = arrayBufferVersBase64(await miniature.arrayBuffer());
+        mediaType = "image/jpeg";
+      }
+
+      const resultat = await avecDelaiMaximal(
+        genererDescriptionDepuisPhoto(donnees.titre, imageBase64, mediaType),
+        30000
+      );
+      if ("erreur" in resultat) {
+        setErreurDescriptionIA(resultat.erreur);
+        return;
+      }
+      modifierChamp("description", resultat.texte);
+    } catch (erreurInattendue) {
+      console.error("Erreur lors de la génération de la description IA", erreurInattendue);
+      setErreurDescriptionIA(messagePourErreurInattendue(erreurInattendue));
+    } finally {
+      setChargementDescriptionIA(false);
+    }
   }
 
   async function demanderSuggestionsIA() {
@@ -420,6 +462,42 @@ export function FormulaireActivite({
           onChange={(e) => modifierChamp("titre", e.target.value)}
         />
 
+        <div className="mb-6">
+          <label
+            htmlFor="photo"
+            className="mb-1.5 block text-sm font-medium text-encre"
+          >
+            Photo ou document (facultatif)
+          </label>
+          <input
+            ref={inputPhotoRef}
+            id="photo"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,application/pdf,application/msword,.docx"
+            onChange={() => setErreurDescriptionIA(null)}
+            className="w-full text-sm text-encre"
+          />
+          <p className="mt-1.5 text-xs text-ardoise">
+            Ajoutée automatiquement comme première trace de l&rsquo;activité.
+            D&rsquo;autres traces pourront être ajoutées ensuite depuis la
+            fiche de l&rsquo;activité.
+          </p>
+
+          <button
+            type="button"
+            onClick={demanderDescriptionIA}
+            disabled={chargementDescriptionIA || !donnees.titre.trim()}
+            className="mt-2 text-xs font-medium text-mousse-fonce underline decoration-mousse-clair/60 underline-offset-2 hover:text-mousse disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {chargementDescriptionIA
+              ? "L'IA regarde la photo…"
+              : "✨ Décrire cette activité avec l'IA (à partir de la photo et du titre)"}
+          </button>
+          {erreurDescriptionIA && (
+            <p className="mt-1.5 text-xs text-alerte">{erreurDescriptionIA}</p>
+          )}
+        </div>
+
         {chargementSuggestions && (
           <p className="mb-4 -mt-2 text-xs text-ardoise">Recherche de compétences…</p>
         )}
@@ -658,27 +736,6 @@ export function FormulaireActivite({
           <p className="mt-1.5 text-xs text-ardoise">
             Décrit le déroulement général de l&rsquo;activité, indépendamment
             des compétences qui seront associées plus tard.
-          </p>
-        </div>
-
-        <div className="mb-6">
-          <label
-            htmlFor="photo"
-            className="mb-1.5 block text-sm font-medium text-encre"
-          >
-            Photo ou document (facultatif)
-          </label>
-          <input
-            ref={inputPhotoRef}
-            id="photo"
-            type="file"
-            accept="image/jpeg,image/png,image/webp,application/pdf,application/msword,.docx"
-            className="w-full text-sm text-encre"
-          />
-          <p className="mt-1.5 text-xs text-ardoise">
-            Ajoutée automatiquement comme première trace de l&rsquo;activité.
-            D&rsquo;autres traces pourront être ajoutées ensuite depuis la
-            fiche de l&rsquo;activité.
           </p>
         </div>
 

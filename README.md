@@ -309,6 +309,53 @@ apparaît désormais dans le PDF dès qu'il a des compétences validées,
 même si aucun exemple n'a encore été choisi pour l'illustrer. Aucune IA :
 uniquement des données agrégées mises en phrase.
 
+## Description générée par IA à partir de la photo (vision)
+
+Sur "Ajouter une activité", le champ Photo est déplacé juste après le
+Titre (avant Description), et un bouton **"✨ Décrire cette activité avec
+l'IA"** analyse la photo (si présente) et le titre pour rédiger une
+description factuelle et précise, directement dans le champ Description
+— plus riche qu'une description tapée à la volée. Utilise la vision de
+Claude (modèle Sonnet) : la miniature déjà compressée (400px) est envoyée
+à l'IA, pas l'image complète, pour rester rapide et économique. Étape
+volontairement séparée de l'analyse des compétences (qui vient après, sur
+la description enrichie).
+
+## Vue "À travailler" — repérer ce qui n'a pas encore été abordé
+
+Depuis **Progression**, un lien **"Voir ce qui n'a pas encore été
+abordé"** ouvre une nouvelle page listant, domaine par domaine, tous les
+objectifs du programme officiel qui n'ont encore fait l'objet d'aucune
+observation pour ce parcours — pour permettre au parent de repérer un
+domaine resté de côté et d'y être attentif. S'appuie sur une nouvelle vue
+`v_objectif_domaine` (associe chaque objectif à son domaine et son cycle,
+calculé une fois plutôt que via des appels RPC répétés). Aucune IA — une
+liste factuelle, avec un avertissement clair que "non abordé" ne veut pas
+forcément dire "à rattraper d'urgence" (l'âge de l'enfant compte).
+Les idées d'activités pour combler ces manques (proposées par IA) sont
+notées comme piste future, pas construites pour l'instant.
+
+## Synthèse pédagogique IA par compétence — répond à l'exigence de l'inspecteur
+
+Sur la page **Progression**, chaque compétence propose maintenant
+**"✨ Générer une synthèse pédagogique IA"**. Contrairement aux
+suggestions/formulations précédentes (basées sur une seule activité),
+celle-ci s'appuie sur **toutes les observations enregistrées pour cette
+compétence sur l'année** (justifications, commentaires, niveaux
+d'autonomie, contextes, dates) pour produire une vraie analyse — la
+compréhension et l'évolution de l'enfant, pas un simple constat. Modèle
+Sonnet, prompt explicite pour n'inventer aucun fait absent des
+observations fournies. Régénérable à volonté au fur et à mesure que de
+nouvelles observations s'ajoutent.
+
+Ces synthèses apparaissent aussi **dans le PDF du dossier de contrôle** :
+chaque compétence qui a une synthèse IA générée l'affiche en toutes
+lettres dans la section de son domaine, à la place de la simple mention
+de son nom.
+
+**Nécessite `ANTHROPIC_API_KEY`** (déjà configurée si les fonctionnalités
+IA précédentes sont actives).
+
 ## Écran "Préparer mon contrôle" (sans IA)
 
 Sur la page **Export**, un bouton **"✨ Préparer mon contrôle"** ouvre un

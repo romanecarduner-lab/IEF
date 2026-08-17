@@ -200,3 +200,84 @@ Règles impératives :
 
   return { texte };
 }
+
+type BlocContenu =
+  | { type: "text"; text: string }
+  | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
+
+/**
+ * Decrit une activite a partir de sa photo (vision) et de son titre,
+ * pour remplir directement le champ Description avec un texte factuel et
+ * precis -- plus riche qu'une description tapee a la volee par le
+ * parent. Etape volontairement separee de la redaction pedagogique
+ * (competences) : ici on decrit ce qui est visible, rien de plus.
+ */
+export async function genererDescriptionDepuisPhoto(
+  titre: string,
+  imageBase64: string | null,
+  mediaType: string | null
+): Promise<{ erreur: string } | { texte: string }> {
+  if (!titre.trim() && !imageBase64) {
+    return { erreur: "Un titre ou une photo est nécessaire." };
+  }
+
+  const cleApi = process.env.ANTHROPIC_API_KEY;
+  if (!cleApi) {
+    return {
+      erreur:
+        "Configuration IA manquante : la variable ANTHROPIC_API_KEY n'est pas définie sur le serveur.",
+    };
+  }
+
+  const aUneImage = Boolean(imageBase64 && mediaType);
+
+  const consigne = `Tu aides un parent qui pratique l'instruction en famille (cycle 1, école maternelle française) à décrire une activité réalisée par son enfant, pour son carnet de suivi pédagogique.
+
+${aUneImage ? "Regarde la photo ci-jointe. " : ""}Titre donné par le parent : "${titre.trim() || "(aucun titre)"}"
+
+Rédige une description factuelle et précise de ce que ${aUneImage ? "montre la photo" : "suggère le titre"} : ce que l'enfant est en train de faire, le matériel utilisé, le cadre. 3 à 5 phrases.
+
+Règles impératives :
+- Décris uniquement ce qui est visible ou clairement suggéré ${aUneImage ? "par la photo" : "par le titre"} : n'invente aucun détail que tu ne peux pas observer.
+- N'interprète pas encore les compétences ou apprentissages en jeu (cette étape est séparée) : reste sur la description factuelle de l'activité elle-même.
+- N'ajoute ni introduction, ni titre, ni commentaire : réponds uniquement avec le texte de description.`;
+
+  const contenu: BlocContenu[] = [];
+  if (imageBase64 && mediaType) {
+    contenu.push({
+      type: "image",
+      source: { type: "base64", media_type: mediaType, data: imageBase64 },
+    });
+  }
+  contenu.push({ type: "text", text: consigne });
+
+  try {
+    const reponse = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": cleApi,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: MODELE_REDACTION,
+        max_tokens: 400,
+        messages: [{ role: "user", content: contenu }],
+      }),
+    });
+
+    if (!reponse.ok) {
+      const detail = await reponse.text();
+      console.error("Erreur API Anthropic (vision)", reponse.status, detail);
+      return { erreur: "L'IA n'a pas pu analyser la photo. Merci de réessayer." };
+    }
+
+    const donnees = await reponse.json();
+    const texte = (donnees?.content?.[0]?.text ?? "").trim();
+    if (!texte) return { erreur: "L'IA n'a pas produit de texte. Merci de réessayer." };
+    return { texte };
+  } catch (erreurReseau) {
+    console.error("Erreur réseau vers l'API Anthropic", erreurReseau);
+    return { erreur: "Impossible de contacter l'IA. Vérifiez la connexion et réessayez." };
+  }
+}

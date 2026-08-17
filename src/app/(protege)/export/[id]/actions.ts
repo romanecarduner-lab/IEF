@@ -388,10 +388,18 @@ export async function finaliserDossier(
   // le bilan reflete le domaine dans son ensemble.
   const { data: syntheseDetail } = await supabase
     .from("syntheses_progression")
-    .select("statuts_progression(code, libelle, ordre), elements_programme(libelle, parent_id)")
+    .select(
+      "statuts_progression(code, libelle, ordre), elements_programme(libelle, parent_id), synthese_ia"
+    )
     .eq("parcours_id", dossier.parcours_id);
 
-  type GroupeStatut = { code: string; ordre: number; statutLibelle: string; competences: string[] };
+  type CompetenceDetail = { libelle: string; syntheseIA?: string };
+  type GroupeStatut = {
+    code: string;
+    ordre: number;
+    statutLibelle: string;
+    competences: CompetenceDetail[];
+  };
   const detailParDomaine = new Map<string, Map<string, GroupeStatut>>();
 
   for (const s of syntheseDetail ?? []) {
@@ -417,9 +425,12 @@ export async function finaliserDossier(
         code: statut.code as string,
         ordre: statut.ordre as number,
         statutLibelle: statut.libelle as string,
-        competences: [] as string[],
+        competences: [] as CompetenceDetail[],
       } satisfies GroupeStatut);
-    groupe.competences.push(element.libelle as string);
+    groupe.competences.push({
+      libelle: element.libelle as string,
+      syntheseIA: (s.synthese_ia as string | null) ?? undefined,
+    });
     groupes.set(statut.code as string, groupe);
     detailParDomaine.set(domaineNom, groupes);
   }
