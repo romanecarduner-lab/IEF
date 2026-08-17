@@ -2,6 +2,7 @@ import { creerClientServeur } from "@/lib/supabase/server";
 import { BoutonExportDonnees } from "./BoutonExportDonnees";
 import { BoutonExportFichiers } from "./BoutonExportFichiers";
 import { FormulaireSuppressionFamille } from "./FormulaireSuppressionFamille";
+import { FormulairePrenom } from "./FormulairePrenom";
 
 export default async function PageConfidentialite() {
   const supabase = creerClientServeur();
@@ -27,6 +28,11 @@ export default async function PageConfidentialite() {
       <h1 className="mb-6 font-display text-2xl italic text-encre">
         Confidentialité et données
       </h1>
+
+      <section className="mb-8 rounded-doux border border-trait bg-white/80 p-6 shadow-doux">
+        <p className="mb-3 text-sm font-medium text-encre">Mon profil</p>
+        <FormulairePrenom prenomActuel={(user?.user_metadata?.prenom as string) ?? ""} />
+      </section>
 
       <section className="mb-8">
         <p className="mb-2 text-sm font-medium text-encre">Exporter mes données</p>

@@ -25,6 +25,7 @@ export default function PageInscription() {
     const motDePasse = String(donnees.get("mot-de-passe") ?? "");
     const confirmation = String(donnees.get("confirmation") ?? "");
     const nomFamille = String(donnees.get("nom-famille") ?? "").trim();
+    const prenom = String(donnees.get("prenom") ?? "").trim();
 
     if (motDePasse !== confirmation) {
       setErreur("Les deux mots de passe ne correspondent pas.");
@@ -51,7 +52,7 @@ export default function PageInscription() {
             // qu'à ce moment-là, jamais ici : si la confirmation par mail
             // est activée (réglage par défaut de Supabase), signUp() ne
             // renvoie encore aucune session exploitable.
-            data: { nom_famille: nomFamille || "Ma famille" },
+            data: { nom_famille: nomFamille || "Ma famille", prenom: prenom || null },
             emailRedirectTo: `${window.location.origin}/connexion`,
           },
         })
@@ -110,6 +111,14 @@ export default function PageInscription() {
     >
       {erreur && <MessageStatut type="erreur">{erreur}</MessageStatut>}
       <form onSubmit={gererEnvoi} noValidate>
+        <Champ
+          label="Votre prénom"
+          id="prenom"
+          type="text"
+          placeholder="Romane"
+          autoComplete="given-name"
+          required
+        />
         <Champ
           label="Nom de votre espace familial"
           id="nom-famille"
