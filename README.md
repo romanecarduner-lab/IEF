@@ -233,6 +233,42 @@ librement celles qui conviennent ; elles sont enregistrées avec l'activité
 en un seul envoi, avec le même niveau d'autonomie que "Autonomie
 générale". Rien n'est jamais ajouté automatiquement sans validation.
 
+## Exemples de réussite officiels — le lien opérationnel demandé par l'inspecteur
+
+Le programme officiel importé contient 1270 "exemples de réussite" concrets
+par objectif (ex. pour "réaliser une construction" : des exemples précis de
+ce qui compte comme preuve). Ils étaient en base depuis l'import du
+programme mais jamais affichés. Un lien **"Voir les exemples officiels de
+réussite"** apparaît maintenant sous chaque compétence, dans la recherche
+et la navigation par domaine (page "Relier à des compétences") — le pont
+concret entre "ce qui a été observé" et "pourquoi ça compte comme preuve
+de la compétence", tel qu'attendu par l'Éducation Nationale.
+
+## Nouvelle direction graphique — "Chemins d'apprentissage"
+
+Palette, typographies et nom de l'application repris intégralement selon
+la direction proposée :
+- **Titres** : Fraunces (déjà en place, inchangé)
+- **Corps et navigation** : Manrope (remplace Public Sans)
+- **Palette** : vert forêt `#264C3B`, vert sauge `#9BAF9C`, crème
+  `#F6F1E8`, terracotta `#C9785D`, ocre doux `#D9A441` (nouveau token),
+  texte `#26312D` — appliquée aux mêmes noms de tokens Tailwind
+  (`brume`, `lin`, `mousse`, `argile`, `encre`, `ardoise`, `trait`,
+  `alerte`) pour que tout l'existant en hérite automatiquement, plus aux
+  couleurs codées en dur du graphique de progression et du PDF de
+  dossier (react-pdf et recharts ne peuvent pas lire les classes
+  Tailwind directement)
+- **Nom** : "Chemins d'apprentissage" affiché dans l'en-tête à côté du
+  nom de la famille
+- **Tableau de bord** rapproché de la maquette proposée : salutation,
+  bouton d'ajout mis en avant, cartes avec icônes, bloc "Le parcours de
+  [enfant]" avec badge d'année
+
+**Non repris dans cette passe** : les illustrations dessinées (chemin,
+feuillage, pot de plante) de la maquette — ce sont des visuels sur mesure
+qui demanderaient un vrai travail d'illustration, pas une simple
+recoloration. Dis-moi si tu veux qu'on s'y attelle séparément.
+
 ## Ce qui est inclus — Lot 6 (relier activités aux compétences)
 
 - Nouvelles tables : `observations_elements_programme` (lien activité ↔
