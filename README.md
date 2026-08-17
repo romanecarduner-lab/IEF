@@ -398,6 +398,37 @@ forcément dire "à rattraper d'urgence" (l'âge de l'enfant compte).
 Les idées d'activités pour combler ces manques (proposées par IA) sont
 notées comme piste future, pas construites pour l'instant.
 
+## Modification d'une activité a posteriori
+
+Un lien **"Modifier"** apparaît maintenant à côté du titre sur la fiche
+d'une activité, menant vers `/journal/[id]/modifier` : un formulaire
+préempli (date, contexte, titre, description, lieu, observations,
+paroles de l'enfant, personnes présentes, autonomie générale) qui met à
+jour l'activité existante. Le parcours (enfant/année), les traces, les
+compétences reliées et le statut brouillon/validé restent modifiables
+séparément comme avant (ce ne sont pas des champs de ce formulaire).
+
+## IA fusionnée : photo + attendus en une seule étape, multi-photo
+
+Suite à un retour terrain (description trop détaillée, apparence physique
+de l'enfant décrite à tort, prénom non utilisé, deux boutons IA
+redondants) :
+- **Un seul bouton IA** désormais : "✨ Décrire l'activité et identifier
+  les compétences" — regarde la photo (vision) et le titre, considère en
+  même temps les attendus du programme officiel, et produit en un seul
+  appel un texte COURT (2-3 phrases, à la première personne du parent) et
+  la liste des compétences concernées, pré-cochées.
+- **Règles imposées au modèle** : toujours utiliser le prénom réel de
+  l'enfant (récupéré depuis la base, jamais "l'enfant"), ne **jamais**
+  décrire l'apparence physique (cheveux, vêtements, traits) — seulement
+  l'action et l'apprentissage.
+- **Plusieurs photos en une fois** : le champ photo accepte maintenant
+  plusieurs fichiers (`multiple`), chacun devient sa propre trace ; toutes
+  les images sélectionnées sont envoyées à l'IA en une seule analyse.
+- `genererDescriptionDepuisPhoto` et `suggererObjectifsIA` (les deux
+  anciennes fonctions séparées) sont supprimées, remplacées par
+  `genererDescriptionEtCompetencesIA`.
+
 ## Synthèse pédagogique IA par compétence — répond à l'exigence de l'inspecteur
 
 Sur la page **Progression**, chaque compétence propose maintenant
