@@ -4,6 +4,7 @@ import { SelecteurParcours } from "./SelecteurParcours";
 import { SelecteurStatutProgression } from "./SelecteurStatutProgression";
 import { GraphiqueProgression, type DonneesDomaine } from "./GraphiqueProgression";
 import { BoutonSyntheseIA } from "./BoutonSyntheseIA";
+import { VueATravailler } from "./VueATravailler";
 
 const STATUT_PAR_DEFAUT = "non_encore_observe";
 
@@ -23,13 +24,13 @@ const SUGGESTION_DEPUIS_AUTONOMIE: Record<string, string> = {
 export default async function PageProgression({
   searchParams,
 }: {
-  searchParams: { parcours?: string };
+  searchParams: { parcours?: string; onglet?: string };
 }) {
   const supabase = creerClientServeur();
 
   const { data: parcoursBruts } = await supabase
     .from("parcours_scolaires")
-    .select("id, enfants(prenom), annees_scolaires(libelle)")
+    .select("id, cycle_id, enfants(prenom), annees_scolaires(libelle)")
     .order("created_at", { ascending: false });
 
   const parcoursOptions = (parcoursBruts ?? []).map((p) => {
@@ -44,6 +45,8 @@ export default async function PageProgression({
   });
 
   const parcoursId = searchParams.parcours || parcoursOptions[0]?.id;
+  const parcoursActuel = (parcoursBruts ?? []).find((p) => p.id === parcoursId);
+  const onglet = searchParams.onglet === "a-travailler" ? "a-travailler" : "progression";
 
   if (!parcoursId) {
     return (
@@ -191,69 +194,91 @@ export default async function PageProgression({
         )}
       </div>
 
-      {donneesGraphique.length > 0 && (
-        <GraphiqueProgression donnees={donneesGraphique} />
-      )}
+      <div className="mb-6 flex gap-1 border-b border-trait">
+        <Link
+          href={`/progression?parcours=${parcoursId}`}
+          className={`px-3 py-2 text-sm font-medium ${
+            onglet === "progression"
+              ? "border-b-2 border-mousse-fonce text-mousse-fonce"
+              : "text-ardoise hover:text-encre"
+          }`}
+        >
+          Ce qui progresse
+        </Link>
+        <Link
+          href={`/progression?parcours=${parcoursId}&onglet=a-travailler`}
+          className={`px-3 py-2 text-sm font-medium ${
+            onglet === "a-travailler"
+              ? "border-b-2 border-mousse-fonce text-mousse-fonce"
+              : "text-ardoise hover:text-encre"
+          }`}
+        >
+          Ce qui reste à voir
+        </Link>
+      </div>
 
-      <Link
-        href={`/progression/a-travailler?parcours=${parcoursId}`}
-        className="mb-6 inline-block text-sm font-medium text-mousse-fonce underline underline-offset-2 hover:text-mousse"
-      >
-        → Voir ce qui n&rsquo;a pas encore été abordé
-      </Link>
-
-      {lignes.length === 0 ? (
-        <p className="rounded-doux border border-dashed border-trait bg-white/50 p-8 text-center text-sm text-ardoise">
-          Aucune compétence observée pour l&rsquo;instant sur ce parcours.
-          Reliez des activités à des compétences depuis le journal pour les
-          voir apparaître ici.
-        </p>
+      {onglet === "a-travailler" ? (
+        parcoursActuel ? (
+          <VueATravailler parcoursId={parcoursId} cycleId={parcoursActuel.cycle_id as string} />
+        ) : null
       ) : (
-        <ul className="space-y-3">
-          {lignes.map((l) => (
-            <li
-              key={l.elementId}
-              className="rounded-doux border border-trait bg-white/80 p-4 shadow-doux"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm text-encre">{l.libelle}</p>
-                  {l.chemin && (
-                    <p className="text-xs text-ardoise">{l.chemin}</p>
-                  )}
-                  <p className="mt-1 text-xs text-ardoise">
-                    {l.nbObs} observation{l.nbObs > 1 ? "s" : ""} ·{" "}
-                    {l.nbDates} date{l.nbDates > 1 ? "s" : ""} distincte
-                    {l.nbDates > 1 ? "s" : ""} · {l.nbContextes} contexte
-                    {l.nbContextes > 1 ? "s" : ""}
-                    {l.aRevoir && (
-                      <span className="ml-2 rounded-full bg-argile/20 px-2 py-0.5 text-argile">
-                        à réexaminer
-                      </span>
-                    )}
-                    {!l.dejaValide && (
-                      <span className="ml-2 rounded-full bg-trait px-2 py-0.5 text-ardoise">
-                        suggestion à confirmer
-                      </span>
-                    )}
-                  </p>
-                </div>
-                <SelecteurStatutProgression
-                  parcoursId={parcoursId}
-                  elementProgrammeId={l.elementId}
-                  statutActuelCode={l.statutCode}
-                  dejaValide={l.dejaValide}
-                  statuts={statuts ?? []}
-                />
-              </div>
-              <BoutonSyntheseIA
-                parcoursId={parcoursId}
-                elementProgrammeId={l.elementId}
-                syntheseExistante={l.syntheseIA}
-              />
-            </li>
-          ))}
-        </ul>
+        <>
+          {donneesGraphique.length > 0 && (
+            <GraphiqueProgression donnees={donneesGraphique} />
+          )}
+
+          {lignes.length === 0 ? (
+            <p className="rounded-doux border border-dashed border-trait bg-white/50 p-8 text-center text-sm text-ardoise">
+              Aucune compétence observée pour l&rsquo;instant sur ce parcours.
+              Reliez des activités à des compétences depuis le journal pour
+              les voir apparaître ici.
+            </p>
+          ) : (
+            <ul className="space-y-3">
+              {lignes.map((l) => (
+                <li
+                  key={l.elementId}
+                  className="rounded-doux border border-trait bg-white/80 p-4 shadow-doux"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm text-encre">{l.libelle}</p>
+                      {l.chemin && <p className="text-xs text-ardoise">{l.chemin}</p>}
+                      <p className="mt-1 text-xs text-ardoise">
+                        {l.nbObs} observation{l.nbObs > 1 ? "s" : ""} ·{" "}
+                        {l.nbDates} date{l.nbDates > 1 ? "s" : ""} distincte
+                        {l.nbDates > 1 ? "s" : ""} · {l.nbContextes} contexte
+                        {l.nbContextes > 1 ? "s" : ""}
+                        {l.aRevoir && (
+                          <span className="ml-2 rounded-full bg-argile/20 px-2 py-0.5 text-argile">
+                            à réexaminer
+                          </span>
+                        )}
+                        {!l.dejaValide && (
+                          <span className="ml-2 rounded-full bg-trait px-2 py-0.5 text-ardoise">
+                            suggestion à confirmer
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <SelecteurStatutProgression
+                      parcoursId={parcoursId}
+                      elementProgrammeId={l.elementId}
+                      statutActuelCode={l.statutCode}
+                      dejaValide={l.dejaValide}
+                      statuts={statuts ?? []}
+                    />
+                  </div>
+                  <BoutonSyntheseIA
+                    parcoursId={parcoursId}
+                    elementProgrammeId={l.elementId}
+                    syntheseExistante={l.syntheseIA}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
       )}
     </div>
   );

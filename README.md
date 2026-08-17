@@ -445,6 +445,28 @@ exprimé, activable plus tard si nécessaire.
   pour seulement 6 destinations) : **Tableau de bord · Famille · Journal
   · Portfolio · Progression · Export**, plus le menu **Compte**.
 
+## Restructuration complète de la navigation (5 destinations)
+
+Nouvelle organisation, pensée pour "qu'est-ce que je fais maintenant"
+plutôt que "dans quel onglet est cette fonctionnalité" :
+
+- **Tableau de bord** devient un vrai centre de commande : gros bouton
+  "+ Ajouter une activité" tout en haut (l'action la plus fréquente,
+  immédiate), compteurs, mini-graphique "Où en est [enfant]" (réutilise
+  le graphique de Progression), bloc "✨ Préparer un contrôle", activité
+  récente.
+- **Portfolio fusionné dans Journal** : bascule interne "Liste / Galerie"
+  au lieu de deux onglets séparés — mêmes activités, deux présentations.
+- **"À travailler" fusionné dans Progression** : deux onglets internes
+  "Ce qui progresse" / "Ce qui reste à voir".
+- **Export unifié** : un seul point d'entrée ("Nouveau dossier"), avec
+  une case à cocher "Remplir automatiquement" (cochée par défaut) au lieu
+  de deux boutons séparés ("Nouveau dossier" et "Préparer mon contrôle").
+
+Navigation : **Tableau de bord · Famille · Journal · Progression ·
+Export** (5 destinations, contre 10 après le premier audit et jusqu'à 6
+juste avant cette passe).
+
 ## Nettoyage — navigation réorganisée (audit)
 
 Les 10 liens à plat ("Tableau de bord, Enfants, Années scolaires,

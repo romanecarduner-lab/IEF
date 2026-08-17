@@ -1,13 +1,24 @@
 import Link from "next/link";
 import { creerClientServeur } from "@/lib/supabase/server";
 import { supprimerActivite, basculerFavori, basculerStatutActivite } from "./actions";
+import { VueGalerie } from "./VueGalerie";
 
 export default async function PageJournal({
   searchParams,
 }: {
-  searchParams: { q?: string; enfant?: string; du?: string; au?: string };
+  searchParams: {
+    q?: string;
+    enfant?: string;
+    du?: string;
+    au?: string;
+    vue?: string;
+    annee?: string;
+    type?: string;
+    domaine?: string;
+  };
 }) {
   const supabase = creerClientServeur();
+  const vue = searchParams.vue === "galerie" ? "galerie" : "liste";
 
   const { data: enfantsOptions } = await supabase
     .from("enfants")
@@ -38,7 +49,7 @@ export default async function PageJournal({
   if (du) requete = requete.gte("date_activite", du);
   if (au) requete = requete.lte("date_activite", au);
 
-  const { data: activitesBrutes } = await requete;
+  const { data: activitesBrutes } = vue === "liste" ? await requete : { data: [] };
 
   const activites = (activitesBrutes ?? []).map((a) => {
     const contexte = Array.isArray(a.contextes_activite)
@@ -89,6 +100,33 @@ export default async function PageJournal({
         </Link>
       </div>
 
+      <div className="mb-6 flex gap-1 border-b border-trait">
+        <Link
+          href="/journal"
+          className={`px-3 py-2 text-sm font-medium ${
+            vue === "liste"
+              ? "border-b-2 border-mousse-fonce text-mousse-fonce"
+              : "text-ardoise hover:text-encre"
+          }`}
+        >
+          Liste
+        </Link>
+        <Link
+          href="/journal?vue=galerie"
+          className={`px-3 py-2 text-sm font-medium ${
+            vue === "galerie"
+              ? "border-b-2 border-mousse-fonce text-mousse-fonce"
+              : "text-ardoise hover:text-encre"
+          }`}
+        >
+          Galerie
+        </Link>
+      </div>
+
+      {vue === "galerie" ? (
+        <VueGalerie searchParams={searchParams} />
+      ) : (
+        <>
       <form
         method="get"
         className="mb-6 grid gap-3 rounded-doux border border-trait bg-white/80 p-4 shadow-doux sm:grid-cols-2 md:grid-cols-4"
@@ -240,6 +278,8 @@ export default async function PageJournal({
             </li>
           ))}
         </ul>
+      )}
+        </>
       )}
     </div>
   );

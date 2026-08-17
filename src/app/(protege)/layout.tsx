@@ -11,7 +11,6 @@ const LIENS_NAVIGATION = [
   { href: "/tableau-de-bord", libelle: "Tableau de bord" },
   { href: "/famille", libelle: "Famille" },
   { href: "/journal", libelle: "Journal" },
-  { href: "/portfolio", libelle: "Portfolio" },
   { href: "/progression", libelle: "Progression" },
   { href: "/export", libelle: "Export" },
 ];

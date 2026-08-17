@@ -12,7 +12,6 @@ const PAGES_PROTEGEES = [
   "/tableau-de-bord",
   "/famille",
   "/journal",
-  "/portfolio",
   "/progression",
   "/export",
   "/confidentialite",

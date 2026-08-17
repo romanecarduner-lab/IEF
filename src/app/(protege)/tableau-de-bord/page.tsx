@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { creerClientServeur } from "@/lib/supabase/server";
+import { GraphiqueProgression, type DonneesDomaine } from "../progression/GraphiqueProgression";
 
 export default async function PageTableauDeBord() {
   const supabase = creerClientServeur();
@@ -46,6 +47,28 @@ export default async function PageTableauDeBord() {
     };
   });
 
+  const parcoursPrincipal = parcours[0];
+
+  let donneesGraphique: DonneesDomaine[] = [];
+  if (parcoursPrincipal) {
+    const [{ data: totauxDomaine }, { data: repartitionDomaine }] = await Promise.all([
+      supabase.from("v_total_objectifs_par_domaine").select("domaine, total_objectifs"),
+      supabase
+        .from("v_progression_par_domaine")
+        .select("domaine, statut_code, nb")
+        .eq("parcours_id", parcoursPrincipal.id),
+    ]);
+
+    donneesGraphique = (totauxDomaine ?? []).map((t) => {
+      const domaine = t.domaine as string;
+      const parStatut: Record<string, number> = {};
+      for (const r of repartitionDomaine ?? []) {
+        if (r.domaine === domaine) parStatut[r.statut_code as string] = r.nb as number;
+      }
+      return { domaine, totalObjectifs: t.total_objectifs as number, parStatut };
+    });
+  }
+
   const recentes = (recentesBrutes ?? []).map((a) => {
     const parcoursActivite = Array.isArray(a.parcours_scolaires)
       ? a.parcours_scolaires[0]
@@ -76,6 +99,13 @@ export default async function PageTableauDeBord() {
         Tableau de bord
       </h1>
 
+      <Link
+        href="/journal/nouvelle"
+        className="mb-8 flex items-center justify-center rounded-doux bg-mousse-fonce px-6 py-4 text-lg font-medium text-white shadow-doux transition-colors hover:bg-mousse"
+      >
+        + Ajouter une activité
+      </Link>
+
       <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {cartes.map((c) => (
           <div
@@ -88,64 +118,63 @@ export default async function PageTableauDeBord() {
         ))}
       </div>
 
-      <div className="grid gap-8 md:grid-cols-2">
-        <div>
-          <p className="mb-3 text-sm font-medium text-encre">Par enfant / année</p>
-          {parcours.length === 0 ? (
-            <p className="text-sm text-ardoise">Aucun parcours créé pour l&rsquo;instant.</p>
-          ) : (
-            <ul className="space-y-2">
-              {parcours.map((p) => (
-                <li
-                  key={p.id}
-                  className="flex items-center justify-between rounded-doux border border-trait bg-white/80 p-3 text-sm shadow-doux"
-                >
-                  <span className="text-encre">
-                    {p.enfant} · {p.annee}
-                  </span>
-                  <span className="text-xs text-ardoise">
-                    {p.nbActivites} activité{p.nbActivites > 1 ? "s" : ""}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
+      {parcoursPrincipal && donneesGraphique.length > 0 && (
+        <div className="mb-8">
+          <p className="mb-3 text-sm font-medium text-encre">
+            Où en est {parcoursPrincipal.enfant} ({parcoursPrincipal.annee})
+          </p>
+          <GraphiqueProgression donnees={donneesGraphique} />
           <Link
-            href="/progression"
-            className="mt-3 inline-block text-xs font-medium text-mousse-fonce underline underline-offset-2"
+            href={`/progression?parcours=${parcoursPrincipal.id}`}
+            className="text-xs font-medium text-mousse-fonce underline underline-offset-2"
           >
-            Voir la progression détaillée →
+            Voir le détail par compétence →
           </Link>
         </div>
+      )}
 
-        <div>
-          <p className="mb-3 text-sm font-medium text-encre">Activité récente</p>
-          {recentes.length === 0 ? (
-            <p className="text-sm text-ardoise">Aucune activité enregistrée pour l&rsquo;instant.</p>
-          ) : (
-            <ul className="space-y-2">
-              {recentes.map((a) => (
-                <li key={a.id}>
-                  <Link
-                    href={`/journal/${a.id}`}
-                    className="block rounded-doux border border-trait bg-white/80 p-3 text-sm shadow-doux hover:border-mousse-clair"
-                  >
-                    <span className="text-encre">{a.titre}</span>
-                    <span className="block text-xs text-ardoise">
-                      {a.enfant} · {new Date(a.date).toLocaleDateString("fr-FR")}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-          <Link
-            href="/journal"
-            className="mt-3 inline-block text-xs font-medium text-mousse-fonce underline underline-offset-2"
-          >
-            Voir tout le journal →
-          </Link>
-        </div>
+      <Link
+        href="/export/nouveau"
+        className="mb-8 block rounded-doux border border-mousse/40 bg-mousse/5 p-5 shadow-doux hover:border-mousse"
+      >
+        <p className="font-display text-lg italic text-encre">
+          ✨ Préparer un contrôle
+        </p>
+        <p className="text-sm text-ardoise">
+          Génère un dossier pédagogique complet, prêt à ajuster puis à
+          finaliser en PDF.
+        </p>
+      </Link>
+
+      <div>
+        <p className="mb-3 text-sm font-medium text-encre">Activité récente</p>
+        {recentes.length === 0 ? (
+          <p className="text-sm text-ardoise">
+            Aucune activité enregistrée pour l&rsquo;instant.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {recentes.map((a) => (
+              <li key={a.id}>
+                <Link
+                  href={`/journal/${a.id}`}
+                  className="block rounded-doux border border-trait bg-white/80 p-3 text-sm shadow-doux hover:border-mousse-clair"
+                >
+                  <span className="text-encre">{a.titre}</span>
+                  <span className="block text-xs text-ardoise">
+                    {a.enfant} · {new Date(a.date).toLocaleDateString("fr-FR")}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+        <Link
+          href="/journal"
+          className="mt-3 inline-block text-xs font-medium text-mousse-fonce underline underline-offset-2"
+        >
+          Voir tout le journal →
+        </Link>
       </div>
     </div>
   );

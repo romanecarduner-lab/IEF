@@ -1,34 +1,16 @@
 import Link from "next/link";
 import { creerClientServeur } from "@/lib/supabase/server";
 import { supprimerDossier } from "./actions";
-import { BoutonPreparerControle } from "./BoutonPreparerControle";
 
 export default async function PageExport() {
   const supabase = creerClientServeur();
 
-  const [{ data: dossiersBruts }, { data: parcoursBruts }] = await Promise.all([
-    supabase
-      .from("dossiers_export")
-      .select(
-        "id, titre, statut, created_at, parcours_scolaires(enfants(prenom), annees_scolaires(libelle))"
-      )
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("parcours_scolaires")
-      .select("id, enfants(prenom), annees_scolaires(libelle)")
-      .order("created_at", { ascending: false }),
-  ]);
-
-  const parcoursOptions = (parcoursBruts ?? []).map((p) => {
-    const enfant = Array.isArray(p.enfants) ? p.enfants[0] : p.enfants;
-    const annee = Array.isArray(p.annees_scolaires)
-      ? p.annees_scolaires[0]
-      : p.annees_scolaires;
-    return {
-      id: p.id as string,
-      libelle: `${enfant?.prenom ?? "?"} — ${annee?.libelle ?? "?"}`,
-    };
-  });
+  const { data: dossiersBruts } = await supabase
+    .from("dossiers_export")
+    .select(
+      "id, titre, statut, created_at, parcours_scolaires(enfants(prenom), annees_scolaires(libelle))"
+    )
+    .order("created_at", { ascending: false });
 
   const dossiers = (dossiersBruts ?? []).map((d) => {
     const parcours = Array.isArray(d.parcours_scolaires)
@@ -66,8 +48,6 @@ export default async function PageExport() {
           Nouveau dossier
         </Link>
       </div>
-
-      <BoutonPreparerControle parcours={parcoursOptions} />
 
       {dossiers.length === 0 ? (
         <p className="rounded-doux border border-dashed border-trait bg-white/50 p-8 text-center text-sm text-ardoise">
