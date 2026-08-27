@@ -137,10 +137,17 @@ Règles impératives :
     .maybeSingle();
 
   if (syntheseExistante) {
-    await supabase
+    const { error: erreurMaj } = await supabase
       .from("syntheses_progression")
       .update({ synthese_ia: texte, synthese_ia_generee_le: new Date().toISOString() })
       .eq("id", syntheseExistante.id);
+
+    if (erreurMaj) {
+      console.error("Erreur lors de l'enregistrement de la synthese IA (update)", erreurMaj);
+      return {
+        erreur: `La synthèse a été générée mais n'a pas pu être enregistrée : ${erreurMaj.message}`,
+      };
+    }
   } else {
     // Aucun statut global n'a encore ete confirme par le parent pour
     // cette competence : on cree la ligne avec un statut de depart neutre
@@ -155,16 +162,28 @@ Règles impératives :
       .eq("code", "premiere_observation")
       .maybeSingle();
 
-    if (statutDepart && user) {
-      await supabase.from("syntheses_progression").insert({
-        parcours_id: parcoursId,
-        element_programme_id: elementProgrammeId,
-        statut_global_id: statutDepart.id,
-        valide_par: user.id,
-        valide_par_nom_affiche: user.email ?? "Parent",
-        synthese_ia: texte,
-        synthese_ia_generee_le: new Date().toISOString(),
-      });
+    if (!statutDepart || !user) {
+      return {
+        erreur:
+          "La synthèse a été générée mais n'a pas pu être enregistrée (statut de départ introuvable).",
+      };
+    }
+
+    const { error: erreurInsert } = await supabase.from("syntheses_progression").insert({
+      parcours_id: parcoursId,
+      element_programme_id: elementProgrammeId,
+      statut_global_id: statutDepart.id,
+      valide_par: user.id,
+      valide_par_nom_affiche: user.email ?? "Parent",
+      synthese_ia: texte,
+      synthese_ia_generee_le: new Date().toISOString(),
+    });
+
+    if (erreurInsert) {
+      console.error("Erreur lors de l'enregistrement de la synthese IA (insert)", erreurInsert);
+      return {
+        erreur: `La synthèse a été générée mais n'a pas pu être enregistrée : ${erreurInsert.message}`,
+      };
     }
   }
 
