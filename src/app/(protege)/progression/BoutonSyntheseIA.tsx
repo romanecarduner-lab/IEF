@@ -18,21 +18,14 @@ export function BoutonSyntheseIA({
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [texteLocal, setTexteLocal] = useState(syntheseExistante?.texte ?? null);
-  const [diagnostic, setDiagnostic] = useState<string | null>(null);
 
   async function gererClic() {
     setEnCours(true);
     setErreur(null);
-    setDiagnostic("Clic reçu, appel en cours…");
     try {
       const resultat = await avecDelaiMaximal(
         genererSyntheseCompetenceIA(parcoursId, elementProgrammeId),
         30000
-      );
-      setDiagnostic(
-        `Réponse reçue : ${
-          "erreur" in resultat ? resultat.erreur : "texte généré (" + resultat.texte.length + " caractères)"
-        }`
       );
       if ("erreur" in resultat) {
         setErreur(resultat.erreur);
@@ -42,7 +35,6 @@ export function BoutonSyntheseIA({
       router.refresh();
     } catch (erreurInattendue) {
       console.error("Erreur lors de la génération de la synthèse IA", erreurInattendue);
-      setDiagnostic(`Exception : ${String(erreurInattendue)}`);
       setErreur(messagePourErreurInattendue(erreurInattendue));
     } finally {
       setEnCours(false);
@@ -75,11 +67,6 @@ export function BoutonSyntheseIA({
           : "✨ Générer une synthèse pédagogique IA"}
       </button>
       {erreur && <p className="mt-1.5 text-xs text-alerte">{erreur}</p>}
-      {diagnostic && (
-        <p className="mt-1.5 w-full break-all rounded bg-ocre/20 p-2 text-xs text-encre">
-          🔍 {diagnostic}
-        </p>
-      )}
     </div>
   );
 }

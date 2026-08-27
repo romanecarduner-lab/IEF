@@ -26,6 +26,15 @@ export function creerClientServeur() {
   const cookieStore = cookies();
 
   return createServerClient(url, cle, {
+    // Next.js met automatiquement en cache les appels fetch() effectues
+    // depuis le serveur, y compris ceux que Supabase fait sous le capot --
+    // meme sur une page par ailleurs dynamique. Sans ce reglage explicite,
+    // une ecriture (insert/update) pouvait reussir alors qu'une lecture
+    // juste apres continuait de renvoyer une version perimee.
+    global: {
+      fetch: (input: RequestInfo | URL, init?: RequestInit) =>
+        fetch(input, { ...init, cache: "no-store" }),
+    },
     cookies: {
       get(name: string) {
         return cookieStore.get(name)?.value;
