@@ -398,6 +398,61 @@ forcément dire "à rattraper d'urgence" (l'âge de l'enfant compte).
 Les idées d'activités pour combler ces manques (proposées par IA) sont
 notées comme piste future, pas construites pour l'instant.
 
+## Chantier "progression automatique" — Étape 1/9 : structure et traçabilité
+
+Première étape du plan validé (structure de données uniquement, aucun
+moteur ni écran nouveau à ce stade) :
+- `syntheses_progression` : nouvelles colonnes `origine` (manuel/
+  automatique), `niveau_confiance` (provisoire/confirmé — utilisé à
+  partir de l'étape 3), `statut_propose_id` / `justification_proposition`
+  / `propose_le` (une proposition automatique en attente, jamais
+  appliquée seule), `derniere_prise_en_compte_le`,
+  `proposition_ignoree_le` / `proposition_ignoree_jusqua_observation_le`
+  (empêche qu'une proposition ignorée ne réapparaisse sans donnée
+  nouvelle)
+- `historique_progression` : colonne `origine` ajoutée (toutes les
+  entrées passées sont `manuel`, exact historiquement)
+- Nouvelle table `syntheses_progression_sources` : **instantané** (pas
+  une simple référence) des observations ayant motivé un changement de
+  statut précis, rattaché à l'entrée d'historique concernée. Les colonnes
+  `snapshot_*` survivent à la suppression de l'observation ou de
+  l'activité source (`on delete set null`, jamais de cascade) — la
+  justification ne disparaît jamais
+- `validerStatutProgression` (flux manuel existant, comportement
+  inchangé pour le parent) alimente maintenant cette traçabilité à chaque
+  validation : marque `origine: 'manuel'`, efface toute proposition
+  automatique en attente (une décision manuelle la rend sans objet), et
+  enregistre l'instantané des observations actuelles
+
+**À venir (étapes suivantes, non commencées)** : affichage de
+l'historique (étape 2), moteur déterministe d'estimation (étape 3),
+gestion des propositions/corrections (étape 4), intervention de l'IA
+seulement dans les cas ambigus (étape 5), déclenchement automatique après
+création/modification/suppression d'une observation (étape 6), cohérence
+synthèses ↔ activités-exemples (étape 7), écran de relecture à l'export
+(étape 8), export Word (étape 9).
+
+## Ajustements d'usage
+
+- **Parcours pré-rempli** : s'il n'existe qu'un seul parcours (un enfant,
+  une année), il est sélectionné automatiquement à la création d'une
+  activité — plus besoin de le choisir à chaque fois.
+- **Formulation pédagogique directe** : le texte généré s'écrit
+  maintenant directement dans "Observations", modifiable sur place — plus
+  de bouton "Utiliser ce texte" intermédiaire.
+- **IA disponible aussi en modification** : le formulaire de modification
+  d'une activité propose désormais "✨ Proposer une formulation
+  pédagogique", à partir des compétences déjà reliées — utilisable même
+  après avoir validé la fiche.
+- **"Autonomie générale" retirée** des formulaires de création et de
+  modification : redondante avec le niveau d'autonomie déjà demandé par
+  compétence. La colonne reste en base (inutilisée, sans risque) plutôt
+  que de migrer le schéma pour un simple nettoyage d'interface.
+- **"Statut" retiré du formulaire de création** : une activité démarre
+  toujours en "brouillon" ; on la passe en "rédaction terminée" via le
+  badge cliquable (déjà existant), après coup — plus logique qu'un choix
+  à la création.
+
 ## Modification d'une activité a posteriori
 
 Un lien **"Modifier"** apparaît maintenant à côté du titre sur la fiche
