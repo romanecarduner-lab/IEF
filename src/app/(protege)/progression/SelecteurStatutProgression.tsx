@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { validerStatutProgression } from "./actions";
+import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaximal";
 
 type Statut = { code: string; libelle: string };
 
@@ -29,11 +30,8 @@ export function SelecteurStatutProgression({
     setEnCours(true);
     setErreur(null);
     try {
-      const resultat = await validerStatutProgression(
-        parcoursId,
-        elementProgrammeId,
-        valeur,
-        ""
+      const resultat = await avecDelaiMaximal(
+        validerStatutProgression(parcoursId, elementProgrammeId, valeur, "")
       );
       if ("erreur" in resultat) {
         setErreur(resultat.erreur);
@@ -41,6 +39,9 @@ export function SelecteurStatutProgression({
       }
       setConfirme(true);
       router.refresh();
+    } catch (erreurInattendue) {
+      console.error("Erreur inattendue lors de la confirmation du statut", erreurInattendue);
+      setErreur(messagePourErreurInattendue(erreurInattendue));
     } finally {
       setEnCours(false);
     }
