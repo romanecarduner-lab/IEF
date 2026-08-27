@@ -25,14 +25,17 @@ export function SelecteurStatutProgression({
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [confirme, setConfirme] = useState(dejaValide);
+  const [diagnostic, setDiagnostic] = useState<string | null>(null);
 
   async function gererConfirmation() {
     setEnCours(true);
     setErreur(null);
+    setDiagnostic("Clic reçu, appel en cours…");
     try {
       const resultat = await avecDelaiMaximal(
         validerStatutProgression(parcoursId, elementProgrammeId, valeur, "")
       );
+      setDiagnostic(`Réponse reçue : ${JSON.stringify(resultat)}`);
       if ("erreur" in resultat) {
         setErreur(resultat.erreur);
         return;
@@ -41,6 +44,7 @@ export function SelecteurStatutProgression({
       router.refresh();
     } catch (erreurInattendue) {
       console.error("Erreur inattendue lors de la confirmation du statut", erreurInattendue);
+      setDiagnostic(`Exception : ${String(erreurInattendue)}`);
       setErreur(messagePourErreurInattendue(erreurInattendue));
     } finally {
       setEnCours(false);
@@ -75,6 +79,11 @@ export function SelecteurStatutProgression({
         </button>
       )}
       {erreur && <p className="text-xs text-alerte">{erreur}</p>}
+      {diagnostic && (
+        <p className="w-full break-all rounded bg-ocre/20 p-2 text-xs text-encre">
+          🔍 {diagnostic}
+        </p>
+      )}
     </div>
   );
 }
