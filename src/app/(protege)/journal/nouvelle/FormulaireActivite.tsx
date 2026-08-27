@@ -31,8 +31,6 @@ const DONNEES_VIDES: DonneesBrouillonActivite = {
   observations: "",
   parolesEnfant: "",
   personnesPresentes: "",
-  autonomieGeneraleId: "",
-  statutCode: "brouillon",
 };
 
 function genererIdLocal(): string {
@@ -61,7 +59,11 @@ export function FormulaireActivite({
   const delaiAutosaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputPhotoRef = useRef<HTMLInputElement>(null);
 
-  const [donnees, setDonnees] = useState<DonneesBrouillonActivite>(DONNEES_VIDES);
+  const [donnees, setDonnees] = useState<DonneesBrouillonActivite>(() =>
+    parcours.length === 1 && parcours[0]
+      ? { ...DONNEES_VIDES, parcoursId: parcours[0].id }
+      : DONNEES_VIDES
+  );
   const [statutSync, setStatutSync] = useState<
     "aucun_changement" | "non_synchronise" | "en_cours" | "synchronise"
   >("aucun_changement");
@@ -92,7 +94,6 @@ export function FormulaireActivite({
   const [chargementDescriptionIA, setChargementDescriptionIA] = useState(false);
   const [erreurDescriptionIA, setErreurDescriptionIA] = useState<string | null>(null);
 
-  const [formulationProposee, setFormulationProposee] = useState<string | null>(null);
   const [chargementFormulation, setChargementFormulation] = useState(false);
   const [erreurFormulation, setErreurFormulation] = useState<string | null>(null);
 
@@ -194,7 +195,6 @@ export function FormulaireActivite({
   async function demanderFormulation() {
     setChargementFormulation(true);
     setErreurFormulation(null);
-    setFormulationProposee(null);
     try {
       const resultat = await avecDelaiMaximal(
         proposerFormulationPedagogique(
@@ -208,19 +208,13 @@ export function FormulaireActivite({
         setErreurFormulation(resultat.erreur);
         return;
       }
-      setFormulationProposee(resultat.texte);
+      modifierChamp("observations", resultat.texte);
     } catch (erreurInattendue) {
       console.error("Erreur inattendue lors de la demande de formulation", erreurInattendue);
       setErreurFormulation(messagePourErreurInattendue(erreurInattendue));
     } finally {
       setChargementFormulation(false);
     }
-  }
-
-  function utiliserFormulation() {
-    if (!formulationProposee) return;
-    modifierChamp("observations", formulationProposee);
-    setFormulationProposee(null);
   }
 
   function modifierChamp<K extends keyof DonneesBrouillonActivite>(
@@ -670,28 +664,6 @@ export function FormulaireActivite({
           {erreurFormulation && (
             <p className="mt-1.5 text-xs text-alerte">{erreurFormulation}</p>
           )}
-
-          {formulationProposee && (
-            <div className="mt-2 rounded-doux border border-mousse/30 bg-mousse/5 p-3">
-              <p className="mb-2 text-sm text-encre">{formulationProposee}</p>
-              <div className="flex gap-4">
-                <button
-                  type="button"
-                  onClick={utiliserFormulation}
-                  className="text-xs font-medium text-mousse-fonce underline underline-offset-2"
-                >
-                  Utiliser ce texte
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormulationProposee(null)}
-                  className="text-xs text-ardoise underline underline-offset-2"
-                >
-                  Ignorer
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         <Champ
@@ -709,57 +681,6 @@ export function FormulaireActivite({
           value={donnees.personnesPresentes}
           onChange={(e) => modifierChamp("personnesPresentes", e.target.value)}
         />
-
-        <div className="mb-4">
-          <label
-            htmlFor="autonomie-generale"
-            className="mb-1.5 block text-sm font-medium text-encre"
-          >
-            Autonomie générale (facultatif)
-          </label>
-          <select
-            id="autonomie-generale"
-            value={donnees.autonomieGeneraleId}
-            onChange={(e) => modifierChamp("autonomieGeneraleId", e.target.value)}
-            className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
-          >
-            <option value="">Non précisé</option>
-            {autonomies.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.libelle}
-              </option>
-            ))}
-          </select>
-          <p className="mt-1.5 text-xs text-ardoise">
-            Décrit le déroulement général de l&rsquo;activité, indépendamment
-            des compétences qui seront associées plus tard.
-          </p>
-        </div>
-
-        <div className="mb-6">
-          <label
-            htmlFor="statut"
-            className="mb-1.5 block text-sm font-medium text-encre"
-          >
-            Statut
-          </label>
-          <select
-            id="statut"
-            value={donnees.statutCode}
-            onChange={(e) =>
-              modifierChamp("statutCode", e.target.value as "brouillon" | "valide")
-            }
-            className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
-          >
-            <option value="brouillon">En cours de rédaction</option>
-            <option value="valide">Rédaction terminée</option>
-          </select>
-          <p className="mt-1.5 text-xs text-ardoise">
-            Concerne uniquement cette fiche (avez-vous fini de la remplir ?)
-            — sans rapport avec le niveau atteint par l&rsquo;enfant, qui se
-            règle depuis la page Progression.
-          </p>
-        </div>
 
         <div className="flex items-center justify-between">
           <button

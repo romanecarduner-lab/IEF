@@ -10,11 +10,11 @@ export default async function PageModifierActivite({
 }) {
   const supabase = creerClientServeur();
 
-  const [{ data: activite }, { data: contextes }, { data: autonomies }] = await Promise.all([
+  const [{ data: activite }, { data: contextes }, { data: competencesBrutes }] = await Promise.all([
     supabase
       .from("activites")
       .select(
-        "id, date_activite, titre, description, contexte_id, lieu, observations, paroles_enfant, personnes_presentes, autonomie_generale_id"
+        "id, date_activite, titre, description, contexte_id, lieu, observations, paroles_enfant, personnes_presentes"
       )
       .eq("id", params.id)
       .maybeSingle(),
@@ -24,13 +24,21 @@ export default async function PageModifierActivite({
       .eq("actif", true)
       .order("ordre"),
     supabase
-      .from("niveaux_autonomie")
-      .select("id, libelle")
-      .eq("actif", true)
-      .order("ordre"),
+      .from("observations_elements_programme")
+      .select("elements_programme(libelle)")
+      .eq("activite_id", params.id),
   ]);
 
   if (!activite) notFound();
+
+  const competencesReliees = (competencesBrutes ?? [])
+    .map((o) => {
+      const element = Array.isArray(o.elements_programme)
+        ? o.elements_programme[0]
+        : o.elements_programme;
+      return element?.libelle as string | undefined;
+    })
+    .filter((libelle): libelle is string => Boolean(libelle));
 
   return (
     <div className="max-w-2xl">
@@ -55,10 +63,9 @@ export default async function PageModifierActivite({
           observations: (activite.observations as string | null) ?? "",
           parolesEnfant: (activite.paroles_enfant as string | null) ?? "",
           personnesPresentes: (activite.personnes_presentes as string | null) ?? "",
-          autonomieGeneraleId: (activite.autonomie_generale_id as string | null) ?? "",
         }}
         contextes={contextes ?? []}
-        autonomies={autonomies ?? []}
+        competencesReliees={competencesReliees}
       />
     </div>
   );

@@ -17,8 +17,6 @@ export type DonneesBrouillonActivite = {
   observations: string;
   parolesEnfant: string;
   personnesPresentes: string;
-  autonomieGeneraleId: string;
-  statutCode: "brouillon" | "valide";
 };
 
 type EnregistrementBrouillon = {

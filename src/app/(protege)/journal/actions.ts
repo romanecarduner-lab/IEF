@@ -14,8 +14,6 @@ export type DonneesActivite = {
   observations: string;
   parolesEnfant: string;
   personnesPresentes: string;
-  autonomieGeneraleId: string;
-  statutCode: "brouillon" | "valide";
 };
 
 export type ResultatCreationActivite = { erreur: string } | { id: string };
@@ -25,6 +23,11 @@ export type ResultatCreationActivite = { erreur: string } | { id: string };
  * pour garder le contrôle fin nécessaire à la gestion du brouillon local
  * (IndexedDB) : synchronisation uniquement après confirmation du serveur,
  * jamais avant (voir Corrections-Schema-et-Lot1.md, section 12).
+ *
+ * Le statut de la fiche demarre toujours a "brouillon" (la redaction vient
+ * de commencer) : le parent le fait passer a "redaction terminee" ensuite,
+ * en cliquant sur le badge de statut, plutot que de le choisir a la
+ * creation (etape jugee inutile a l'usage).
  */
 export async function creerActivite(
   donnees: DonneesActivite
@@ -48,7 +51,7 @@ export async function creerActivite(
   const { data: statut } = await supabase
     .from("statuts_activite")
     .select("id")
-    .eq("code", donnees.statutCode)
+    .eq("code", "brouillon")
     .maybeSingle();
 
   if (!statut) {
@@ -68,7 +71,6 @@ export async function creerActivite(
     observations: donnees.observations || null,
     paroles_enfant: donnees.parolesEnfant || null,
     personnes_presentes: donnees.personnesPresentes || null,
-    autonomie_generale_id: donnees.autonomieGeneraleId || null,
     statut_id: statut.id,
   });
 
@@ -89,7 +91,6 @@ export type DonneesModificationActivite = {
   observations: string;
   parolesEnfant: string;
   personnesPresentes: string;
-  autonomieGeneraleId: string;
 };
 
 export async function modifierActivite(
@@ -115,7 +116,6 @@ export async function modifierActivite(
       observations: donnees.observations || null,
       paroles_enfant: donnees.parolesEnfant || null,
       personnes_presentes: donnees.personnesPresentes || null,
-      autonomie_generale_id: donnees.autonomieGeneraleId || null,
     })
     .eq("id", id);
 
