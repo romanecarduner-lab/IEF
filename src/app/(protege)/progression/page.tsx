@@ -185,8 +185,19 @@ export default async function PageProgression({
 
   lignes.sort((a, b) => (a.chemin ?? "").localeCompare(b.chemin ?? ""));
 
+  const horodatageRendu = new Date().toISOString();
+  const { count: nombreSynthesesEnBase } = await supabase
+    .from("syntheses_progression")
+    .select("id", { count: "exact", head: true })
+    .eq("parcours_id", parcoursId);
+
   return (
     <div>
+      <p className="mb-3 w-full break-all rounded bg-ocre/20 p-2 text-xs text-encre">
+        🔍 Page rendue à {horodatageRendu} · {nombreSynthesesEnBase ?? 0} synthèse(s) en
+        base pour ce parcours · parcoursId = {parcoursId}
+      </p>
+
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-2xl italic text-encre">Progression</h1>
         {parcoursOptions.length > 0 && (
@@ -259,6 +270,10 @@ export default async function PageProgression({
                             suggestion à confirmer
                           </span>
                         )}
+                      </p>
+                      <p className="mt-1 break-all text-[10px] text-argile">
+                        🔍 elementId={l.elementId} · dejaValide={String(l.dejaValide)} ·
+                        statutCode={l.statutCode}
                       </p>
                     </div>
                     <SelecteurStatutProgression
