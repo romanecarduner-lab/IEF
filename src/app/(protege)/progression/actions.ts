@@ -265,8 +265,18 @@ export async function estimerProgressionAutomatique(
       .select("id")
       .single();
 
+    if (error?.code === "23505") {
+      // Une synthese a ete creee entre notre lecture et notre ecriture
+      // (ex. deux clics rapproches) : on relance simplement l'estimation,
+      // elle passera cette fois par le cas "synthese existante".
+      return estimerProgressionAutomatique(parcoursId, elementProgrammeId);
+    }
+
     if (error || !nouvelleSynthese) {
-      return { erreur: "Impossible d'enregistrer l'estimation. Merci de réessayer." };
+      console.error("Erreur lors de la creation de la synthese (estimation automatique)", error);
+      return {
+        erreur: `Impossible d'enregistrer l'estimation : ${error?.message ?? "erreur inconnue"}`,
+      };
     }
 
     await supabase.from("historique_progression").insert({

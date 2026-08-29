@@ -8,7 +8,9 @@ const MODELE_REDACTION = "claude-sonnet-5";
 async function appellerClaude(
   prompt: string,
   maxTokens: number
-): Promise<{ texte: string; tronque: boolean } | { erreur: string }> {
+): Promise<
+  { texte: string; tronque: boolean; stopReason: string | null } | { erreur: string }
+> {
   const cleApi = process.env.ANTHROPIC_API_KEY;
   if (!cleApi) {
     return {
@@ -35,15 +37,22 @@ async function appellerClaude(
     if (!reponse.ok) {
       const detail = await reponse.text();
       console.error("Erreur API Anthropic", reponse.status, detail);
-      return { erreur: "L'IA n'a pas pu répondre. Merci de réessayer." };
+      return { erreur: `L'IA n'a pas pu répondre (code ${reponse.status}).` };
     }
 
     const donnees = await reponse.json();
+    // Cherche le premier bloc de type "text", quelle que soit sa
+    // position dans le tableau (ne pas supposer qu'il est toujours en
+    // position 0 -- deja pris en defaut une fois).
+    const blocTexte = Array.isArray(donnees?.content)
+      ? donnees.content.find((bloc: { type?: string }) => bloc?.type === "text")
+      : null;
     return {
-      texte: donnees?.content?.[0]?.text ?? "",
+      texte: blocTexte?.text ?? "",
       // "max_tokens" signifie que la reponse a ete coupee faute de place :
       // le texte n'est pas termine, meme s'il n'y a aucune erreur.
       tronque: donnees?.stop_reason === "max_tokens",
+      stopReason: donnees?.stop_reason ?? null,
     };
   } catch (erreurReseau) {
     console.error("Erreur réseau vers l'API Anthropic", erreurReseau);
@@ -144,8 +153,9 @@ Règles impératives :
   const texte = resultat.texte.trim();
   if (!texte) {
     return {
-      erreur:
-        "L'IA n'a pas produit de texte après deux tentatives. Cela arrive occasionnellement (aléa du modèle) — merci de réessayer.",
+      erreur: `L'IA n'a pas produit de texte après deux tentatives (motif d'arrêt : ${
+        "stopReason" in resultat ? resultat.stopReason ?? "inconnu" : "inconnu"
+      }). Réessayez ; si ça persiste, dites-le pour qu'on regarde le détail technique.`,
     };
   }
 

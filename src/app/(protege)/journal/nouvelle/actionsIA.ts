@@ -60,8 +60,11 @@ async function appellerClaude(
     }
 
     const donnees = JSON.parse(texteBrut);
+    const blocTexte = Array.isArray(donnees?.content)
+      ? donnees.content.find((bloc: { type?: string }) => bloc?.type === "text")
+      : null;
     return {
-      texte: donnees?.content?.[0]?.text ?? "",
+      texte: blocTexte?.text ?? "",
       tronque: donnees?.stop_reason === "max_tokens",
       stopReason: donnees?.stop_reason ?? null,
       brut: texteBrut.slice(0, 500),
@@ -159,8 +162,9 @@ Règles impératives :
 
   if (!resultat.texte.trim()) {
     return {
-      erreur:
-        "L'IA n'a pas produit de réponse après deux tentatives. Cela arrive occasionnellement (aléa du modèle) — merci de réessayer.",
+      erreur: `L'IA n'a pas produit de réponse après deux tentatives (motif d'arrêt : ${
+        "stopReason" in resultat ? resultat.stopReason ?? "inconnu" : "inconnu"
+      }). Réessayez ; si ça persiste, dites-le pour qu'on regarde le détail technique.`,
     };
   }
 
