@@ -417,6 +417,30 @@ formulation pédagogique) réessaient maintenant automatiquement une fois
 si la réponse est vide ou coupée, avant d'abandonner. Ne devrait plus se
 produire que très rarement.
 
+## Chantier "progression automatique" — Étape 4/9 : gestion des propositions
+
+- **Carte de proposition** : dès qu'une estimation automatique (étape 3)
+  ne peut pas s'appliquer directement (statut actif validé manuellement),
+  elle apparaît maintenant visuellement sur la compétence concernée
+  ("💡 Estimation automatique disponible : ..."), avec sa justification.
+- **Appliquer** : une case à cocher ("Garder ce suivi automatique
+  ensuite") laisse le choix — cochée, le moteur pourra remettre à jour
+  cette compétence tout seul par la suite ; décochée, le statut redevient
+  protégé comme une validation manuelle classique.
+- **Ignorer** : mémorise la date de la dernière observation prise en
+  compte au moment du refus (`proposition_ignoree_jusqua_observation_le`)
+  — la même conclusion ne revient pas tant qu'aucune observation plus
+  récente n'a été ajoutée depuis (déjà prévu dans le moteur à l'étape 3,
+  maintenant réellement déclenchable).
+- Petit correctif de cohérence au passage : l'estimation automatique
+  (étape 3) n'enregistrait pas encore l'instantané détaillé des sources
+  (`syntheses_progression_sources`), contrairement à la validation
+  manuelle — désormais les deux chemins l'alimentent de la même façon,
+  via une fonction commune plutôt que du code dupliqué une troisième fois.
+
+**Pas encore construit** : le recours à l'IA pour les cas non concluants
+(étape 5), le déclenchement automatique après chaque activité (étape 6).
+
 ## Chantier "progression automatique" — Étape 3/9 : moteur déterministe (avec tests)
 
 - **`src/lib/moteurProgression.ts`** : fonction pure
