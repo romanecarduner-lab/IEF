@@ -23,7 +23,10 @@ type BlocContenu =
 async function appellerClaude(
   contenu: string | BlocContenu[],
   maxTokens: number
-): Promise<{ texte: string; tronque: boolean } | { erreur: string }> {
+): Promise<
+  | { texte: string; tronque: boolean; stopReason: string | null; brut: string }
+  | { erreur: string }
+> {
   const cleApi = process.env.ANTHROPIC_API_KEY;
   if (!cleApi) {
     return {
@@ -47,16 +50,21 @@ async function appellerClaude(
       }),
     });
 
+    const texteBrut = await reponse.text();
+
     if (!reponse.ok) {
-      const detail = await reponse.text();
-      console.error("Erreur API Anthropic", reponse.status, detail);
-      return { erreur: "L'IA n'a pas pu répondre. Merci de réessayer." };
+      console.error("Erreur API Anthropic", reponse.status, texteBrut);
+      return {
+        erreur: `L'IA n'a pas pu répondre (code ${reponse.status}) : ${texteBrut.slice(0, 300)}`,
+      };
     }
 
-    const donnees = await reponse.json();
+    const donnees = JSON.parse(texteBrut);
     return {
       texte: donnees?.content?.[0]?.text ?? "",
       tronque: donnees?.stop_reason === "max_tokens",
+      stopReason: donnees?.stop_reason ?? null,
+      brut: texteBrut.slice(0, 500),
     };
   } catch (erreurReseau) {
     console.error("Erreur réseau vers l'API Anthropic", erreurReseau);
@@ -242,16 +250,22 @@ Règles impératives :
 
   if (resultat.tronque || !resultat.texte.trim()) {
     const nouvelleTentative = await appellerClaude(prompt, 1400);
-    if (!("erreur" in nouvelleTentative) && nouvelleTentative.texte.trim()) {
+    if (!("erreur" in nouvelleTentative)) {
       resultat = nouvelleTentative;
     }
   }
 
   const texte = resultat.texte.trim();
   if (!texte) {
+    console.error(
+      "Formulation pedagogique : texte vide apres deux tentatives",
+      "stopReason" in resultat ? resultat.stopReason : null,
+      "brut" in resultat ? resultat.brut : null
+    );
     return {
-      erreur:
-        "L'IA n'a pas produit de texte après deux tentatives. Cela arrive occasionnellement (aléa du modèle) — merci de réessayer.",
+      erreur: `L'IA n'a pas produit de texte après deux tentatives (motif d'arrêt : ${
+        "stopReason" in resultat ? resultat.stopReason ?? "inconnu" : "inconnu"
+      }). Réessayez ; si ça persiste, dites-le pour qu'on regarde le détail technique.`,
     };
   }
 
