@@ -398,6 +398,35 @@ forcément dire "à rattraper d'urgence" (l'âge de l'enfant compte).
 Les idées d'activités pour combler ces manques (proposées par IA) sont
 notées comme piste future, pas construites pour l'instant.
 
+## Corrections — synthèses IA coupées, recherche par mots-clés trop stricte
+
+- **Synthèses coupées en plein milieu** : la limite de tokens allouée aux
+  réponses IA était trop juste dans certains cas. Augmentée sur les trois
+  générations (synthèse par compétence, description par photo,
+  formulation pédagogique), et une détection automatique de troncature
+  (`stop_reason`) relance une fois avec une marge doublée si jamais ça se
+  reproduit malgré tout — sans jamais renvoyer un texte inachevé.
+- **Recherche par mots-clés trop littérale** ("saisons" ne retrouvait pas
+  "saison" dans le programme) : les fonctions `suggerer_objectifs_programme`
+  et `rechercher_objectifs_programme` comparent maintenant la racine d'un
+  mot (ses 5 premières lettres) plutôt que le mot entier — absorbe la
+  plupart des pluriels et conjugaisons simples. Reste un rapprochement
+  approximatif par construction (pas une IA sémantique), le parent valide
+  toujours en cochant.
+
+## Résolution — le badge "suggestion à confirmer" qui ne disparaissait jamais
+
+Cause identifiée après un diagnostic approfondi (voir historique) : la
+page Progression demandait à Supabase de faire automatiquement la
+jointure entre `syntheses_progression` et `statuts_progression` en une
+seule requête imbriquée (`statuts_progression(code)`), une fonctionnalité
+pratique mais qui dépend du cache de relations de PostgREST — le même
+type de cache qui avait déjà posé problème deux fois pour des colonnes
+manquantes. Corrigé en récupérant les deux listes séparément et en
+faisant la correspondance manuellement côté code, ce qui élimine cette
+dépendance fragile. Les données en base étaient toujours correctes tout
+du long — seule la lecture affichée était en cause.
+
 ## Chantier "progression automatique" — Étape 1/9 : structure et traçabilité
 
 Première étape du plan validé (structure de données uniquement, aucun
