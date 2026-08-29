@@ -75,12 +75,12 @@ export default async function PageProgression({
       .eq("parcours_id", parcoursId),
     supabase
       .from("statuts_progression")
-      .select("code, libelle")
+      .select("id, code, libelle")
       .eq("actif", true)
       .order("ordre"),
     supabase
       .from("syntheses_progression")
-      .select("element_programme_id, statuts_progression(code), synthese_ia, synthese_ia_generee_le")
+      .select("element_programme_id, statut_global_id, synthese_ia, synthese_ia_generee_le")
       .eq("parcours_id", parcoursId),
     supabase.from("v_total_objectifs_par_domaine").select("domaine, total_objectifs"),
     supabase
@@ -128,14 +128,17 @@ export default async function PageProgression({
     };
   });
 
+  const codeParStatutId = new Map<string, string>();
+  for (const s of statuts ?? []) {
+    codeParStatutId.set(s.id as string, s.code as string);
+  }
+
   const statutsParElement = new Map<string, string>();
   const syntheseIAParElement = new Map<string, { texte: string; genereeLe: string | null }>();
   for (const s of synthesesBrutes ?? []) {
-    const statut = Array.isArray(s.statuts_progression)
-      ? s.statuts_progression[0]
-      : s.statuts_progression;
-    if (statut?.code) {
-      statutsParElement.set(s.element_programme_id as string, statut.code);
+    const code = codeParStatutId.get(s.statut_global_id as string);
+    if (code) {
+      statutsParElement.set(s.element_programme_id as string, code);
     }
     if (s.synthese_ia) {
       syntheseIAParElement.set(s.element_programme_id as string, {
