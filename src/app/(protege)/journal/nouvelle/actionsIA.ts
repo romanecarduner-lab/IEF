@@ -23,7 +23,7 @@ type BlocContenu =
 async function appellerClaude(
   contenu: string | BlocContenu[],
   maxTokens: number
-): Promise<{ texte: string } | { erreur: string }> {
+): Promise<{ texte: string; tronque: boolean } | { erreur: string }> {
   const cleApi = process.env.ANTHROPIC_API_KEY;
   if (!cleApi) {
     return {
@@ -54,8 +54,10 @@ async function appellerClaude(
     }
 
     const donnees = await reponse.json();
-    const texte = donnees?.content?.[0]?.text ?? "";
-    return { texte };
+    return {
+      texte: donnees?.content?.[0]?.text ?? "",
+      tronque: donnees?.stop_reason === "max_tokens",
+    };
   } catch (erreurReseau) {
     console.error("Erreur réseau vers l'API Anthropic", erreurReseau);
     return { erreur: "Impossible de contacter l'IA. Vérifiez la connexion et réessayez." };
@@ -137,8 +139,15 @@ Règles impératives :
   }));
   contenu.push({ type: "text", text: prompt });
 
-  const resultat = await appellerClaude(contenu, 700);
+  let resultat = await appellerClaude(contenu, 900);
   if ("erreur" in resultat) return resultat;
+
+  if (resultat.tronque) {
+    const nouvelleTentative = await appellerClaude(contenu, 1800);
+    if (!("erreur" in nouvelleTentative)) {
+      resultat = nouvelleTentative;
+    }
+  }
 
   let donnees: unknown;
   try {
@@ -221,8 +230,15 @@ Règles impératives :
 - Ne recopie jamais le texte du programme officiel mot pour mot : reformule entièrement avec tes propres mots.
 - N'ajoute ni introduction, ni titre, ni commentaire : réponds uniquement avec le paragraphe.`;
 
-  const resultat = await appellerClaude(prompt, 400);
+  let resultat = await appellerClaude(prompt, 700);
   if ("erreur" in resultat) return resultat;
+
+  if (resultat.tronque) {
+    const nouvelleTentative = await appellerClaude(prompt, 1400);
+    if (!("erreur" in nouvelleTentative)) {
+      resultat = nouvelleTentative;
+    }
+  }
 
   const texte = resultat.texte.trim();
   if (!texte) {

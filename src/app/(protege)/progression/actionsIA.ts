@@ -8,7 +8,7 @@ const MODELE_REDACTION = "claude-sonnet-5";
 async function appellerClaude(
   prompt: string,
   maxTokens: number
-): Promise<{ texte: string } | { erreur: string }> {
+): Promise<{ texte: string; tronque: boolean } | { erreur: string }> {
   const cleApi = process.env.ANTHROPIC_API_KEY;
   if (!cleApi) {
     return {
@@ -39,7 +39,12 @@ async function appellerClaude(
     }
 
     const donnees = await reponse.json();
-    return { texte: donnees?.content?.[0]?.text ?? "" };
+    return {
+      texte: donnees?.content?.[0]?.text ?? "",
+      // "max_tokens" signifie que la reponse a ete coupee faute de place :
+      // le texte n'est pas termine, meme s'il n'y a aucune erreur.
+      tronque: donnees?.stop_reason === "max_tokens",
+    };
   } catch (erreurReseau) {
     console.error("Erreur réseau vers l'API Anthropic", erreurReseau);
     return { erreur: "Impossible de contacter l'IA. Vérifiez la connexion et réessayez." };
@@ -123,8 +128,18 @@ Règles impératives :
 - S'il n'y a qu'une seule observation, reste prudent sur l'évolution (tu ne peux pas décrire une progression avec un seul point de mesure) mais peux quand même analyser la nature de la compréhension démontrée.
 - N'ajoute ni introduction, ni titre, ni commentaire : réponds uniquement avec le paragraphe de synthèse.`;
 
-  const resultat = await appellerClaude(prompt, 600);
+  let resultat = await appellerClaude(prompt, 1200);
   if ("erreur" in resultat) return resultat;
+
+  // Marge de securite : si malgre tout la reponse est coupee faute de
+  // place, on relance une seule fois avec beaucoup plus de marge plutot
+  // que de renvoyer un texte inacheve au parent.
+  if (resultat.tronque) {
+    const nouvelleTentative = await appellerClaude(prompt, 2400);
+    if (!("erreur" in nouvelleTentative)) {
+      resultat = nouvelleTentative;
+    }
+  }
 
   const texte = resultat.texte.trim();
   if (!texte) return { erreur: "L'IA n'a pas produit de texte. Merci de réessayer." };
