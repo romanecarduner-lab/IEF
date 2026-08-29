@@ -398,6 +398,17 @@ forcément dire "à rattraper d'urgence" (l'âge de l'enfant compte).
 Les idées d'activités pour combler ces manques (proposées par IA) sont
 notées comme piste future, pas construites pour l'instant.
 
+## Correction — extraction du texte trop rigide (cause probable du "L'IA n'a pas produit de texte")
+
+Le motif d'arrêt "end_turn" (une fin de réponse tout à fait normale, sans
+coupure ni refus) apparaissant malgré un texte vide indiquait que le code
+cherchait le texte au mauvais endroit : il supposait que le premier bloc
+de la réponse était toujours du texte. Corrigé pour chercher le premier
+bloc de type "text" **où qu'il se trouve** dans la réponse, plutôt que de
+supposer sa position. Appliqué aux trois générations IA (synthèse par
+compétence, description par photo + compétences, formulation
+pédagogique).
+
 ## Correctif — "L'IA n'a pas produit de texte" occasionnel
 
 Rare aléa du modèle (pas lié à une donnée manquante) : les trois
