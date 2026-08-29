@@ -142,11 +142,18 @@ Règles impératives :
   let resultat = await appellerClaude(contenu, 900);
   if ("erreur" in resultat) return resultat;
 
-  if (resultat.tronque) {
+  if (resultat.tronque || !resultat.texte.trim()) {
     const nouvelleTentative = await appellerClaude(contenu, 1800);
-    if (!("erreur" in nouvelleTentative)) {
+    if (!("erreur" in nouvelleTentative) && nouvelleTentative.texte.trim()) {
       resultat = nouvelleTentative;
     }
+  }
+
+  if (!resultat.texte.trim()) {
+    return {
+      erreur:
+        "L'IA n'a pas produit de réponse après deux tentatives. Cela arrive occasionnellement (aléa du modèle) — merci de réessayer.",
+    };
   }
 
   let donnees: unknown;
@@ -233,16 +240,19 @@ Règles impératives :
   let resultat = await appellerClaude(prompt, 700);
   if ("erreur" in resultat) return resultat;
 
-  if (resultat.tronque) {
+  if (resultat.tronque || !resultat.texte.trim()) {
     const nouvelleTentative = await appellerClaude(prompt, 1400);
-    if (!("erreur" in nouvelleTentative)) {
+    if (!("erreur" in nouvelleTentative) && nouvelleTentative.texte.trim()) {
       resultat = nouvelleTentative;
     }
   }
 
   const texte = resultat.texte.trim();
   if (!texte) {
-    return { erreur: "L'IA n'a pas produit de texte. Merci de réessayer." };
+    return {
+      erreur:
+        "L'IA n'a pas produit de texte après deux tentatives. Cela arrive occasionnellement (aléa du modèle) — merci de réessayer.",
+    };
   }
 
   return { texte };

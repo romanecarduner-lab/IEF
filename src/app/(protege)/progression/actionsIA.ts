@@ -132,17 +132,22 @@ Règles impératives :
   if ("erreur" in resultat) return resultat;
 
   // Marge de securite : si malgre tout la reponse est coupee faute de
-  // place, on relance une seule fois avec beaucoup plus de marge plutot
-  // que de renvoyer un texte inacheve au parent.
-  if (resultat.tronque) {
+  // place, ou vide (alea occasionnel du modele), on relance une seule
+  // fois avec beaucoup plus de marge plutot que de renvoyer un echec.
+  if (resultat.tronque || !resultat.texte.trim()) {
     const nouvelleTentative = await appellerClaude(prompt, 2400);
-    if (!("erreur" in nouvelleTentative)) {
+    if (!("erreur" in nouvelleTentative) && nouvelleTentative.texte.trim()) {
       resultat = nouvelleTentative;
     }
   }
 
   const texte = resultat.texte.trim();
-  if (!texte) return { erreur: "L'IA n'a pas produit de texte. Merci de réessayer." };
+  if (!texte) {
+    return {
+      erreur:
+        "L'IA n'a pas produit de texte après deux tentatives. Cela arrive occasionnellement (aléa du modèle) — merci de réessayer.",
+    };
+  }
 
   const { data: syntheseExistante } = await supabase
     .from("syntheses_progression")
@@ -204,4 +209,31 @@ Règles impératives :
 
   revalidatePath("/progression");
   return { texte };
+}
+
+/**
+ * Permet de modifier a la main le texte d'une synthese generee par IA
+ * (ou d'en ecrire une entierement soi-meme) : le texte reste toujours
+ * la propriete du parent, jamais fige une fois genere.
+ */
+export async function modifierSyntheseIA(
+  parcoursId: string,
+  elementProgrammeId: string,
+  texte: string
+): Promise<{ erreur: string } | { ok: true }> {
+  const supabase = creerClientServeur();
+
+  const { error } = await supabase
+    .from("syntheses_progression")
+    .update({ synthese_ia: texte || null })
+    .eq("parcours_id", parcoursId)
+    .eq("element_programme_id", elementProgrammeId);
+
+  if (error) {
+    console.error("Erreur lors de la modification manuelle de la synthese IA", error);
+    return { erreur: `Impossible d'enregistrer la modification : ${error.message}` };
+  }
+
+  revalidatePath("/progression");
+  return { ok: true };
 }

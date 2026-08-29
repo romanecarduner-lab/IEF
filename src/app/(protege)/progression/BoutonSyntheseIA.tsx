@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { genererSyntheseCompetenceIA } from "./actionsIA";
+import { genererSyntheseCompetenceIA, modifierSyntheseIA } from "./actionsIA";
 import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaximal";
 
 export function BoutonSyntheseIA({
@@ -18,6 +18,8 @@ export function BoutonSyntheseIA({
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [texteLocal, setTexteLocal] = useState(syntheseExistante?.texte ?? null);
+  const [texteModifie, setTexteModifie] = useState(false);
+  const [enregistrementEnCours, setEnregistrementEnCours] = useState(false);
 
   async function gererClic() {
     setEnCours(true);
@@ -32,6 +34,7 @@ export function BoutonSyntheseIA({
         return;
       }
       setTexteLocal(resultat.texte);
+      setTexteModifie(false);
       router.refresh();
     } catch (erreurInattendue) {
       console.error("Erreur lors de la génération de la synthèse IA", erreurInattendue);
@@ -41,17 +44,59 @@ export function BoutonSyntheseIA({
     }
   }
 
+  async function enregistrerModification() {
+    setEnregistrementEnCours(true);
+    setErreur(null);
+    try {
+      const resultat = await avecDelaiMaximal(
+        modifierSyntheseIA(parcoursId, elementProgrammeId, texteLocal ?? "")
+      );
+      if ("erreur" in resultat) {
+        setErreur(resultat.erreur);
+        return;
+      }
+      setTexteModifie(false);
+      router.refresh();
+    } catch (erreurInattendue) {
+      console.error("Erreur lors de l'enregistrement de la modification", erreurInattendue);
+      setErreur(messagePourErreurInattendue(erreurInattendue));
+    } finally {
+      setEnregistrementEnCours(false);
+    }
+  }
+
   return (
     <div className="mt-3 w-full border-t border-trait pt-3">
-      {texteLocal && (
+      {texteLocal !== null && (
         <div className="mb-2 rounded-doux bg-mousse/5 p-3">
-          <p className="text-sm text-encre">{texteLocal}</p>
-          {syntheseExistante?.genereeLe && (
-            <p className="mt-1.5 text-xs text-ardoise">
-              Générée le{" "}
-              {new Date(syntheseExistante.genereeLe).toLocaleDateString("fr-FR")}
-            </p>
-          )}
+          <textarea
+            value={texteLocal}
+            onChange={(e) => {
+              setTexteLocal(e.target.value);
+              setTexteModifie(true);
+            }}
+            rows={4}
+            className="w-full rounded-doux border border-trait bg-white px-3 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
+          />
+          <div className="mt-1.5 flex flex-wrap items-center gap-3">
+            {syntheseExistante?.genereeLe && (
+              <p className="text-xs text-ardoise">
+                Générée le{" "}
+                {new Date(syntheseExistante.genereeLe).toLocaleDateString("fr-FR")}
+                {texteModifie ? " — modifiée depuis" : ""}
+              </p>
+            )}
+            {texteModifie && (
+              <button
+                type="button"
+                onClick={enregistrerModification}
+                disabled={enregistrementEnCours}
+                className="rounded-doux bg-mousse-fonce px-3 py-1 text-xs font-medium text-white hover:bg-mousse disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {enregistrementEnCours ? "Enregistrement…" : "Enregistrer la modification"}
+              </button>
+            )}
+          </div>
         </div>
       )}
       <button

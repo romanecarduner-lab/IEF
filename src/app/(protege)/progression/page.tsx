@@ -5,21 +5,11 @@ import { SelecteurStatutProgression } from "./SelecteurStatutProgression";
 import { GraphiqueProgression, type DonneesDomaine } from "./GraphiqueProgression";
 import { BoutonSyntheseIA } from "./BoutonSyntheseIA";
 import { VueATravailler } from "./VueATravailler";
+import { VueHistorique } from "./VueHistorique";
+import { SUGGESTION_DEPUIS_AUTONOMIE } from "@/lib/moteurProgression";
+import { BoutonEstimationAutomatique } from "./BoutonEstimationAutomatique";
 
 const STATUT_PAR_DEFAUT = "non_encore_observe";
-
-// Suggestion de depart pour le statut global, derivee du meilleur niveau
-// d'autonomie deja indique lors des observations. Reste une simple
-// pre-selection : le parent doit toujours cliquer "Confirmer" pour que ce
-// soit reellement enregistre (voir SelecteurStatutProgression).
-const SUGGESTION_DEPUIS_AUTONOMIE: Record<string, string> = {
-  observation_uniquement: "premiere_observation",
-  accompagnement_important: "realise_avec_accompagnement",
-  avec_quelques_aides: "realise_avec_accompagnement",
-  a_partir_consigne: "en_cours_exploration",
-  autonome: "realise_autonome",
-  initie_spontanement: "mobilise_spontanement",
-};
 
 export default async function PageProgression({
   searchParams,
@@ -46,7 +36,12 @@ export default async function PageProgression({
 
   const parcoursId = searchParams.parcours || parcoursOptions[0]?.id;
   const parcoursActuel = (parcoursBruts ?? []).find((p) => p.id === parcoursId);
-  const onglet = searchParams.onglet === "a-travailler" ? "a-travailler" : "progression";
+  const onglet =
+    searchParams.onglet === "a-travailler"
+      ? "a-travailler"
+      : searchParams.onglet === "historique"
+      ? "historique"
+      : "progression";
 
   if (!parcoursId) {
     return (
@@ -219,12 +214,24 @@ export default async function PageProgression({
         >
           Ce qui reste à voir
         </Link>
+        <Link
+          href={`/progression?parcours=${parcoursId}&onglet=historique`}
+          className={`px-3 py-2 text-sm font-medium ${
+            onglet === "historique"
+              ? "border-b-2 border-mousse-fonce text-mousse-fonce"
+              : "text-ardoise hover:text-encre"
+          }`}
+        >
+          Historique
+        </Link>
       </div>
 
       {onglet === "a-travailler" ? (
         parcoursActuel ? (
           <VueATravailler parcoursId={parcoursId} cycleId={parcoursActuel.cycle_id as string} />
         ) : null
+      ) : onglet === "historique" ? (
+        <VueHistorique parcoursId={parcoursId} />
       ) : (
         <>
           {donneesGraphique.length > 0 && (
@@ -277,6 +284,10 @@ export default async function PageProgression({
                     parcoursId={parcoursId}
                     elementProgrammeId={l.elementId}
                     syntheseExistante={l.syntheseIA}
+                  />
+                  <BoutonEstimationAutomatique
+                    parcoursId={parcoursId}
+                    elementProgrammeId={l.elementId}
                   />
                 </li>
               ))}
