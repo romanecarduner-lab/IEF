@@ -398,6 +398,62 @@ forcément dire "à rattraper d'urgence" (l'âge de l'enfant compte).
 Les idées d'activités pour combler ces manques (proposées par IA) sont
 notées comme piste future, pas construites pour l'instant.
 
+## Correctif — "L'IA n'a pas produit de texte" occasionnel
+
+Rare aléa du modèle (pas lié à une donnée manquante) : les trois
+générations IA (synthèse par compétence, description par photo,
+formulation pédagogique) réessaient maintenant automatiquement une fois
+si la réponse est vide ou coupée, avant d'abandonner. Ne devrait plus se
+produire que très rarement.
+
+## Chantier "progression automatique" — Étape 3/9 : moteur déterministe (avec tests)
+
+- **`src/lib/moteurProgression.ts`** : fonction pure
+  `estimerStatutDepuisObservations`, sans accès base de données, donc
+  facilement testable. Règles (conformes aux ajustements demandés) :
+  - une observation isolée → estimation **provisoire** seulement ;
+  - confirmation (`niveau_confiance = 'confirme'`) seulement si ≥3
+    observations, sur ≥2 dates et ≥2 contextes distincts (seuil repris de
+    l'ancien badge "à réexaminer") ;
+  - niveaux homogènes → concluant directement (aucune IA nécessaire) ;
+  - progression chronologique non-décroissante (ex. aide → aide légère →
+    autonome) → concluant sur le dernier niveau atteint, sans IA ;
+  - alternance, régression, ou signal contradictoire → **non concluant**,
+    volontairement laissé de côté pour l'IA à une étape ultérieure du
+    chantier (jamais tranché arbitrairement par une règle)
+- **8 tests** (`src/lib/moteurProgression.test.ts`, exécutables via
+  `npm run test`, bibliothèque `tsx` ajoutée en dev uniquement) couvrant
+  chacun de ces cas
+- **`estimerProgressionAutomatique`** (nouvelle action serveur) relie ce
+  moteur à la base, en respectant les protections déjà prévues : statut
+  actif d'origine automatique → mis à jour directement ; statut actif
+  d'origine manuelle → jamais écrasé, une proposition est déposée dans
+  `statut_propose_id` en attente ; proposition déjà ignorée → non
+  renouvelée tant qu'aucune observation plus récente n'est arrivée
+- **Bouton de test manuel** sur chaque compétence ("🔍 Tester le moteur
+  d'estimation") : déclenchement uniquement manuel à ce stade — le
+  déclenchement automatique après chaque activité est prévu pour l'étape
+  6, une fois le moteur validé en conditions réelles
+
+**Pas encore construit** : l'écran de gestion des propositions
+(Appliquer/Ignorer, étape 4), le recours à l'IA pour les cas non
+concluants (étape 5), le déclenchement automatique (étape 6).
+
+## Synthèse IA modifiable + Étape 2/9 du chantier progression : historique visible
+
+- **Synthèse IA modifiable** : le texte généré s'affiche maintenant dans
+  un champ éditable directement, avec un bouton "Enregistrer la
+  modification" qui apparaît dès qu'on y touche — le texte de l'IA n'est
+  plus jamais figé, il reste toujours la propriété du parent.
+- **Nouvel onglet "Historique"** sur Progression : affiche
+  `historique_progression` (jusqu'ici enregistré mais invisible) —
+  ancien statut → nouveau statut, qui/quand, un badge Automatique/Manuel
+  (prêt pour l'étape 3, quand des mises à jour automatiques
+  apparaîtront), et le commentaire éventuel. Construit avec des requêtes
+  simples jointes à la main en JS plutôt que des jointures imbriquées
+  PostgREST, pour éviter de reproduire le problème de cache de relations
+  rencontré sur la page principale.
+
 ## Corrections — synthèses IA coupées, recherche par mots-clés trop stricte
 
 - **Synthèses coupées en plein milieu** : la limite de tokens allouée aux
