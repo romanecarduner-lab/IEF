@@ -8,6 +8,7 @@ import { VueATravailler } from "./VueATravailler";
 import { VueHistorique } from "./VueHistorique";
 import { SUGGESTION_DEPUIS_AUTONOMIE } from "@/lib/moteurProgression";
 import { BoutonEstimationAutomatique } from "./BoutonEstimationAutomatique";
+import { CarteProposition } from "./CarteProposition";
 
 const STATUT_PAR_DEFAUT = "non_encore_observe";
 
@@ -75,7 +76,9 @@ export default async function PageProgression({
       .order("ordre"),
     supabase
       .from("syntheses_progression")
-      .select("element_programme_id, statut_global_id, synthese_ia, synthese_ia_generee_le")
+      .select(
+        "element_programme_id, statut_global_id, synthese_ia, synthese_ia_generee_le, statut_propose_id, justification_proposition"
+      )
       .eq("parcours_id", parcoursId),
     supabase.from("v_total_objectifs_par_domaine").select("domaine, total_objectifs"),
     supabase
@@ -124,12 +127,18 @@ export default async function PageProgression({
   });
 
   const codeParStatutId = new Map<string, string>();
+  const libelleParStatutId = new Map<string, string>();
   for (const s of statuts ?? []) {
     codeParStatutId.set(s.id as string, s.code as string);
+    libelleParStatutId.set(s.id as string, s.libelle as string);
   }
 
   const statutsParElement = new Map<string, string>();
   const syntheseIAParElement = new Map<string, { texte: string; genereeLe: string | null }>();
+  const propositionParElement = new Map<
+    string,
+    { statutLibelle: string; justification: string | null }
+  >();
   for (const s of synthesesBrutes ?? []) {
     const code = codeParStatutId.get(s.statut_global_id as string);
     if (code) {
@@ -140,6 +149,15 @@ export default async function PageProgression({
         texte: s.synthese_ia as string,
         genereeLe: s.synthese_ia_generee_le as string | null,
       });
+    }
+    if (s.statut_propose_id) {
+      const statutProposeLibelle = libelleParStatutId.get(s.statut_propose_id as string);
+      if (statutProposeLibelle) {
+        propositionParElement.set(s.element_programme_id as string, {
+          statutLibelle: statutProposeLibelle,
+          justification: s.justification_proposition as string | null,
+        });
+      }
     }
   }
 
@@ -177,6 +195,7 @@ export default async function PageProgression({
         dejaValide,
         statutCode: statutsParElement.get(elementId) ?? suggestion,
         syntheseIA: syntheseIAParElement.get(elementId) ?? null,
+        proposition: propositionParElement.get(elementId) ?? null,
       };
     })
   );
@@ -280,6 +299,14 @@ export default async function PageProgression({
                       statuts={statuts ?? []}
                     />
                   </div>
+                  {l.proposition && (
+                    <CarteProposition
+                      parcoursId={parcoursId}
+                      elementProgrammeId={l.elementId}
+                      statutProposeLibelle={l.proposition.statutLibelle}
+                      justification={l.proposition.justification}
+                    />
+                  )}
                   <BoutonSyntheseIA
                     parcoursId={parcoursId}
                     elementProgrammeId={l.elementId}

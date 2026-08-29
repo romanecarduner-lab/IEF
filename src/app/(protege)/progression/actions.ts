@@ -3,6 +3,68 @@
 import { revalidatePath } from "next/cache";
 import { creerClientServeur } from "@/lib/supabase/server";
 import { estimerStatutDepuisObservations } from "@/lib/moteurProgression";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+/**
+ * Enregistre un instantane des observations actuelles d'une competence,
+ * rattache a un changement de statut precis (historique_id). Facteur
+ * commun a validerStatutProgression, estimerProgressionAutomatique et
+ * appliquerPropositionProgression -- ecrit a chaque fois qu'un statut
+ * change, quelle qu'en soit l'origine. Non bloquant : une erreur ici
+ * n'annule jamais l'enregistrement du statut lui-meme.
+ */
+async function enregistrerSourcesSynthese(
+  supabase: SupabaseClient,
+  parcoursId: string,
+  elementProgrammeId: string,
+  syntheseId: string,
+  historiqueId: string
+) {
+  try {
+    const { data: observations } = await supabase
+      .from("observations_elements_programme")
+      .select(
+        `id, activite_id, justification,
+         niveaux_autonomie(libelle),
+         activites!inner(parcours_id, titre, date_activite, contextes_activite(libelle))`
+      )
+      .eq("element_programme_id", elementProgrammeId)
+      .eq("activites.parcours_id", parcoursId);
+
+    if (observations && observations.length > 0) {
+      const lignes = observations.map((o) => {
+        const activite = Array.isArray(o.activites) ? o.activites[0] : o.activites;
+        const contexte = activite
+          ? Array.isArray(activite.contextes_activite)
+            ? activite.contextes_activite[0]
+            : activite.contextes_activite
+          : null;
+        const niveau = Array.isArray(o.niveaux_autonomie)
+          ? o.niveaux_autonomie[0]
+          : o.niveaux_autonomie;
+
+        return {
+          historique_id: historiqueId,
+          synthese_id: syntheseId,
+          observation_id: o.id,
+          activite_id: o.activite_id,
+          snapshot_activite_titre: (activite?.titre as string) ?? "Activité",
+          snapshot_date_observation: activite?.date_activite as string,
+          snapshot_niveau_autonomie: (niveau?.libelle as string) ?? "Non précisé",
+          snapshot_contexte: (contexte?.libelle as string | undefined) ?? null,
+          snapshot_justification: (o.justification as string | null) ?? null,
+        };
+      });
+
+      await supabase.from("syntheses_progression_sources").insert(lignes);
+    }
+  } catch (erreurTracabilite) {
+    console.error(
+      "Erreur non bloquante lors de l'enregistrement des sources de progression",
+      erreurTracabilite
+    );
+  }
+}
 
 /**
  * Valide manuellement un statut de progression (flux existant, inchange
@@ -103,50 +165,13 @@ export async function validerStatutProgression(
   // precis. Non bloquant : si cette partie echoue, le statut est deja
   // enregistre, on ne fait pas echouer toute l'action pour autant.
   if (entreeHistorique) {
-    try {
-      const { data: observations } = await supabase
-        .from("observations_elements_programme")
-        .select(
-          `id, activite_id, justification,
-           niveaux_autonomie(libelle),
-           activites!inner(parcours_id, titre, date_activite, contextes_activite(libelle))`
-        )
-        .eq("element_programme_id", elementProgrammeId)
-        .eq("activites.parcours_id", parcoursId);
-
-      if (observations && observations.length > 0) {
-        const lignes = observations.map((o) => {
-          const activite = Array.isArray(o.activites) ? o.activites[0] : o.activites;
-          const contexte = activite
-            ? Array.isArray(activite.contextes_activite)
-              ? activite.contextes_activite[0]
-              : activite.contextes_activite
-            : null;
-          const niveau = Array.isArray(o.niveaux_autonomie)
-            ? o.niveaux_autonomie[0]
-            : o.niveaux_autonomie;
-
-          return {
-            historique_id: entreeHistorique.id,
-            synthese_id: synthese.id,
-            observation_id: o.id,
-            activite_id: o.activite_id,
-            snapshot_activite_titre: (activite?.titre as string) ?? "Activité",
-            snapshot_date_observation: activite?.date_activite as string,
-            snapshot_niveau_autonomie: (niveau?.libelle as string) ?? "Non précisé",
-            snapshot_contexte: (contexte?.libelle as string | undefined) ?? null,
-            snapshot_justification: (o.justification as string | null) ?? null,
-          };
-        });
-
-        await supabase.from("syntheses_progression_sources").insert(lignes);
-      }
-    } catch (erreurTracabilite) {
-      console.error(
-        "Erreur non bloquante lors de l'enregistrement des sources de progression",
-        erreurTracabilite
-      );
-    }
+    await enregistrerSourcesSynthese(
+      supabase,
+      parcoursId,
+      elementProgrammeId,
+      synthese.id,
+      entreeHistorique.id
+    );
   }
 
   revalidatePath("/progression");
@@ -279,15 +304,29 @@ export async function estimerProgressionAutomatique(
       };
     }
 
-    await supabase.from("historique_progression").insert({
-      synthese_id: nouvelleSynthese.id,
-      ancien_statut: null,
-      nouveau_statut: statutCible.libelle,
-      change_par: null,
-      change_par_nom_affiche: "Estimation automatique",
-      commentaire: resultat.justification,
-      origine: "automatique",
-    });
+    const { data: entreeHistorique } = await supabase
+      .from("historique_progression")
+      .insert({
+        synthese_id: nouvelleSynthese.id,
+        ancien_statut: null,
+        nouveau_statut: statutCible.libelle,
+        change_par: null,
+        change_par_nom_affiche: "Estimation automatique",
+        commentaire: resultat.justification,
+        origine: "automatique",
+      })
+      .select("id")
+      .single();
+
+    if (entreeHistorique) {
+      await enregistrerSourcesSynthese(
+        supabase,
+        parcoursId,
+        elementProgrammeId,
+        nouvelleSynthese.id,
+        entreeHistorique.id
+      );
+    }
 
     revalidatePath("/progression");
     return {
@@ -335,15 +374,29 @@ export async function estimerProgressionAutomatique(
       })
       .eq("id", syntheseExistante.id);
 
-    await supabase.from("historique_progression").insert({
-      synthese_id: syntheseExistante.id,
-      ancien_statut: statutActuelCode ?? null,
-      nouveau_statut: statutCible.libelle,
-      change_par: null,
-      change_par_nom_affiche: "Estimation automatique",
-      commentaire: resultat.justification,
-      origine: "automatique",
-    });
+    const { data: entreeHistorique } = await supabase
+      .from("historique_progression")
+      .insert({
+        synthese_id: syntheseExistante.id,
+        ancien_statut: statutActuelCode ?? null,
+        nouveau_statut: statutCible.libelle,
+        change_par: null,
+        change_par_nom_affiche: "Estimation automatique",
+        commentaire: resultat.justification,
+        origine: "automatique",
+      })
+      .select("id")
+      .single();
+
+    if (entreeHistorique) {
+      await enregistrerSourcesSynthese(
+        supabase,
+        parcoursId,
+        elementProgrammeId,
+        syntheseExistante.id,
+        entreeHistorique.id
+      );
+    }
 
     revalidatePath("/progression");
     return {
@@ -417,4 +470,153 @@ export async function estimerProgressionAutomatique(
     appliqueDirectement: false,
     propositionEnregistree: true,
   };
+}
+
+/**
+ * Etape 4 du chantier "progression automatique" : applique une
+ * proposition en attente (statut_propose_id). Le parent choisit, au
+ * moment d'appliquer, si le suivi redevient automatique (le moteur
+ * pourra le remettre a jour tout seul ensuite) ou reste protege comme
+ * une validation manuelle (le moteur ne le modifiera plus jamais sans
+ * repasser par une nouvelle proposition explicite).
+ */
+export async function appliquerPropositionProgression(
+  parcoursId: string,
+  elementProgrammeId: string,
+  garderAutomatique: boolean
+): Promise<{ erreur: string } | { ok: true }> {
+  const supabase = creerClientServeur();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { erreur: "Votre session a expiré. Merci de vous reconnecter." };
+  }
+
+  const { data: synthese } = await supabase
+    .from("syntheses_progression")
+    .select(
+      "id, statut_propose_id, justification_proposition, statuts_progression(libelle)"
+    )
+    .eq("parcours_id", parcoursId)
+    .eq("element_programme_id", elementProgrammeId)
+    .maybeSingle();
+
+  if (!synthese || !synthese.statut_propose_id) {
+    return { erreur: "Aucune proposition en attente pour cette compétence." };
+  }
+
+  const { data: statutPropose } = await supabase
+    .from("statuts_progression")
+    .select("libelle")
+    .eq("id", synthese.statut_propose_id)
+    .maybeSingle();
+
+  if (!statutPropose) {
+    return { erreur: "Statut proposé introuvable." };
+  }
+
+  const ancienStatutLibelle = Array.isArray(synthese.statuts_progression)
+    ? synthese.statuts_progression[0]?.libelle
+    : (synthese.statuts_progression as { libelle: string } | null)?.libelle;
+
+  const maintenant = new Date().toISOString();
+
+  const { error } = await supabase
+    .from("syntheses_progression")
+    .update({
+      statut_global_id: synthese.statut_propose_id,
+      origine: garderAutomatique ? "automatique" : "manuel",
+      valide_par: user.id,
+      valide_par_nom_affiche: user.email ?? "Parent",
+      valide_le: maintenant,
+      derniere_prise_en_compte_le: maintenant,
+      statut_propose_id: null,
+      justification_proposition: null,
+      propose_le: null,
+      proposition_ignoree_le: null,
+      proposition_ignoree_jusqua_observation_le: null,
+    })
+    .eq("id", synthese.id);
+
+  if (error) {
+    console.error("Erreur lors de l'application de la proposition", error);
+    return { erreur: `Impossible d'appliquer la proposition : ${error.message}` };
+  }
+
+  const { data: entreeHistorique } = await supabase
+    .from("historique_progression")
+    .insert({
+      synthese_id: synthese.id,
+      ancien_statut: ancienStatutLibelle ?? null,
+      nouveau_statut: statutPropose.libelle,
+      change_par: user.id,
+      change_par_nom_affiche: user.email ?? "Parent",
+      commentaire: synthese.justification_proposition,
+      origine: garderAutomatique ? "automatique" : "manuel",
+    })
+    .select("id")
+    .single();
+
+  if (entreeHistorique) {
+    await enregistrerSourcesSynthese(
+      supabase,
+      parcoursId,
+      elementProgrammeId,
+      synthese.id,
+      entreeHistorique.id
+    );
+  }
+
+  revalidatePath("/progression");
+  return { ok: true };
+}
+
+/**
+ * Etape 4 (suite) : ignore une proposition en attente. Memorise jusqu'a
+ * quelle date d'observation la proposition a ete jugee non pertinente,
+ * pour que le moteur ne la reformule pas tant qu'aucune observation plus
+ * recente n'a ete ajoutee (voir estimerProgressionAutomatique).
+ */
+export async function ignorerPropositionProgression(
+  parcoursId: string,
+  elementProgrammeId: string
+): Promise<{ erreur: string } | { ok: true }> {
+  const supabase = creerClientServeur();
+
+  const { data: observations } = await supabase
+    .from("observations_elements_programme")
+    .select("activites!inner(parcours_id, date_activite)")
+    .eq("element_programme_id", elementProgrammeId)
+    .eq("activites.parcours_id", parcoursId);
+
+  const derniereDateObservation = (observations ?? [])
+    .map((o) => {
+      const activite = Array.isArray(o.activites) ? o.activites[0] : o.activites;
+      return activite?.date_activite as string | undefined;
+    })
+    .filter((d): d is string => Boolean(d))
+    .sort()
+    .at(-1);
+
+  const { error } = await supabase
+    .from("syntheses_progression")
+    .update({
+      statut_propose_id: null,
+      justification_proposition: null,
+      propose_le: null,
+      proposition_ignoree_le: new Date().toISOString(),
+      proposition_ignoree_jusqua_observation_le: derniereDateObservation ?? new Date().toISOString(),
+    })
+    .eq("parcours_id", parcoursId)
+    .eq("element_programme_id", elementProgrammeId);
+
+  if (error) {
+    console.error("Erreur lors de l'ignorance de la proposition", error);
+    return { erreur: `Impossible d'ignorer cette proposition : ${error.message}` };
+  }
+
+  revalidatePath("/progression");
+  return { ok: true };
 }
