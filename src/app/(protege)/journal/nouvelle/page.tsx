@@ -2,7 +2,17 @@ import Link from "next/link";
 import { creerClientServeur } from "@/lib/supabase/server";
 import { FormulaireActivite } from "./FormulaireActivite";
 
-export default async function PageNouvelleActivite() {
+export default async function PageNouvelleActivite({
+  searchParams,
+}: {
+  searchParams: {
+    titre?: string;
+    description?: string;
+    parcours?: string;
+    objectifId?: string;
+    objectifLibelle?: string;
+  };
+}) {
   const supabase = creerClientServeur();
 
   const {
@@ -68,6 +78,13 @@ export default async function PageNouvelleActivite() {
           contextes={contextes ?? []}
           autonomies={autonomies ?? []}
           familleId={appartenance.famille_id}
+          prerempli={{
+            titre: searchParams.titre ?? "",
+            description: searchParams.description ?? "",
+            parcoursId: searchParams.parcours ?? "",
+            objectifId: searchParams.objectifId ?? "",
+            objectifLibelle: searchParams.objectifLibelle ?? "",
+          }}
         />
       )}
     </div>

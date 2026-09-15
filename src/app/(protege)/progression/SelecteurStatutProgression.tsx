@@ -31,7 +31,8 @@ export function SelecteurStatutProgression({
     setErreur(null);
     try {
       const resultat = await avecDelaiMaximal(
-        validerStatutProgression(parcoursId, elementProgrammeId, valeur, "")
+        validerStatutProgression(parcoursId, elementProgrammeId, valeur, ""),
+        30000
       );
       if ("erreur" in resultat) {
         setErreur(resultat.erreur);

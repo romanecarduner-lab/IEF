@@ -26,7 +26,8 @@ export function CarteProposition({
     setErreur(null);
     try {
       const resultat = await avecDelaiMaximal(
-        appliquerPropositionProgression(parcoursId, elementProgrammeId, garderAutomatique)
+        appliquerPropositionProgression(parcoursId, elementProgrammeId, garderAutomatique),
+        30000
       );
       if ("erreur" in resultat) {
         setErreur(resultat.erreur);
@@ -46,7 +47,8 @@ export function CarteProposition({
     setErreur(null);
     try {
       const resultat = await avecDelaiMaximal(
-        ignorerPropositionProgression(parcoursId, elementProgrammeId)
+        ignorerPropositionProgression(parcoursId, elementProgrammeId),
+        20000
       );
       if ("erreur" in resultat) {
         setErreur(resultat.erreur);

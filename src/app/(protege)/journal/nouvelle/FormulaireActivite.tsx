@@ -48,21 +48,43 @@ export function FormulaireActivite({
   contextes,
   autonomies,
   familleId,
+  prerempli,
 }: {
   parcours: OptionParcours[];
   contextes: Option[];
   autonomies: Option[];
   familleId: string;
+  prerempli?: {
+    titre: string;
+    description: string;
+    parcoursId: string;
+    objectifId: string;
+    objectifLibelle: string;
+  };
 }) {
   const router = useRouter();
   const idLocalRef = useRef<string>(genererIdLocal());
   const delaiAutosaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputPhotoRef = useRef<HTMLInputElement>(null);
 
-  const [donnees, setDonnees] = useState<DonneesBrouillonActivite>(() =>
-    parcours.length === 1 && parcours[0]
+  const [donnees, setDonnees] = useState<DonneesBrouillonActivite>(() => {
+    if (prerempli?.titre) {
+      return {
+        ...DONNEES_VIDES,
+        titre: prerempli.titre,
+        description: prerempli.description,
+        parcoursId:
+          prerempli.parcoursId || (parcours.length === 1 && parcours[0] ? parcours[0].id : ""),
+      };
+    }
+    return parcours.length === 1 && parcours[0]
       ? { ...DONNEES_VIDES, parcoursId: parcours[0].id }
-      : DONNEES_VIDES
+      : DONNEES_VIDES;
+  });
+  const [suggestionsChoisies, setSuggestionsChoisies] = useState<Map<string, string>>(() =>
+    prerempli?.objectifId && prerempli.objectifLibelle
+      ? new Map([[prerempli.objectifId, prerempli.objectifLibelle]])
+      : new Map()
   );
   const [statutSync, setStatutSync] = useState<
     "aucun_changement" | "non_synchronise" | "en_cours" | "synchronise"
@@ -80,9 +102,6 @@ export function FormulaireActivite({
     { id: string; libelle: string; chemin: string | null }[]
   >([]);
   const [chargementSuggestions, setChargementSuggestions] = useState(false);
-  const [suggestionsChoisies, setSuggestionsChoisies] = useState<Map<string, string>>(
-    new Map()
-  );
   const [niveauCompetencesId, setNiveauCompetencesId] = useState(autonomies[0]?.id ?? "");
   const delaiSuggestionsRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 

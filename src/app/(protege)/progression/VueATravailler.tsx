@@ -1,4 +1,5 @@
 import { creerClientServeur } from "@/lib/supabase/server";
+import { BoutonIdeesActivites } from "./BoutonIdeesActivites";
 
 export async function VueATravailler({
   parcoursId,
@@ -72,10 +73,15 @@ export async function VueATravailler({
                   </span>
                 </span>
               </summary>
-              <ul className="space-y-1.5 border-t border-trait p-4 pt-3">
+              <ul className="space-y-3 border-t border-trait p-4 pt-3">
                 {objectifs.map((o) => (
-                  <li key={o.id} className="text-sm text-encre">
-                    {o.libelle}
+                  <li key={o.id} className="border-b border-trait pb-2 text-sm text-encre last:border-b-0 last:pb-0">
+                    <p>{o.libelle}</p>
+                    <BoutonIdeesActivites
+                      objectifId={o.id}
+                      objectifLibelle={o.libelle}
+                      parcoursId={parcoursId}
+                    />
                   </li>
                 ))}
               </ul>

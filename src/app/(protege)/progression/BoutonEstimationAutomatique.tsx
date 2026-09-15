@@ -21,7 +21,8 @@ export function BoutonEstimationAutomatique({
     setResultat(null);
     try {
       const reponse = await avecDelaiMaximal(
-        estimerProgressionAutomatique(parcoursId, elementProgrammeId)
+        estimerProgressionAutomatique(parcoursId, elementProgrammeId),
+        30000
       );
       if ("erreur" in reponse) {
         setResultat(`Erreur : ${reponse.erreur}`);

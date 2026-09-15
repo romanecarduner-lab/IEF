@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { creerClientServeur } from "@/lib/supabase/server";
 import { estimerStatutDepuisObservations } from "@/lib/moteurProgression";
+import { estimerProgressionIA } from "./actionsIA";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
@@ -209,6 +210,27 @@ export async function estimerProgressionAutomatique(
       propositionEnregistree: boolean;
     }
 > {
+  return estimerProgressionAutomatiqueInterne(parcoursId, elementProgrammeId, 0);
+}
+
+const NOMBRE_MAX_TENTATIVES = 2;
+
+async function estimerProgressionAutomatiqueInterne(
+  parcoursId: string,
+  elementProgrammeId: string,
+  tentative: number
+): Promise<
+  | { erreur: string }
+  | { concluant: false; raison: string }
+  | {
+      concluant: true;
+      statutLibelle: string;
+      niveauConfiance: string;
+      justification: string;
+      appliqueDirectement: boolean;
+      propositionEnregistree: boolean;
+    }
+> {
   const supabase = creerClientServeur();
   const {
     data: { user },
@@ -243,14 +265,82 @@ export async function estimerProgressionAutomatique(
 
   const resultat = estimerStatutDepuisObservations(observations);
 
-  if (!resultat.concluant) {
-    return { concluant: false, raison: resultat.raison };
+  let statutCode: string;
+  let justificationFinale: string;
+
+  if (resultat.concluant) {
+    statutCode = resultat.statutCode;
+    justificationFinale = resultat.justification;
+  } else {
+    // Le moteur deterministe ne peut pas conclure seul (alternance,
+    // regression, signal contradictoire) : c'est precisement le cas ou
+    // l'IA apporte quelque chose qu'une regle simple ne peut pas fournir.
+    // Elle n'intervient jamais pour les situations que le moteur sait
+    // deja trancher sans aide.
+    const { data: element } = await supabase
+      .from("elements_programme")
+      .select("libelle")
+      .eq("id", elementProgrammeId)
+      .maybeSingle();
+
+    const { data: observationsDetaillees } = await supabase
+      .from("observations_elements_programme")
+      .select(
+        `justification, niveaux_autonomie(libelle),
+         activites!inner(parcours_id, date_activite, contextes_activite(libelle))`
+      )
+      .eq("element_programme_id", elementProgrammeId)
+      .eq("activites.parcours_id", parcoursId);
+
+    const observationsPourIA = (observationsDetaillees ?? [])
+      .map((o) => {
+        const niveau = Array.isArray(o.niveaux_autonomie)
+          ? o.niveaux_autonomie[0]
+          : o.niveaux_autonomie;
+        const activite = Array.isArray(o.activites) ? o.activites[0] : o.activites;
+        const contexte = activite
+          ? Array.isArray(activite.contextes_activite)
+            ? activite.contextes_activite[0]
+            : activite.contextes_activite
+          : null;
+        return {
+          niveauLibelle: (niveau?.libelle as string) ?? "Non précisé",
+          date: (activite?.date_activite as string) ?? "",
+          contexteLibelle: (contexte?.libelle as string) ?? "Non précisé",
+          justification: (o.justification as string | null) ?? null,
+        };
+      })
+      .filter((o) => o.date)
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const resultatIA = await estimerProgressionIA(
+      (element?.libelle as string) ?? "cette compétence",
+      resultat.raison,
+      observationsPourIA
+    );
+
+    if ("erreur" in resultatIA) {
+      return { erreur: resultatIA.erreur };
+    }
+    if (!resultatIA.concluant) {
+      return { concluant: false, raison: resultatIA.raison };
+    }
+
+    statutCode = resultatIA.statutCode;
+    justificationFinale = `Analyse IA (cas non tranché par les règles automatiques) : ${resultatIA.justification}`;
   }
+
+  const datesDistinctes = new Set(observations.map((o) => o.date)).size;
+  const contextesDistincts = new Set(observations.map((o) => o.contexteCode)).size;
+  const niveauConfianceFinale: string =
+    observations.length >= 3 && datesDistinctes >= 2 && contextesDistincts >= 2
+      ? "confirme"
+      : "provisoire";
 
   const { data: statutCible } = await supabase
     .from("statuts_progression")
     .select("id, libelle")
-    .eq("code", resultat.statutCode)
+    .eq("code", statutCode)
     .maybeSingle();
 
   if (!statutCible) {
@@ -284,7 +374,7 @@ export async function estimerProgressionAutomatique(
         valide_par_nom_affiche: "Estimation automatique",
         valide_le: maintenant,
         origine: "automatique",
-        niveau_confiance: resultat.niveauConfiance,
+        niveau_confiance: niveauConfianceFinale,
         derniere_prise_en_compte_le: maintenant,
       })
       .select("id")
@@ -293,8 +383,16 @@ export async function estimerProgressionAutomatique(
     if (error?.code === "23505") {
       // Une synthese a ete creee entre notre lecture et notre ecriture
       // (ex. deux clics rapproches) : on relance simplement l'estimation,
-      // elle passera cette fois par le cas "synthese existante".
-      return estimerProgressionAutomatique(parcoursId, elementProgrammeId);
+      // elle passera cette fois par le cas "synthese existante". Borne a
+      // quelques tentatives pour eviter toute boucle si jamais ce n'est
+      // pas la vraie cause.
+      if (tentative >= NOMBRE_MAX_TENTATIVES) {
+        return {
+          erreur:
+            "Conflit persistant lors de l'enregistrement de l'estimation, même après plusieurs tentatives. Merci de réessayer plus tard.",
+        };
+      }
+      return estimerProgressionAutomatiqueInterne(parcoursId, elementProgrammeId, tentative + 1);
     }
 
     if (error || !nouvelleSynthese) {
@@ -312,7 +410,7 @@ export async function estimerProgressionAutomatique(
         nouveau_statut: statutCible.libelle,
         change_par: null,
         change_par_nom_affiche: "Estimation automatique",
-        commentaire: resultat.justification,
+        commentaire: justificationFinale,
         origine: "automatique",
       })
       .select("id")
@@ -332,8 +430,8 @@ export async function estimerProgressionAutomatique(
     return {
       concluant: true,
       statutLibelle: statutCible.libelle,
-      niveauConfiance: resultat.niveauConfiance,
-      justification: resultat.justification,
+      niveauConfiance: niveauConfianceFinale,
+      justification: justificationFinale,
       appliqueDirectement: true,
       propositionEnregistree: false,
     };
@@ -343,22 +441,22 @@ export async function estimerProgressionAutomatique(
     ? syntheseExistante.statuts_progression[0]?.code
     : (syntheseExistante.statuts_progression as { code: string } | null)?.code;
 
-  const dejaAJour = statutActuelCode === resultat.statutCode;
+  const dejaAJour = statutActuelCode === statutCode;
 
   // --- Cas 2 : synthese existante, d'origine automatique -> mise a jour directe ---
   if (syntheseExistante.origine === "automatique") {
     if (dejaAJour) {
       await supabase
         .from("syntheses_progression")
-        .update({ derniere_prise_en_compte_le: maintenant, niveau_confiance: resultat.niveauConfiance })
+        .update({ derniere_prise_en_compte_le: maintenant, niveau_confiance: niveauConfianceFinale })
         .eq("id", syntheseExistante.id);
 
       revalidatePath("/progression");
       return {
         concluant: true,
         statutLibelle: statutCible.libelle,
-        niveauConfiance: resultat.niveauConfiance,
-        justification: resultat.justification,
+        niveauConfiance: niveauConfianceFinale,
+        justification: justificationFinale,
         appliqueDirectement: true,
         propositionEnregistree: false,
       };
@@ -369,7 +467,7 @@ export async function estimerProgressionAutomatique(
       .update({
         statut_global_id: statutCible.id,
         valide_le: maintenant,
-        niveau_confiance: resultat.niveauConfiance,
+        niveau_confiance: niveauConfianceFinale,
         derniere_prise_en_compte_le: maintenant,
       })
       .eq("id", syntheseExistante.id);
@@ -382,7 +480,7 @@ export async function estimerProgressionAutomatique(
         nouveau_statut: statutCible.libelle,
         change_par: null,
         change_par_nom_affiche: "Estimation automatique",
-        commentaire: resultat.justification,
+        commentaire: justificationFinale,
         origine: "automatique",
       })
       .select("id")
@@ -402,8 +500,8 @@ export async function estimerProgressionAutomatique(
     return {
       concluant: true,
       statutLibelle: statutCible.libelle,
-      niveauConfiance: resultat.niveauConfiance,
-      justification: resultat.justification,
+      niveauConfiance: niveauConfianceFinale,
+      justification: justificationFinale,
       appliqueDirectement: true,
       propositionEnregistree: false,
     };
@@ -426,7 +524,7 @@ export async function estimerProgressionAutomatique(
     return {
       concluant: true,
       statutLibelle: statutCible.libelle,
-      niveauConfiance: resultat.niveauConfiance,
+      niveauConfiance: niveauConfianceFinale,
       justification: "Le statut validé manuellement correspond déjà à cette estimation.",
       appliqueDirectement: false,
       propositionEnregistree: false,
@@ -444,7 +542,7 @@ export async function estimerProgressionAutomatique(
     return {
       concluant: true,
       statutLibelle: statutCible.libelle,
-      niveauConfiance: resultat.niveauConfiance,
+      niveauConfiance: niveauConfianceFinale,
       justification:
         "Cette proposition avait déjà été ignorée et aucune observation plus récente n'a été ajoutée depuis.",
       appliqueDirectement: false,
@@ -456,7 +554,7 @@ export async function estimerProgressionAutomatique(
     .from("syntheses_progression")
     .update({
       statut_propose_id: statutCible.id,
-      justification_proposition: resultat.justification,
+      justification_proposition: justificationFinale,
       propose_le: maintenant,
     })
     .eq("id", syntheseExistante.id);
@@ -465,8 +563,8 @@ export async function estimerProgressionAutomatique(
   return {
     concluant: true,
     statutLibelle: statutCible.libelle,
-    niveauConfiance: resultat.niveauConfiance,
-    justification: resultat.justification,
+    niveauConfiance: niveauConfianceFinale,
+    justification: justificationFinale,
     appliqueDirectement: false,
     propositionEnregistree: true,
   };
