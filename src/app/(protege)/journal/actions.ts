@@ -157,3 +157,31 @@ export async function basculerStatutActivite(id: string, statutActuelCode: strin
   revalidatePath("/journal");
   revalidatePath(`/journal/${id}`);
 }
+
+/**
+ * Met a jour uniquement le champ Observations d'une activite -- utilise
+ * par la regeneration de la formulation pedagogique depuis la page
+ * "Competences observees", pour eviter de devoir passer par le
+ * formulaire de modification complet juste pour ce champ.
+ */
+export async function modifierObservationsActivite(
+  activiteId: string,
+  texte: string
+): Promise<{ erreur: string } | { ok: true }> {
+  const supabase = creerClientServeur();
+
+  const { error } = await supabase
+    .from("activites")
+    .update({ observations: texte || null })
+    .eq("id", activiteId);
+
+  if (error) {
+    console.error("Erreur lors de la mise à jour des observations", error);
+    return { erreur: `Impossible d'enregistrer : ${error.message}` };
+  }
+
+  revalidatePath(`/journal/${activiteId}`);
+  revalidatePath(`/journal/${activiteId}/competences`);
+  revalidatePath(`/journal/${activiteId}/modifier`);
+  return { ok: true };
+}

@@ -100,7 +100,7 @@ export default async function PageJournal({
         </Link>
       </div>
 
-      <div className="mb-6 flex gap-1 border-b border-trait">
+      <div className="mb-6 flex gap-1 overflow-x-auto border-b border-trait">
         <Link
           href="/journal"
           className={`px-3 py-2 text-sm font-medium ${

@@ -67,3 +67,14 @@ body {
   outline-offset: 2px;
   border-radius: 4px;
 }
+
+/* Safari iOS zoome automatiquement la page des qu'un champ de saisie
+   affiche un texte de moins de 16px au moment du focus -- desagrement
+   classique sur mobile. On garantit 16px minimum sur tous les champs,
+   quelle que soit la classe Tailwind (text-sm...) appliquee par ailleurs
+   pour l'aspect visuel du reste de l'interface. */
+input,
+select,
+textarea {
+  font-size: 16px;
+}

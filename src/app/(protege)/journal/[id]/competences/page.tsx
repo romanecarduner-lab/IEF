@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { creerClientServeur } from "@/lib/supabase/server";
 import { SelecteurCompetences } from "./SelecteurCompetences";
 import { supprimerObservation } from "./actions";
+import { BoutonFormulationCompetences } from "./BoutonFormulationCompetences";
 
 const TYPES_ARBRE = ["domaine", "sous_domaine", "competence", "repere_annuel"];
 
@@ -15,7 +16,7 @@ export default async function PageCompetencesActivite({
 
   const { data: activite } = await supabase
     .from("activites")
-    .select("id, titre")
+    .select("id, titre, description")
     .eq("id", params.id)
     .maybeSingle();
 
@@ -126,6 +127,15 @@ export default async function PageCompetencesActivite({
               ))}
             </ul>
           )}
+
+          <BoutonFormulationCompetences
+            activiteId={params.id}
+            titre={activite.titre as string}
+            description={(activite.description as string | null) ?? ""}
+            competencesReliees={observations
+              .map((o) => o.elementLibelle)
+              .filter((l): l is string => Boolean(l))}
+          />
         </div>
       </div>
     </div>

@@ -31,7 +31,7 @@ export type DonneesDomaine = {
 export function GraphiqueProgression({ donnees }: { donnees: DonneesDomaine[] }) {
   const donneesGraphique = donnees.map((d) => {
     const ligne: Record<string, string | number> = {
-      domaine: d.domaine.length > 28 ? d.domaine.slice(0, 26) + "…" : d.domaine,
+      domaine: d.domaine.length > 22 ? d.domaine.slice(0, 20) + "…" : d.domaine,
     };
     let sommePaliers = 0;
     for (const p of PALIERS) {
@@ -59,19 +59,19 @@ export function GraphiqueProgression({ donnees }: { donnees: DonneesDomaine[] })
         <BarChart
           data={donneesGraphique}
           layout="vertical"
-          margin={{ top: 0, right: 16, bottom: 0, left: 0 }}
+          margin={{ top: 0, right: 8, bottom: 0, left: 0 }}
         >
           <XAxis
             type="number"
             domain={[0, 100]}
             tickFormatter={(v) => `${v}%`}
-            tick={{ fontSize: 11, fill: "#5C6A62" }}
+            tick={{ fontSize: 10, fill: "#5C6A62" }}
           />
           <YAxis
             type="category"
             dataKey="domaine"
-            width={150}
-            tick={{ fontSize: 11, fill: "#26312D" }}
+            width={110}
+            tick={{ fontSize: 10, fill: "#26312D" }}
           />
           <Tooltip
             formatter={(valeur) => `${Number(valeur).toFixed(0)}%`}

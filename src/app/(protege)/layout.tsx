@@ -9,7 +9,6 @@ const LIEN_STYLE =
 
 const LIENS_NAVIGATION = [
   { href: "/tableau-de-bord", libelle: "Tableau de bord" },
-  { href: "/famille", libelle: "Famille" },
   { href: "/journal", libelle: "Journal" },
   { href: "/progression", libelle: "Progression" },
   { href: "/export", libelle: "Export" },
@@ -86,15 +85,15 @@ export default async function LayoutProtege({
   return (
     <div className="min-h-screen bg-brume">
       <header className="border-b border-trait bg-white/60">
-        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-4 px-6 py-4">
+        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-6 sm:py-4">
           <div className="flex items-center gap-3">
-            <Link href="/tableau-de-bord" className="font-display text-lg italic text-mousse-fonce">
+            <Link href="/tableau-de-bord" className="font-display text-base italic text-mousse-fonce sm:text-lg">
               🌿 Chemins d&rsquo;apprentissage
             </Link>
-            <span className="text-trait">·</span>
-            <span className="text-sm text-ardoise">{nomFamille}</span>
+            <span className="hidden text-trait sm:inline">·</span>
+            <span className="hidden text-sm text-ardoise sm:inline">{nomFamille}</span>
           </div>
-          <nav className="flex flex-wrap items-center gap-5">
+          <nav className="flex flex-wrap items-center gap-4 sm:gap-5">
             {LIENS_NAVIGATION.map((lien) => (
               <Link
                 key={lien.href}
@@ -106,6 +105,9 @@ export default async function LayoutProtege({
             ))}
 
             <MenuDeroulant libelle="Compte">
+              <Link href="/famille" className={LIEN_STYLE}>
+                Famille
+              </Link>
               <Link href="/confidentialite" className={LIEN_STYLE}>
                 Confidentialité
               </Link>
@@ -116,7 +118,7 @@ export default async function LayoutProtege({
           </nav>
         </div>
       </header>
-      <div className="mx-auto max-w-4xl px-6 py-10">{children}</div>
+      <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10">{children}</div>
     </div>
   );
 }

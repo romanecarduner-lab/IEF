@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, Manrope } from "next/font/google";
 import "./globals.css";
 
@@ -21,6 +21,14 @@ export const metadata: Metadata = {
   title: "Chemins d'apprentissage",
   description:
     "Un regard sur le chemin parcouru par votre enfant en instruction en famille.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Le zoom pincé reste possible (maximumScale volontairement absent) :
+  // c'est une aide a l'accessibilite, jamais a desactiver.
+  themeColor: "#F6F1E8",
 };
 
 export default function RootLayout({
