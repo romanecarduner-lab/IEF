@@ -72,6 +72,23 @@ Puis ouvrir [http://localhost:3000](http://localhost:3000).
    (jamais `SUPABASE_SERVICE_ROLE_KEY`, non utilisée dans ce lot).
 3. Déployer. Chaque push sur `main` redéploie automatiquement.
 
+## Correction critique — boucle sans fin potentielle sur l'estimation automatique
+
+Cause probable du blocage "la demande prend trop de temps" malgré
+l'augmentation des délais : en cas de conflit d'écriture, la fonction se
+relançait elle-même **sans aucune limite** — si la cause du conflit
+persistait, elle pouvait tourner indéfiniment plutôt que d'échouer
+proprement. Bornée à 2 tentatives maximum ; au-delà, un message d'erreur
+clair est renvoyé au lieu d'un blocage silencieux.
+
+## Correctif — délais côté client trop courts sur les actions de progression
+
+"Confirmer", "Tester le moteur d'estimation" et "Appliquer" enchaînent
+plusieurs écritures en base (statut + historique + instantané des
+sources) : le délai de sécurité côté client (15 secondes par défaut)
+pouvait s'avérer trop court. Porté à 30 secondes sur ces trois actions,
+20 secondes sur "Ignorer".
+
 ## Correctif critique — authentification bloquée indéfiniment
 
 Un bug a été corrigé après un premier déploiement : les formulaires de
@@ -416,6 +433,61 @@ générations IA (synthèse par compétence, description par photo,
 formulation pédagogique) réessaient maintenant automatiquement une fois
 si la réponse est vide ou coupée, avant d'abandonner. Ne devrait plus se
 produire que très rarement.
+
+## Idée d'activité → ouverture directe d'une activité préremplie
+
+Chaque idée générée propose maintenant un lien **"Créer cette activité
+dans le journal →"** qui ouvre "Ajouter une activité" avec le titre, une
+description de départ, le bon parcours (enfant/année) et la compétence
+déjà cochée — tout reste modifiable comme d'habitude (ajouter une photo,
+changer le texte, ajuster ou retirer la compétence). Rien n'est
+enregistré tant que le formulaire n'est pas validé.
+
+## Idées d'activités par IA, sur les compétences non abordées
+
+Sur Progression → "Ce qui reste à voir", chaque compétence non abordée
+propose maintenant un bouton **"💡 Idées d'activités"** : génère 3
+propositions concrètes et réalisables à la maison, ancrées dans le
+libellé officiel de la compétence et ses exemples de réussite déjà
+importés (pas des idées génériques). Purement inspirationnel — aucune
+écriture en base, le parent reste totalement libre de suivre ou non ces
+suggestions.
+
+## Correction — synthèses trop chiffrées (dates, décomptes)
+
+Les deux textes rédigés par l'IA sur la page Progression (la synthèse
+pédagogique par compétence, et la justification d'une estimation par IA
+sur un cas ambigu) pouvaient citer des dates précises ou des décomptes
+("trois fois", "sur quatre observations") — pas le ton attendu pour une
+vraie synthèse qualitative. Consigne explicite ajoutée aux deux prompts
+pour l'interdire, avec des tournures de remplacement suggérées ("de façon
+récurrente", "au fil du temps", "dans des situations variées"). Ne
+concerne que Progression — la ligne de décompte du PDF d'export ("X
+objectifs validés sur Y") reste inchangée, c'est un résumé chiffré
+volontaire, pas un texte rédigé par l'IA.
+
+## Chantier "progression automatique" — Étape 5/9 : l'IA seulement pour les cas ambigus
+
+- **`estimerProgressionIA`** (nouvelle fonction, `progression/actionsIA.ts`) :
+  appelée **uniquement** quand le moteur déterministe (étape 3) ne peut
+  pas conclure seul — alternance persistante, régression, signaux
+  contradictoires. Reçoit toutes les observations (niveau, date,
+  contexte, justification) et la raison précise de la non-conclusion,
+  et peut soit proposer un statut argumenté, soit reconnaître que même
+  elle ne peut pas trancher raisonnablement (`statutCode: null`) —
+  jamais de choix forcé.
+- **`estimerProgressionAutomatique`** appelle maintenant l'IA
+  automatiquement dans ce seul cas, avant d'abandonner. Le niveau de
+  confiance (provisoire/confirmé) suit les mêmes seuils que pour le
+  moteur déterministe, que la conclusion vienne de l'un ou de l'autre.
+  Toutes les protections de l'étape 4 (jamais d'écrasement d'un statut
+  manuel, propositions ignorées non renouvelées) s'appliquent
+  identiquement, quelle que soit l'origine de la conclusion.
+- Coût : un appel IA supplémentaire (Sonnet, prompt court) uniquement
+  dans les cas réellement ambigus — pas à chaque estimation.
+
+**Pas encore construit** : le déclenchement automatique après chaque
+activité (étape 6, toujours manuel via le bouton de test pour l'instant).
 
 ## Chantier "progression automatique" — Étape 4/9 : gestion des propositions
 
