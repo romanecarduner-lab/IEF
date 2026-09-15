@@ -434,6 +434,47 @@ formulation pédagogique) réessaient maintenant automatiquement une fois
 si la réponse est vide ou coupée, avant d'abandonner. Ne devrait plus se
 produire que très rarement.
 
+## Passage d'optimisation mobile et web
+
+Plusieurs ajustements ciblés, sans tout reconstruire :
+
+- **Zoom automatique iOS corrigé** — le point le plus impactant : tous
+  les champs de saisie affichaient un texte à 14px, sous le seuil de 16px
+  qui empêche Safari iPhone de zoomer automatiquement au focus. Réglé
+  globalement (`globals.css`), sans toucher chaque formulaire un par un.
+- **Configuration viewport explicite** ajoutée (`layout.tsx`) — largeur
+  adaptée à l'appareil, zoom pincé volontairement laissé actif
+  (accessibilité), couleur de thème pour la barre du navigateur mobile.
+- **En-tête resserré sur petit écran** : padding réduit, nom de la
+  famille masqué sous 640px (déjà visible ailleurs dans l'app), pour
+  laisser toute la place au nom de l'application et au menu.
+- **Graphique de progression** : axe des domaines et troncature des noms
+  réduits, pour mieux respirer sur un écran étroit.
+- **Barres d'onglets** (Journal, Progression) : défilement horizontal de
+  sécurité ajouté, au cas où.
+- Padding général du contenu réduit sur mobile (`px-4` au lieu de `px-6`).
+
+## Navigation allégée — Famille déplacée dans Compte
+
+"Famille" quitte la barre principale (moins utilisée au quotidien que
+Journal/Progression/Export) pour rejoindre le menu **Compte**, aux côtés
+de Confidentialité — pensé pour mieux respirer sur petit écran. La
+navigation principale passe à 4 destinations : Tableau de bord · Journal
+· Progression · Export. La page `/famille` elle-même ne change pas,
+seul son accès change.
+
+## Formulation pédagogique directement sur "Compétences observées"
+
+Jusqu'ici, régénérer la formulation pédagogique après avoir ajouté des
+compétences a posteriori obligeait à aller sur le formulaire de
+modification séparément. Un bloc **"Formulation pédagogique"** apparaît
+désormais directement sur la page "Compétences observées" (celle où l'on
+coche/décoche les compétences) : le bouton "✨ Générer" (ou "Régénérer")
+s'appuie systématiquement sur la liste **actuelle** des compétences
+reliées à l'activité — donc automatiquement à jour dès qu'on vient d'en
+ajouter ou d'en retirer, sans changer d'écran. Le texte généré reste
+éditable avant d'être enregistré dans le champ Observations.
+
 ## Idée d'activité → ouverture directe d'une activité préremplie
 
 Chaque idée générée propose maintenant un lien **"Créer cette activité
