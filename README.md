@@ -434,6 +434,59 @@ formulation pédagogique) réessaient maintenant automatiquement une fois
 si la réponse est vide ou coupée, avant d'abandonner. Ne devrait plus se
 produire que très rarement.
 
+## Passe UX/UI mobile-first — navigation basse, tableau de bord compact
+
+Vérifié visuellement (Playwright, CSS réellement compilé) à 375px, 390px,
+430px, tablette (768px) et desktop (1280px) avant livraison.
+
+**Fichiers créés :**
+- `src/components/NavigationBasse.tsx` — navigation fixe basse (mobile
+  uniquement) : Accueil, Journal, bouton central "+" élevé (Ajouter une
+  activité), Progression, Plus. "Plus" ouvre une feuille glissante
+  (Export, Famille, Confidentialité, Se déconnecter) plutôt qu'un simple
+  menu — plus proche des conventions iPhone natives.
+- `src/lib/libelleCourtDomaine.ts` — nom court par domaine, réutilisable
+  partout (l'intitulé officiel complet reste toujours consultable,
+  jamais perdu).
+
+**Fichiers modifiés :**
+- `src/app/layout.tsx` — `viewportFit: "cover"` ajouté (indispensable
+  pour que les safe areas iOS renvoient de vraies valeurs, pas juste 0).
+- `src/app/(protege)/layout.tsx` — nav horizontale et menu Compte
+  masqués sous 768px (`hidden md:flex`), remplacés par la navigation
+  basse ; espace réservé en bas de page pour ne jamais passer sous la
+  nav fixe (`pb-28`, revient à `md:pb-10` sur desktop où elle disparaît).
+- `src/app/(protege)/tableau-de-bord/page.tsx` — espacements et cartes
+  compactés sur mobile (padding, tailles d'icônes et de texte réduits
+  via des classes responsive, jamais en dur) ; domaines réécrits avec
+  nom court + pourcentage aligné à droite + barre toujours visible +
+  intitulé complet dans un accordéon `<details>` natif (accessible,
+  sans JS supplémentaire) ; zones tactiles portées à 44px minimum sur
+  les liens et boutons secondaires.
+
+**Choix UX principaux :**
+- Bouton central "+" surélevé et distinct (cercle plein, ombre, taille
+  56px) plutôt qu'un onglet parmi d'autres — l'action la plus fréquente
+  doit être la plus visible.
+- Feuille glissante pour "Plus" plutôt qu'un dropdown : gestuelle plus
+  naturelle au pouce, cohérente avec les apps iOS.
+- Barre de progression toujours visible par domaine (jamais cachée
+  derrière un clic) ; seul l'intitulé officiel complet, secondaire pour
+  la lecture rapide, est replié.
+- Aucune logique métier, donnée ou calcul touché — uniquement
+  l'interface, comme demandé.
+
+**Pistes encore pertinentes, non traitées ici :**
+- Étendre le même motif nom court + accordéon à la page Progression
+  elle-même (actuellement seul le tableau de bord en bénéficie).
+- Un geste de balayage pour fermer la feuille "Plus" (actuellement clic
+  sur le fond ou sur ✕ uniquement).
+- Vérifier l'ergonomie mobile des formulaires longs (création
+  d'activité) et des tableaux/listes denses (Journal, Export) avec la
+  même rigueur que le tableau de bord.
+- Un mode test réel sur appareil iOS/Android physique reste la
+  meilleure validation finale des safe areas et zones tactiles.
+
 ## Passage d'optimisation mobile et web
 
 Plusieurs ajustements ciblés, sans tout reconstruire :
