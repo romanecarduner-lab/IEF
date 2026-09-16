@@ -434,6 +434,33 @@ formulation pédagogique) réessaient maintenant automatiquement une fois
 si la réponse est vide ou coupée, avant d'abandonner. Ne devrait plus se
 produire que très rarement.
 
+## Nouveau type d'export : journal d'une période (semaine, mois, dates libres)
+
+Sur "Nouveau dossier", un choix apparaît maintenant en premier :
+- **Dossier pédagogique** (existant, inchangé) — organisé par domaine et
+  compétences, pour un contrôle académique.
+- **Journal d'une période** (nouveau) — toutes les activités d'une
+  semaine, d'un mois ou de dates choisies librement, dans l'ordre
+  chronologique, sans regroupement par domaine ni synthèse pédagogique.
+  Deux raccourcis ("7 derniers jours", "Ce mois-ci") pré-remplissent les
+  dates, modifiables ensuite librement.
+
+**Fonctionnement** : toutes les activités de la période sont incluses
+par défaut (répond à "toutes les activités si les personnes le
+souhaitent") ; l'éditeur permet d'en décocher certaines avant de
+finaliser, comme pour le dossier pédagogique. Le PDF généré est
+volontairement simple : page de garde (enfant, période, nombre
+d'activités/traces) puis chaque activité avec sa date, son contexte,
+sa description et ses photos.
+
+**Fichiers créés** : `DocumentJournalPeriode.tsx` (PDF),
+`BoutonFinaliserJournal.tsx`, `finaliserDossierJournal` (dans
+`actions.ts`). **Fichiers modifiés** : `FormulaireDossier.tsx`
+(sélecteur de type), `creerDossier` (branche selon le type),
+`[id]/page.tsx` (retour anticipé vers un éditeur simplifié pour ce
+type, sans toucher à la logique du dossier pédagogique existant),
+`export/page.tsx` (badge "Journal" dans la liste).
+
 ## Passe UX/UI mobile-first — navigation basse, tableau de bord compact
 
 Vérifié visuellement (Playwright, CSS réellement compilé) à 375px, 390px,
