@@ -66,6 +66,7 @@ export function FormulaireActivite({
   const idLocalRef = useRef<string>(genererIdLocal());
   const delaiAutosaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputPhotoRef = useRef<HTMLInputElement>(null);
+  const erreurRef = useRef<HTMLDivElement>(null);
 
   const [donnees, setDonnees] = useState<DonneesBrouillonActivite>(() => {
     if (prerempli?.titre) {
@@ -270,8 +271,18 @@ export function FormulaireActivite({
     evenement.preventDefault();
     setErreur(null);
 
-    if (!donnees.parcoursId || !donnees.contexteId || !donnees.titre.trim()) {
-      setErreur("Le parcours, le titre et le contexte sont requis.");
+    const champsManquants: string[] = [];
+    if (!donnees.parcoursId) champsManquants.push("l'enfant / l'année");
+    if (!donnees.contexteId) champsManquants.push("le contexte");
+    if (!donnees.titre.trim()) champsManquants.push("le titre");
+
+    if (champsManquants.length > 0) {
+      const liste =
+        champsManquants.length === 1
+          ? champsManquants[0]
+          : `${champsManquants.slice(0, -1).join(", ")} et ${champsManquants.at(-1)}`;
+      setErreur(`Il manque : ${liste}.`);
+      erreurRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
 
@@ -289,6 +300,7 @@ export function FormulaireActivite({
       if ("erreur" in resultat) {
         setErreur(resultat.erreur);
         setStatutSync("non_synchronise");
+        erreurRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
         return;
       }
 
@@ -357,6 +369,7 @@ export function FormulaireActivite({
       console.error("Erreur inattendue lors de la création de l'activité", erreurInattendue);
       setErreur(messagePourErreurInattendue(erreurInattendue));
       setStatutSync("non_synchronise");
+      erreurRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     } finally {
       setChargement(false);
       setEtapeEnvoi(null);
@@ -391,7 +404,11 @@ export function FormulaireActivite({
         </div>
       )}
 
-      {erreur && <MessageStatut type="erreur">{erreur}</MessageStatut>}
+      {erreur && (
+        <div ref={erreurRef}>
+          <MessageStatut type="erreur">{erreur}</MessageStatut>
+        </div>
+      )}
 
       <form
         onSubmit={gererEnvoi}

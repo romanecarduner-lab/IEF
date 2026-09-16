@@ -15,6 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { creerClientServeur } from "@/lib/supabase/server";
+import { libelleCourtDomaine } from "@/lib/libelleCourtDomaine";
 
 const DUREE_SIGNATURE_SECONDES = 60 * 60;
 
@@ -150,19 +151,19 @@ export default async function PageTableauDeBord() {
 
   return (
     <div>
-      <div className="relative mb-8 overflow-hidden">
+      <div className="relative mb-5 overflow-hidden sm:mb-8">
         <div className="relative z-10 max-w-md">
-          <h1 className="mb-1 font-display text-3xl italic text-encre">
+          <h1 className="mb-1 font-display text-2xl italic text-encre sm:text-3xl">
             Bonjour{prenom ? ` ${prenom}` : ""},
           </h1>
-          <p className="mb-6 text-ardoise">
+          <p className="mb-4 text-sm text-ardoise sm:mb-6 sm:text-base">
             {parcoursPrincipal
               ? `Un regard sur le chemin parcouru par ${parcoursPrincipal.enfant}.`
               : "Un regard sur le chemin parcouru par votre enfant."}
           </p>
           <Link
             href="/journal/nouvelle"
-            className="inline-flex items-center gap-2 rounded-doux bg-mousse-fonce px-6 py-3.5 text-base font-medium text-white shadow-doux transition-colors hover:bg-mousse"
+            className="inline-flex min-h-[48px] items-center gap-2 rounded-doux bg-mousse-fonce px-6 py-3 text-base font-medium text-white shadow-doux transition-colors hover:bg-mousse active:bg-mousse"
           >
             + Ajouter une activité
           </Link>
@@ -176,27 +177,27 @@ export default async function PageTableauDeBord() {
         />
       </div>
 
-      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mb-5 grid grid-cols-2 gap-2.5 sm:mb-8 sm:gap-3">
         {cartes.map((c) => (
           <div
             key={c.libelle}
-            className="rounded-doux border border-trait bg-white/80 p-4 text-center shadow-doux"
+            className="rounded-doux border border-trait bg-white/80 p-3 text-center shadow-doux sm:p-4"
           >
-            <span className="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-lin">
-              <c.Icone className="h-5 w-5 text-mousse-fonce" strokeWidth={1.75} />
+            <span className="mx-auto mb-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-lin sm:mb-2 sm:h-11 sm:w-11">
+              <c.Icone className="h-4 w-4 text-mousse-fonce sm:h-5 sm:w-5" strokeWidth={1.75} />
             </span>
-            <p className="font-display text-2xl italic text-encre">{c.valeur}</p>
+            <p className="font-display text-xl italic text-encre sm:text-2xl">{c.valeur}</p>
             <p className="text-xs text-ardoise">{c.valeur > 1 ? c.pluriel : c.libelle}</p>
           </div>
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-        <div className="rounded-doux border border-trait bg-white/80 p-6 shadow-doux">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-[1fr_360px]">
+        <div className="rounded-doux border border-trait bg-white/80 p-4 shadow-doux sm:p-6">
           {parcoursPrincipal ? (
             <>
               <div className="mb-1 flex flex-wrap items-center gap-2">
-                <p className="font-display text-xl italic text-encre">
+                <p className="font-display text-lg italic text-encre sm:text-xl">
                   Le parcours de {parcoursPrincipal.enfant}
                 </p>
                 <span className="rounded-full bg-lin px-2.5 py-0.5 text-xs text-ardoise">
@@ -206,32 +207,46 @@ export default async function PageTableauDeBord() {
               <p className="mb-2 text-sm font-medium text-encre">
                 Les apprentissages en mouvement
               </p>
-              <p className="mb-4 text-sm text-ardoise">
+              <p className="mb-3 text-sm text-ardoise sm:mb-4">
                 Une vue d&rsquo;ensemble des domaines explorés, à partir des
                 observations validées.
               </p>
 
               {domainesProgression.length > 0 && (
-                <div className="mb-4 space-y-1">
+                <div className="mb-3 sm:mb-4">
                   {domainesProgression.map((d) => {
                     const Icone = iconeDomaine(d.nom);
+                    const nomCourt = libelleCourtDomaine(d.nom);
                     return (
-                      <div key={d.nom} className="flex items-center gap-3 py-1.5">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-lin">
-                          <Icone className="h-4 w-4 text-mousse-fonce" strokeWidth={1.75} />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="mb-1 text-sm text-encre">{d.nom}</p>
-                          <div className="h-2 w-full rounded-full bg-lin">
-                            <div
-                              className="h-2 rounded-full bg-mousse"
-                              style={{ width: `${d.pourcentage}%` }}
-                            />
-                          </div>
+                      <div
+                        key={d.nom}
+                        className="border-b border-trait py-2.5 last:border-b-0"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-lin sm:h-9 sm:w-9">
+                            <Icone className="h-4 w-4 text-mousse-fonce" strokeWidth={1.75} />
+                          </span>
+                          <p className="min-w-0 flex-1 truncate text-sm text-encre">
+                            {nomCourt}
+                          </p>
+                          <span className="shrink-0 text-sm tabular-nums text-ardoise">
+                            {d.pourcentage}%
+                          </span>
                         </div>
-                        <span className="w-10 shrink-0 text-right text-xs text-ardoise">
-                          {d.pourcentage}%
-                        </span>
+                        <div className="ml-11 mt-1.5 h-1.5 rounded-full bg-lin sm:ml-12">
+                          <div
+                            className="h-1.5 rounded-full bg-mousse"
+                            style={{ width: `${d.pourcentage}%` }}
+                          />
+                        </div>
+                        {nomCourt !== d.nom && (
+                          <details className="ml-11 mt-1 sm:ml-12">
+                            <summary className="cursor-pointer text-xs text-mousse-fonce">
+                              Voir l&rsquo;intitulé officiel complet
+                            </summary>
+                            <p className="mt-1 text-xs text-ardoise">{d.nom}</p>
+                          </details>
+                        )}
                       </div>
                     );
                   })}
@@ -240,7 +255,7 @@ export default async function PageTableauDeBord() {
 
               <Link
                 href={`/progression?parcours=${parcoursPrincipal.id}`}
-                className="inline-flex items-center gap-1 text-sm font-medium text-mousse-fonce underline underline-offset-2"
+                className="inline-flex min-h-[44px] items-center gap-1 text-sm font-medium text-mousse-fonce underline underline-offset-2"
               >
                 Voir le détail des compétences →
               </Link>
@@ -253,20 +268,20 @@ export default async function PageTableauDeBord() {
           )}
         </div>
 
-        <div className="space-y-6">
-          <div className="rounded-doux border border-trait bg-white/80 p-5 shadow-doux">
-            <p className="mb-3 font-display text-lg italic text-encre">
+        <div className="space-y-4 sm:space-y-6">
+          <div className="rounded-doux border border-trait bg-white/80 p-4 shadow-doux sm:p-5">
+            <p className="mb-3 font-display text-base italic text-encre sm:text-lg">
               Dernières traces
             </p>
             {traces.length === 0 ? (
               <p className="text-sm text-ardoise">Aucune trace pour l&rsquo;instant.</p>
             ) : (
-              <ul className="mb-3 space-y-2">
+              <ul className="mb-3 space-y-1">
                 {traces.map((t) => (
                   <li key={t.id}>
                     <Link
                       href={t.activiteId ? `/journal/${t.activiteId}` : "/journal"}
-                      className="flex items-center gap-3 rounded-doux p-1.5 hover:bg-lin"
+                      className="flex min-h-[48px] items-center gap-3 rounded-doux p-1.5 hover:bg-lin active:bg-lin"
                     >
                       {t.urlMiniature ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -293,19 +308,19 @@ export default async function PageTableauDeBord() {
             )}
             <Link
               href="/journal?vue=galerie"
-              className="text-sm font-medium text-mousse-fonce underline underline-offset-2"
+              className="inline-flex min-h-[44px] items-center text-sm font-medium text-mousse-fonce underline underline-offset-2"
             >
               Voir toutes les traces →
             </Link>
           </div>
 
-          <div className="flex items-center gap-4 rounded-doux border border-trait bg-white/80 p-5 shadow-doux">
+          <div className="flex items-center gap-4 rounded-doux border border-trait bg-white/80 p-4 shadow-doux sm:p-5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/illustrations/pot-plante.png"
               alt=""
               aria-hidden="true"
-              className="h-24 w-auto shrink-0"
+              className="h-20 w-auto shrink-0 sm:h-24"
             />
             <div>
               <p className="mb-1 font-display text-base italic text-encre">
@@ -317,7 +332,7 @@ export default async function PageTableauDeBord() {
               </p>
               <Link
                 href="/journal/nouvelle"
-                className="inline-flex items-center gap-1.5 rounded-doux bg-mousse-fonce px-3.5 py-2 text-xs font-medium text-white hover:bg-mousse"
+                className="inline-flex min-h-[40px] items-center gap-1.5 rounded-doux bg-mousse-fonce px-3.5 py-2 text-xs font-medium text-white hover:bg-mousse active:bg-mousse"
               >
                 + Ajouter une observation
               </Link>

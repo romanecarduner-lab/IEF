@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { creerClientServeur } from "@/lib/supabase/server";
 import { BoutonDeconnexion } from "@/components/BoutonDeconnexion";
 import { MenuDeroulant } from "@/components/MenuDeroulant";
+import { NavigationBasse } from "@/components/NavigationBasse";
 
 const LIEN_STYLE =
   "block rounded-doux px-3 py-2 text-sm text-encre hover:bg-lin";
@@ -93,7 +94,10 @@ export default async function LayoutProtege({
             <span className="hidden text-trait sm:inline">·</span>
             <span className="hidden text-sm text-ardoise sm:inline">{nomFamille}</span>
           </div>
-          <nav className="flex flex-wrap items-center gap-4 sm:gap-5">
+          {/* Nav horizontale + menu Compte : reserves au desktop/tablette
+              large. Sur mobile, ces destinations vivent dans la
+              navigation basse fixe (Accueil/Journal/+/Progression/Plus). */}
+          <nav className="hidden items-center gap-5 md:flex">
             {LIENS_NAVIGATION.map((lien) => (
               <Link
                 key={lien.href}
@@ -118,7 +122,10 @@ export default async function LayoutProtege({
           </nav>
         </div>
       </header>
-      <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10">{children}</div>
+      <div className="mx-auto max-w-4xl px-4 pb-28 pt-6 sm:px-6 sm:pt-10 md:pb-10">
+        {children}
+      </div>
+      <NavigationBasse />
     </div>
   );
 }

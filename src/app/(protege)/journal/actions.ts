@@ -32,11 +32,13 @@ export type ResultatCreationActivite = { erreur: string } | { id: string };
 export async function creerActivite(
   donnees: DonneesActivite
 ): Promise<ResultatCreationActivite> {
-  if (!donnees.titre.trim()) {
-    return { erreur: "Le titre est requis." };
-  }
-  if (!donnees.parcoursId || !donnees.dateActivite || !donnees.contexteId) {
-    return { erreur: "Le parcours, la date et le contexte sont requis." };
+  const manquants: string[] = [];
+  if (!donnees.parcoursId) manquants.push("l'enfant / l'année");
+  if (!donnees.dateActivite) manquants.push("la date");
+  if (!donnees.contexteId) manquants.push("le contexte");
+  if (!donnees.titre.trim()) manquants.push("le titre");
+  if (manquants.length > 0) {
+    return { erreur: `Il manque : ${manquants.join(", ")}.` };
   }
 
   const supabase = creerClientServeur();
@@ -97,11 +99,12 @@ export async function modifierActivite(
   id: string,
   donnees: DonneesModificationActivite
 ): Promise<{ erreur: string } | { ok: true }> {
-  if (!donnees.titre.trim()) {
-    return { erreur: "Le titre est requis." };
-  }
-  if (!donnees.dateActivite || !donnees.contexteId) {
-    return { erreur: "La date et le contexte sont requis." };
+  const manquants: string[] = [];
+  if (!donnees.dateActivite) manquants.push("la date");
+  if (!donnees.contexteId) manquants.push("le contexte");
+  if (!donnees.titre.trim()) manquants.push("le titre");
+  if (manquants.length > 0) {
+    return { erreur: `Il manque : ${manquants.join(", ")}.` };
   }
 
   const supabase = creerClientServeur();

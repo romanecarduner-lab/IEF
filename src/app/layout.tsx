@@ -29,6 +29,9 @@ export const viewport: Viewport = {
   // Le zoom pincé reste possible (maximumScale volontairement absent) :
   // c'est une aide a l'accessibilite, jamais a desactiver.
   themeColor: "#F6F1E8",
+  // Necessaire pour que env(safe-area-inset-*) renvoie de vraies valeurs
+  // sur iPhone (sinon toujours 0) : utilise par la navigation fixe basse.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
