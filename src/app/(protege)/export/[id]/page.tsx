@@ -4,6 +4,7 @@ import { creerClientServeur } from "@/lib/supabase/server";
 import { BasculeElement } from "./BasculeElement";
 import { EditeurTexteElement } from "./EditeurTexteElement";
 import { BoutonFinaliser } from "./BoutonFinaliser";
+import { BoutonFinaliserJournal } from "./BoutonFinaliserJournal";
 import { BoutonRemplissageAutomatique } from "./BoutonRemplissageAutomatique";
 
 const DUREE_SIGNATURE_SECONDES = 60 * 60;
@@ -18,7 +19,7 @@ export default async function PageDossierExport({
   const { data: dossier } = await supabase
     .from("dossiers_export")
     .select(
-      "id, titre, statut, parcours_id, pdf_final_storage_path, parcours_scolaires(enfants(prenom), annees_scolaires(libelle))"
+      "id, titre, statut, parcours_id, type_dossier, periode_debut, periode_fin, pdf_final_storage_path, parcours_scolaires(enfants(prenom), annees_scolaires(libelle))"
     )
     .eq("id", params.id)
     .maybeSingle();
@@ -50,6 +51,105 @@ export default async function PageDossierExport({
       </p>
     </div>
   );
+
+  // --- Journal d'une periode : editeur volontairement beaucoup plus
+  // simple que le dossier pedagogique (pas de domaines, pas de synthese
+  // IA, pas de points cles a l'oral) -- juste la liste chronologique des
+  // activites de la periode, incluses ou non. Retour anticipe pour ne
+  // jamais toucher a la logique pedagogique plus bas dans ce fichier.
+  if (dossier.type_dossier === "journal_periode") {
+    if (dossier.statut === "finalise") {
+      let urlPdf: string | null = null;
+      if (dossier.pdf_final_storage_path) {
+        const { data } = await supabase.storage
+          .from("traces-pedagogiques")
+          .createSignedUrl(dossier.pdf_final_storage_path, DUREE_SIGNATURE_SECONDES);
+        urlPdf = data?.signedUrl ?? null;
+      }
+      return (
+        <div className="max-w-2xl">
+          {enTete}
+          <div className="rounded-doux border border-mousse/40 bg-mousse/5 p-6 text-center">
+            <p className="mb-4 text-sm text-encre">
+              Ce journal est finalisé et figé.
+            </p>
+            {urlPdf && (
+              <a
+                href={urlPdf}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-block rounded-doux bg-mousse-fonce px-4 py-2.5 text-sm font-medium text-white hover:bg-mousse"
+              >
+                Télécharger le PDF
+              </a>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    const { data: activitesPeriode } = await supabase
+      .from("activites")
+      .select("id, titre, date_activite, contextes_activite(libelle)")
+      .eq("parcours_id", dossier.parcours_id)
+      .gte("date_activite", dossier.periode_debut as string)
+      .lte("date_activite", dossier.periode_fin as string)
+      .order("date_activite", { ascending: true });
+
+    const { data: elementsInclus } = await supabase
+      .from("dossiers_export_elements")
+      .select("activite_id")
+      .eq("dossier_id", dossier.id)
+      .eq("type_element", "activite");
+
+    const idsInclus = new Set((elementsInclus ?? []).map((e) => e.activite_id as string));
+
+    return (
+      <div className="max-w-2xl">
+        {enTete}
+        <p className="mb-4 text-sm text-ardoise">
+          Du {new Date(dossier.periode_debut as string).toLocaleDateString("fr-FR")} au{" "}
+          {new Date(dossier.periode_fin as string).toLocaleDateString("fr-FR")} —{" "}
+          {idsInclus.size} activité{idsInclus.size > 1 ? "s" : ""} incluse
+          {idsInclus.size > 1 ? "s" : ""} sur {activitesPeriode?.length ?? 0}.
+        </p>
+
+        {!activitesPeriode || activitesPeriode.length === 0 ? (
+          <p className="rounded-doux border border-dashed border-trait bg-white/50 p-8 text-center text-sm text-ardoise">
+            Aucune activité enregistrée sur cette période.
+          </p>
+        ) : (
+          <ul className="mb-6 space-y-2">
+            {activitesPeriode.map((a) => {
+              const contexte = Array.isArray(a.contextes_activite)
+                ? a.contextes_activite[0]
+                : a.contextes_activite;
+              return (
+                <li
+                  key={a.id}
+                  className="rounded-doux border border-trait bg-white/80 p-3 shadow-doux"
+                >
+                  <BasculeElement
+                    dossierId={dossier.id}
+                    cibleId={a.id}
+                    inclus={idsInclus.has(a.id)}
+                    type="activite"
+                    label={a.titre as string}
+                  />
+                  <p className="ml-6 text-xs text-ardoise">
+                    {new Date(a.date_activite as string).toLocaleDateString("fr-FR")}
+                    {contexte ? ` · ${contexte.libelle}` : ""}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        <BoutonFinaliserJournal dossierId={dossier.id} />
+      </div>
+    );
+  }
 
   // --- Points cles pour en parler a l'oral : calcules sur l'ensemble du
   // parcours (pas seulement les elements retenus dans ce dossier), pour

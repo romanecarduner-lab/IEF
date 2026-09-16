@@ -9,6 +9,7 @@ import {
   type DomaineDocument,
   type SyntheseDomaineDocument,
 } from "./DocumentDossier";
+import { DocumentJournalPeriode, type ActiviteJournal } from "./DocumentJournalPeriode";
 
 export async function basculerActivite(
   dossierId: string,
@@ -497,6 +498,133 @@ export async function finaliserDossier(
 
   if (erreurUpload) {
     console.error("Erreur upload PDF", erreurUpload);
+    return { erreur: "Impossible d'enregistrer le PDF généré. Merci de réessayer." };
+  }
+
+  await supabase
+    .from("dossiers_export")
+    .update({ statut: "finalise", pdf_final_storage_path: cheminPdf })
+    .eq("id", dossierId);
+
+  revalidatePath(`/export/${dossierId}`);
+  revalidatePath("/export");
+  return { ok: true };
+}
+
+/**
+ * Finalise un dossier de type "journal_periode" : rassemble toutes les
+ * activites incluses, dans l'ordre chronologique, avec leurs traces --
+ * sans regroupement par domaine ni synthese pedagogique, volontairement
+ * plus simple que finaliserDossier (bilan pedagogique annuel).
+ */
+export async function finaliserDossierJournal(
+  dossierId: string
+): Promise<{ erreur: string } | { ok: true }> {
+  const supabase = creerClientServeur();
+
+  const { data: dossier } = await supabase
+    .from("dossiers_export")
+    .select(
+      "id, titre, parcours_id, periode_debut, periode_fin, parcours_scolaires(enfants(prenom, famille_id))"
+    )
+    .eq("id", dossierId)
+    .maybeSingle();
+
+  if (!dossier) return { erreur: "Dossier introuvable." };
+
+  const parcours = Array.isArray(dossier.parcours_scolaires)
+    ? dossier.parcours_scolaires[0]
+    : dossier.parcours_scolaires;
+  const enfant = parcours
+    ? Array.isArray(parcours.enfants)
+      ? parcours.enfants[0]
+      : parcours.enfants
+    : null;
+  const familleId = enfant?.famille_id as string | undefined;
+
+  if (!familleId) return { erreur: "Famille introuvable pour ce dossier." };
+
+  const { data: elements } = await supabase
+    .from("dossiers_export_elements")
+    .select(
+      `activites(id, titre, date_activite, description, observations, contextes_activite(libelle))`
+    )
+    .eq("dossier_id", dossierId)
+    .eq("type_element", "activite");
+
+  const activitesIncluses = (elements ?? [])
+    .map((el) => (Array.isArray(el.activites) ? el.activites[0] : el.activites))
+    .filter((a): a is NonNullable<typeof a> => Boolean(a));
+
+  activitesIncluses.sort((a, b) =>
+    (a.date_activite as string).localeCompare(b.date_activite as string)
+  );
+
+  const activites: ActiviteJournal[] = [];
+  for (const a of activitesIncluses) {
+    const contexte = Array.isArray(a.contextes_activite)
+      ? a.contextes_activite[0]
+      : a.contextes_activite;
+
+    const { data: tracesActivite } = await supabase
+      .from("traces")
+      .select("legende, contenu_texte, chemin_stockage, types_trace(code)")
+      .eq("activite_id", a.id as string)
+      .order("date_trace", { ascending: true });
+
+    const traces: { imageBase64?: string; contenuTexte?: string }[] = [];
+    for (const t of tracesActivite ?? []) {
+      const type = Array.isArray(t.types_trace) ? t.types_trace[0] : t.types_trace;
+      let imageBase64: string | undefined;
+      if (t.chemin_stockage && type?.code === "photo") {
+        const { data: fichier } = await supabase.storage
+          .from("traces-pedagogiques")
+          .download(t.chemin_stockage as string);
+        if (fichier) imageBase64 = Buffer.from(await fichier.arrayBuffer()).toString("base64");
+      }
+      traces.push({
+        imageBase64,
+        contenuTexte: (t.contenu_texte as string | null) ?? undefined,
+      });
+    }
+
+    const texte = [a.description as string | null, a.observations as string | null]
+      .filter(Boolean)
+      .join("\n\n");
+
+    activites.push({
+      titre: a.titre as string,
+      date: a.date_activite as string,
+      contexte: (contexte?.libelle as string | undefined) ?? undefined,
+      texte,
+      traces,
+    });
+  }
+
+  let pdfBuffer: Buffer;
+  try {
+    pdfBuffer = await renderToBuffer(
+      DocumentJournalPeriode({
+        titreDossier: dossier.titre as string,
+        enfant: (enfant?.prenom as string) ?? "",
+        periodeDebut: dossier.periode_debut as string,
+        periodeFin: dossier.periode_fin as string,
+        dateGeneration: new Date().toLocaleDateString("fr-FR"),
+        activites,
+      })
+    );
+  } catch (erreurPdf) {
+    console.error("Erreur lors de la generation du PDF (journal periode)", erreurPdf);
+    return { erreur: "La génération du PDF a échoué. Merci de réessayer." };
+  }
+
+  const cheminPdf = `${familleId}/dossiers/${dossierId}.pdf`;
+  const { error: erreurUpload } = await supabase.storage
+    .from("traces-pedagogiques")
+    .upload(cheminPdf, pdfBuffer, { contentType: "application/pdf", upsert: true });
+
+  if (erreurUpload) {
+    console.error("Erreur upload PDF (journal periode)", erreurUpload);
     return { erreur: "Impossible d'enregistrer le PDF généré. Merci de réessayer." };
   }
 

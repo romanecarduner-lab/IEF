@@ -8,7 +8,7 @@ export default async function PageExport() {
   const { data: dossiersBruts } = await supabase
     .from("dossiers_export")
     .select(
-      "id, titre, statut, created_at, parcours_scolaires(enfants(prenom), annees_scolaires(libelle))"
+      "id, titre, statut, type_dossier, created_at, parcours_scolaires(enfants(prenom), annees_scolaires(libelle))"
     )
     .order("created_at", { ascending: false });
 
@@ -30,6 +30,7 @@ export default async function PageExport() {
       id: d.id as string,
       titre: d.titre as string,
       statut: d.statut as string,
+      typeDossier: (d.type_dossier as string | null) ?? "pedagogique",
       enfant: enfant?.prenom as string | undefined,
       annee: annee?.libelle as string | undefined,
     };
@@ -70,15 +71,22 @@ export default async function PageExport() {
                 <p className="text-sm text-ardoise">
                   {d.enfant} · {d.annee}
                 </p>
-                <span
-                  className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs ${
-                    d.statut === "finalise"
-                      ? "bg-mousse/10 text-mousse-fonce"
-                      : "bg-trait text-ardoise"
-                  }`}
-                >
-                  {d.statut === "finalise" ? "Finalisé" : "Brouillon"}
-                </span>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  <span
+                    className={`inline-block rounded-full px-2.5 py-0.5 text-xs ${
+                      d.statut === "finalise"
+                        ? "bg-mousse/10 text-mousse-fonce"
+                        : "bg-trait text-ardoise"
+                    }`}
+                  >
+                    {d.statut === "finalise" ? "Finalisé" : "Brouillon"}
+                  </span>
+                  {d.typeDossier === "journal_periode" && (
+                    <span className="inline-block rounded-full bg-argile/10 px-2.5 py-0.5 text-xs text-argile">
+                      Journal
+                    </span>
+                  )}
+                </div>
               </div>
               <form action={supprimerDossier.bind(null, d.id)}>
                 <button

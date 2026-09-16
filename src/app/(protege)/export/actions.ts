@@ -11,8 +11,7 @@ export async function creerDossier(
 ): Promise<{ erreur?: string }> {
   const titre = String(donnees.get("titre") ?? "").trim();
   const parcoursId = String(donnees.get("parcours_id") ?? "");
-  const remplissageAuto = donnees.get("remplissage_auto") === "on";
-  const maxParDomaine = Number(donnees.get("max_par_domaine") ?? 3) || 3;
+  const typeDossier = String(donnees.get("type_dossier") ?? "pedagogique");
 
   if (!titre || !parcoursId) {
     return { erreur: "Le titre et le parcours sont requis." };
@@ -27,11 +26,69 @@ export async function creerDossier(
     return { erreur: "Votre session a expiré. Merci de vous reconnecter." };
   }
 
+  if (typeDossier === "journal_periode") {
+    const periodeDebut = String(donnees.get("periode_debut") ?? "");
+    const periodeFin = String(donnees.get("periode_fin") ?? "");
+
+    if (!periodeDebut || !periodeFin) {
+      return { erreur: "Les deux dates de la période sont requises." };
+    }
+    if (periodeDebut > periodeFin) {
+      return { erreur: "La date de début doit précéder la date de fin." };
+    }
+
+    const { data: dossier, error } = await supabase
+      .from("dossiers_export")
+      .insert({
+        parcours_id: parcoursId,
+        titre,
+        type_dossier: "journal_periode",
+        periode_debut: periodeDebut,
+        periode_fin: periodeFin,
+        created_par: user.id,
+        created_par_nom_affiche: user.email ?? "Parent",
+      })
+      .select("id")
+      .single();
+
+    if (error || !dossier) {
+      return { erreur: "Impossible de créer ce dossier. Merci de réessayer." };
+    }
+
+    // Toutes les activites de la periode sont incluses par defaut -- le
+    // parent pourra en retirer certaines dans l'editeur avant de finaliser.
+    const { data: activites } = await supabase
+      .from("activites")
+      .select("id, date_activite")
+      .eq("parcours_id", parcoursId)
+      .gte("date_activite", periodeDebut)
+      .lte("date_activite", periodeFin)
+      .order("date_activite", { ascending: true });
+
+    if (activites && activites.length > 0) {
+      await supabase.from("dossiers_export_elements").insert(
+        activites.map((a, index) => ({
+          dossier_id: dossier.id,
+          type_element: "activite",
+          activite_id: a.id,
+          ordre: index,
+        }))
+      );
+    }
+
+    revalidatePath("/export");
+    redirect(`/export/${dossier.id}`);
+  }
+
+  const remplissageAuto = donnees.get("remplissage_auto") === "on";
+  const maxParDomaine = Number(donnees.get("max_par_domaine") ?? 3) || 3;
+
   const { data, error } = await supabase
     .from("dossiers_export")
     .insert({
       parcours_id: parcoursId,
       titre,
+      type_dossier: "pedagogique",
       created_par: user.id,
       created_par_nom_affiche: user.email ?? "Parent",
     })
