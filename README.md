@@ -434,6 +434,37 @@ formulation pédagogique) réessaient maintenant automatiquement une fois
 si la réponse est vide ou coupée, avant d'abandonner. Ne devrait plus se
 produire que très rarement.
 
+## Correction critique — timeout à la finalisation d'un dossier pédagogique volumineux
+
+Cause : plusieurs boucles enchaînaient des appels réseau **un par un**
+(téléchargement de chaque photo, requête de compétences par activité,
+recherche de domaine par compétence — parfois refaite deux fois pour la
+même donnée). Avec un volume croissant d'activités et de traces, ça finit
+par dépasser largement le délai de sécurité. Réécrit pour :
+- télécharger toutes les photos en parallèle plutôt qu'une par une ;
+- récupérer les observations de toutes les activités en une seule
+  requête plutôt qu'une par activité ;
+- mettre en cache chaque chemin de domaine déjà résolu, pour ne jamais
+  refaire deux fois le même appel (le même domaine revient très souvent
+  d'une compétence à l'autre) ;
+- écrire les instantanés de sauvegarde en parallèle.
+
+Délai de sécurité côté client aussi porté à 90 secondes par prudence
+supplémentaire.
+
+## Export PowerPoint avec photos intégrées, en plus du PDF (pour Canva)
+
+Correction de ma proposition précédente (un .txt ne peut pas contenir de
+photo) : le second bouton propose maintenant un vrai fichier
+**PowerPoint (.pptx)**, généré avec `pptxgenjs` — Canva sait l'importer
+nativement (Fichier → Importer) et transforme chaque diapositive en
+design modifiable, texte et photos compris. Une diapositive par
+activité (titre, date, contexte, description, photo). Généré et stocké
+en même temps que le PDF à la finalisation (nouvelle colonne
+`pptx_final_storage_path`), sans étape supplémentaire. Testé en conditions
+réelles (génération + vérification de la structure du fichier) avant
+livraison, pas seulement la compilation.
+
 ## Nouveau type d'export : journal d'une période (semaine, mois, dates libres)
 
 Sur "Nouveau dossier", un choix apparaît maintenant en premier :
