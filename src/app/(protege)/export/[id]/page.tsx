@@ -19,7 +19,7 @@ export default async function PageDossierExport({
   const { data: dossier } = await supabase
     .from("dossiers_export")
     .select(
-      "id, titre, statut, parcours_id, type_dossier, periode_debut, periode_fin, pdf_final_storage_path, parcours_scolaires(enfants(prenom), annees_scolaires(libelle))"
+      "id, titre, statut, parcours_id, type_dossier, periode_debut, periode_fin, pdf_final_storage_path, pptx_final_storage_path, parcours_scolaires(enfants(prenom), annees_scolaires(libelle))"
     )
     .eq("id", params.id)
     .maybeSingle();
@@ -66,6 +66,13 @@ export default async function PageDossierExport({
           .createSignedUrl(dossier.pdf_final_storage_path, DUREE_SIGNATURE_SECONDES);
         urlPdf = data?.signedUrl ?? null;
       }
+      let urlPptx: string | null = null;
+      if (dossier.pptx_final_storage_path) {
+        const { data } = await supabase.storage
+          .from("traces-pedagogiques")
+          .createSignedUrl(dossier.pptx_final_storage_path, DUREE_SIGNATURE_SECONDES);
+        urlPptx = data?.signedUrl ?? null;
+      }
       return (
         <div className="max-w-2xl">
           {enTete}
@@ -73,16 +80,28 @@ export default async function PageDossierExport({
             <p className="mb-4 text-sm text-encre">
               Ce journal est finalisé et figé.
             </p>
-            {urlPdf && (
-              <a
-                href={urlPdf}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-block rounded-doux bg-mousse-fonce px-4 py-2.5 text-sm font-medium text-white hover:bg-mousse"
-              >
-                Télécharger le PDF
-              </a>
-            )}
+            <div className="flex flex-wrap justify-center gap-3">
+              {urlPdf && (
+                <a
+                  href={urlPdf}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-block rounded-doux bg-mousse-fonce px-4 py-2.5 text-sm font-medium text-white hover:bg-mousse"
+                >
+                  Télécharger le PDF
+                </a>
+              )}
+              {urlPptx && (
+                <a
+                  href={urlPptx}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-block rounded-doux border border-mousse-fonce px-4 py-2.5 text-sm font-medium text-mousse-fonce hover:bg-mousse/10"
+                >
+                  Télécharger en PowerPoint (pour Canva…)
+                </a>
+              )}
+            </div>
           </div>
         </div>
       );
@@ -242,6 +261,13 @@ export default async function PageDossierExport({
         .createSignedUrl(dossier.pdf_final_storage_path, DUREE_SIGNATURE_SECONDES);
       urlPdf = data?.signedUrl ?? null;
     }
+    let urlPptx: string | null = null;
+    if (dossier.pptx_final_storage_path) {
+      const { data } = await supabase.storage
+        .from("traces-pedagogiques")
+        .createSignedUrl(dossier.pptx_final_storage_path, DUREE_SIGNATURE_SECONDES);
+      urlPptx = data?.signedUrl ?? null;
+    }
 
     const { data: elementsSnapshot } = await supabase
       .from("dossiers_export_elements")
@@ -257,16 +283,28 @@ export default async function PageDossierExport({
 
         {pointsCles}
 
-        {urlPdf && (
-          <p className="mb-6">
-            <a
-              href={urlPdf}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-doux bg-mousse-fonce px-4 py-2.5 text-sm font-medium text-white hover:bg-mousse"
-            >
-              Télécharger le PDF
-            </a>
+        {(urlPdf || urlPptx) && (
+          <p className="mb-6 flex flex-wrap gap-3">
+            {urlPdf && (
+              <a
+                href={urlPdf}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-doux bg-mousse-fonce px-4 py-2.5 text-sm font-medium text-white hover:bg-mousse"
+              >
+                Télécharger le PDF
+              </a>
+            )}
+            {urlPptx && (
+              <a
+                href={urlPptx}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-doux border border-mousse-fonce px-4 py-2.5 text-sm font-medium text-mousse-fonce hover:bg-mousse/10"
+              >
+                Télécharger en PowerPoint (pour Canva…)
+              </a>
+            )}
           </p>
         )}
 

@@ -10,6 +10,7 @@ import {
   type SyntheseDomaineDocument,
 } from "./DocumentDossier";
 import { DocumentJournalPeriode, type ActiviteJournal } from "./DocumentJournalPeriode";
+import { genererPptxDossierPedagogique, genererPptxJournalPeriode } from "@/lib/pptxExport";
 
 export async function basculerActivite(
   dossierId: string,
@@ -248,37 +249,96 @@ export async function finaliserDossier(
   const activiteEls = (elements ?? []).filter((e) => e.type_element === "activite");
   const traceEls = (elements ?? []).filter((e) => e.type_element === "trace");
 
+  // Cache partage des chemins hierarchiques (element parent -> domaine) :
+  // un meme domaine est reference par de nombreuses observations et
+  // syntheses a travers toute la fonction -- un seul appel reseau par
+  // parent_id distinct, jamais deux fois le meme.
+  const cheminParParentId = new Map<string, string | null>();
+  async function chemin(parentId: string): Promise<string | null> {
+    if (cheminParParentId.has(parentId)) return cheminParParentId.get(parentId) ?? null;
+    const { data } = await supabase.rpc("chemin_element_programme", { p_element_id: parentId });
+    const valeur = (data as string | null) ?? null;
+    cheminParParentId.set(parentId, valeur);
+    return valeur;
+  }
+
   // Regroupe les traces incluses par activite source, pour les integrer
   // directement sous l'activite plutot que dans une section a part.
+  // Telechargements en parallele (jusqu'ici sequentiels, devenu trop
+  // lent avec un volume d'activites/traces important).
+  const traceResultats = await Promise.all(
+    traceEls.map(async (el) => {
+      const t = Array.isArray(el.traces) ? el.traces[0] : el.traces;
+      if (!t || !t.activite_id) return null;
+      const type = Array.isArray(t.types_trace) ? t.types_trace[0] : t.types_trace;
+
+      let imageBase64: string | undefined;
+      if (t.chemin_stockage && type?.code === "photo") {
+        const { data: fichier } = await supabase.storage
+          .from("traces-pedagogiques")
+          .download(t.chemin_stockage as string);
+        if (fichier) imageBase64 = Buffer.from(await fichier.arrayBuffer()).toString("base64");
+      }
+
+      return {
+        activiteId: t.activite_id as string,
+        trace: {
+          imageBase64,
+          contenuTexte: (t.contenu_texte as string | null) ?? undefined,
+          legende: (t.legende as string | null) ?? undefined,
+        },
+      };
+    })
+  );
+
   const tracesParActivite = new Map<
     string,
     { imageBase64?: string; contenuTexte?: string; legende?: string }[]
   >();
-  for (const el of traceEls) {
-    const t = Array.isArray(el.traces) ? el.traces[0] : el.traces;
-    if (!t || !t.activite_id) continue;
-    const type = Array.isArray(t.types_trace) ? t.types_trace[0] : t.types_trace;
+  for (const r of traceResultats) {
+    if (!r) continue;
+    const liste = tracesParActivite.get(r.activiteId) ?? [];
+    liste.push(r.trace);
+    tracesParActivite.set(r.activiteId, liste);
+  }
 
-    let imageBase64: string | undefined;
-    if (t.chemin_stockage && type?.code === "photo") {
-      const { data: fichier } = await supabase.storage
-        .from("traces-pedagogiques")
-        .download(t.chemin_stockage as string);
-      if (fichier) imageBase64 = Buffer.from(await fichier.arrayBuffer()).toString("base64");
-    }
+  // Observations de toutes les activites incluses, en une seule requete
+  // (au lieu d'une requete par activite) -- puis les domaines associes
+  // sont resolus via le cache partage ci-dessus.
+  const activiteIds = activiteEls
+    .map((el) => (Array.isArray(el.activites) ? el.activites[0] : el.activites)?.id)
+    .filter((id): id is string => Boolean(id));
 
-    const liste = tracesParActivite.get(t.activite_id as string) ?? [];
-    liste.push({
-      imageBase64,
-      contenuTexte: (t.contenu_texte as string | null) ?? undefined,
-      legende: (t.legende as string | null) ?? undefined,
-    });
-    tracesParActivite.set(t.activite_id as string, liste);
+  const { data: toutesObservations } =
+    activiteIds.length > 0
+      ? await supabase
+          .from("observations_elements_programme")
+          .select("activite_id, niveaux_autonomie(libelle), elements_programme(libelle, parent_id)")
+          .in("activite_id", activiteIds)
+      : { data: [] };
+
+  // Pre-charge en parallele tous les chemins necessaires (domaines des
+  // observations), dedupliques par parent_id distinct.
+  const parentIdsObservations = new Set<string>();
+  for (const obs of toutesObservations ?? []) {
+    const element = Array.isArray(obs.elements_programme)
+      ? obs.elements_programme[0]
+      : obs.elements_programme;
+    if (element?.parent_id) parentIdsObservations.add(element.parent_id as string);
+  }
+  await Promise.all(Array.from(parentIdsObservations).map((pid) => chemin(pid)));
+
+  const observationsParActivite = new Map<string, typeof toutesObservations>();
+  for (const obs of toutesObservations ?? []) {
+    const liste = observationsParActivite.get(obs.activite_id as string) ?? [];
+    liste.push(obs);
+    observationsParActivite.set(obs.activite_id as string, liste);
   }
 
   // Pour chaque activite incluse, retrouve les competences observees et
-  // leur domaine (via le chemin hierarchique), pour regrouper le dossier
-  // par domaine plutot que par simple ordre chronologique.
+  // leur domaine (deja resolu ci-dessus, plus aucun appel reseau ici) pour
+  // regrouper le dossier par domaine plutot que par simple ordre
+  // chronologique.
   const domainesMap = new Map<string, ActiviteDocument[]>();
   const sansDomaine: ActiviteDocument[] = [];
   let nbActivitesTotal = 0;
@@ -296,11 +356,7 @@ export async function finaliserDossier(
       "";
     const traces = tracesParActivite.get(a.id as string) ?? [];
 
-    const { data: observations } = await supabase
-      .from("observations_elements_programme")
-      .select("niveaux_autonomie(libelle), elements_programme(libelle, parent_id)")
-      .eq("activite_id", a.id);
-
+    const observations = observationsParActivite.get(a.id as string) ?? [];
     const domainesActivite = new Map<string, { libelle: string; niveauAutonomie: string }[]>();
 
     for (const obs of observations ?? []) {
@@ -310,12 +366,10 @@ export async function finaliserDossier(
       const element = Array.isArray(obs.elements_programme)
         ? obs.elements_programme[0]
         : obs.elements_programme;
-      if (!element) continue;
+      if (!element?.parent_id) continue;
 
-      const { data: chemin } = await supabase.rpc("chemin_element_programme", {
-        p_element_id: element.parent_id as string,
-      });
-      const domaineNom = (chemin as string | null)?.split(" > ")[0] ?? "Autres";
+      const cheminValeur = cheminParParentId.get(element.parent_id as string) ?? null;
+      const domaineNom = cheminValeur?.split(" > ")[0] ?? "Autres";
 
       const liste = domainesActivite.get(domaineNom) ?? [];
       liste.push({
@@ -348,22 +402,33 @@ export async function finaliserDossier(
         domainesMap.set(domaineNom, listeActivites);
       }
     }
-
-    // Copie l'instantane des donnees de l'activite au moment de la finalisation.
-    await supabase
-      .from("dossiers_export_elements")
-      .update({ snapshot_titre: a.titre, snapshot_date: a.date_activite, snapshot_texte: texteFinal })
-      .eq("id", el.id);
   }
 
-  for (const el of traceEls) {
-    const t = Array.isArray(el.traces) ? el.traces[0] : el.traces;
-    if (!t) continue;
-    await supabase
-      .from("dossiers_export_elements")
-      .update({ snapshot_legende: t.legende, snapshot_chemin_fichier: t.chemin_stockage })
-      .eq("id", el.id);
-  }
+  // Instantanes des activites et traces au moment de la finalisation --
+  // toutes les ecritures en parallele plutot qu'une par une.
+  await Promise.all([
+    ...activiteEls.map((el) => {
+      const a = Array.isArray(el.activites) ? el.activites[0] : el.activites;
+      if (!a) return Promise.resolve();
+      const texteFinal =
+        (el.texte_synthese_modifie as string | null) ||
+        [a.description, a.observations].filter(Boolean).join(" — ") ||
+        "";
+      return supabase
+        .from("dossiers_export_elements")
+        .update({ snapshot_titre: a.titre, snapshot_date: a.date_activite, snapshot_texte: texteFinal })
+        .eq("id", el.id);
+    }),
+    ...traceEls.map((el) => {
+      const t = Array.isArray(el.traces) ? el.traces[0] : el.traces;
+      if (!t) return Promise.resolve();
+      return supabase
+        .from("dossiers_export_elements")
+        .update({ snapshot_legende: t.legende, snapshot_chemin_fichier: t.chemin_stockage })
+        .eq("id", el.id);
+    }),
+  ]);
+
 
   // --- Synthese de progression par domaine, pour ce parcours (graphique) ---
   const [{ data: totauxDomaine }, { data: repartitionDomaine }] = await Promise.all([
@@ -403,7 +468,28 @@ export async function finaliserDossier(
   };
   const detailParDomaine = new Map<string, Map<string, GroupeStatut>>();
 
-  for (const s of syntheseDetail ?? []) {
+  const syntheseDetailValides = (syntheseDetail ?? []).filter((s) => {
+    const statut = Array.isArray(s.statuts_progression)
+      ? s.statuts_progression[0]
+      : s.statuts_progression;
+    const element = Array.isArray(s.elements_programme)
+      ? s.elements_programme[0]
+      : s.elements_programme;
+    return statut && element?.parent_id && statut.code !== "non_encore_observe";
+  });
+
+  // Complete le cache partage avec les parent_id pas deja resolus plus
+  // haut (nouveau lot d'appels en parallele, uniquement pour ceux qui
+  // manquent -- la plupart sont deja en cache).
+  const parentIdsRestants = new Set<string>();
+  for (const s of syntheseDetailValides) {
+    const element = Array.isArray(s.elements_programme) ? s.elements_programme[0] : s.elements_programme;
+    const parentId = element?.parent_id as string | undefined;
+    if (parentId && !cheminParParentId.has(parentId)) parentIdsRestants.add(parentId);
+  }
+  await Promise.all(Array.from(parentIdsRestants).map((pid) => chemin(pid)));
+
+  for (const s of syntheseDetailValides) {
     const statut = Array.isArray(s.statuts_progression)
       ? s.statuts_progression[0]
       : s.statuts_progression;
@@ -411,12 +497,9 @@ export async function finaliserDossier(
       ? s.elements_programme[0]
       : s.elements_programme;
     if (!statut || !element?.parent_id) continue;
-    if (statut.code === "non_encore_observe") continue; // rien de significatif a lister
 
-    const { data: chemin } = await supabase.rpc("chemin_element_programme", {
-      p_element_id: element.parent_id as string,
-    });
-    const domaineNom = (chemin as string | null)?.split(" > ")[0];
+    const cheminValeur = cheminParParentId.get(element.parent_id as string) ?? null;
+    const domaineNom = cheminValeur?.split(" > ")[0];
     if (!domaineNom) continue;
 
     const groupes = detailParDomaine.get(domaineNom) ?? new Map<string, GroupeStatut>();
@@ -501,9 +584,42 @@ export async function finaliserDossier(
     return { erreur: "Impossible d'enregistrer le PDF généré. Merci de réessayer." };
   }
 
+  // Version PowerPoint, en plus du PDF -- photos et texte deja places
+  // sur des diapositives, importable directement dans Canva (texte et
+  // images y restent modifiables). Non bloquant : si cette partie
+  // echoue, le PDF reste disponible normalement.
+  let cheminPptx: string | null = null;
+  try {
+    const pptxBuffer = await genererPptxDossierPedagogique({
+      titreDossier: dossier.titre as string,
+      enfant: (enfant?.prenom as string) ?? "",
+      annee: (annee?.libelle as string) ?? "",
+      cycle: (cycle?.libelle as string) ?? undefined,
+      domaines,
+      activitesSansDomaine: sansDomaine,
+    });
+    cheminPptx = `${familleId}/dossiers/${dossierId}.pptx`;
+    const { error: erreurUploadPptx } = await supabase.storage
+      .from("traces-pedagogiques")
+      .upload(cheminPptx, pptxBuffer, {
+        contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        upsert: true,
+      });
+    if (erreurUploadPptx) {
+      console.error("Erreur upload PowerPoint", erreurUploadPptx);
+      cheminPptx = null;
+    }
+  } catch (erreurPptx) {
+    console.error("Erreur lors de la generation du PowerPoint", erreurPptx);
+  }
+
   await supabase
     .from("dossiers_export")
-    .update({ statut: "finalise", pdf_final_storage_path: cheminPdf })
+    .update({
+      statut: "finalise",
+      pdf_final_storage_path: cheminPdf,
+      pptx_final_storage_path: cheminPptx,
+    })
     .eq("id", dossierId);
 
   revalidatePath(`/export/${dossierId}`);
@@ -628,9 +744,37 @@ export async function finaliserDossierJournal(
     return { erreur: "Impossible d'enregistrer le PDF généré. Merci de réessayer." };
   }
 
+  let cheminPptx: string | null = null;
+  try {
+    const pptxBuffer = await genererPptxJournalPeriode({
+      titreDossier: dossier.titre as string,
+      enfant: (enfant?.prenom as string) ?? "",
+      periodeDebut: dossier.periode_debut as string,
+      periodeFin: dossier.periode_fin as string,
+      activites,
+    });
+    cheminPptx = `${familleId}/dossiers/${dossierId}.pptx`;
+    const { error: erreurUploadPptx } = await supabase.storage
+      .from("traces-pedagogiques")
+      .upload(cheminPptx, pptxBuffer, {
+        contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        upsert: true,
+      });
+    if (erreurUploadPptx) {
+      console.error("Erreur upload PowerPoint (journal periode)", erreurUploadPptx);
+      cheminPptx = null;
+    }
+  } catch (erreurPptx) {
+    console.error("Erreur lors de la generation du PowerPoint (journal periode)", erreurPptx);
+  }
+
   await supabase
     .from("dossiers_export")
-    .update({ statut: "finalise", pdf_final_storage_path: cheminPdf })
+    .update({
+      statut: "finalise",
+      pdf_final_storage_path: cheminPdf,
+      pptx_final_storage_path: cheminPptx,
+    })
     .eq("id", dossierId);
 
   revalidatePath(`/export/${dossierId}`);
