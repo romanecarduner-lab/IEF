@@ -95,30 +95,56 @@ export async function remplirBilanAutomatique(
   // competences deja reliees (lot 6). Une activite sans competence reliee
   // ne peut pas etre selectionnee automatiquement : elle reste a ajouter
   // a la main si besoin.
+  //
+  // Tout est recupere en une seule requete puis resolu en parallele
+  // (au lieu d'une requete + un appel reseau par competence et par
+  // activite) : avec un volume d'activites important, la version
+  // sequentielle finissait par depasser largement le delai de securite.
+  const activiteIds = activites.map((a) => a.id as string);
+  const { data: toutesObservations } = await supabase
+    .from("observations_elements_programme")
+    .select("activite_id, elements_programme(parent_id)")
+    .in("activite_id", activiteIds);
+
+  const parentIds = new Set<string>();
+  for (const o of toutesObservations ?? []) {
+    const element = Array.isArray(o.elements_programme)
+      ? o.elements_programme[0]
+      : o.elements_programme;
+    if (element?.parent_id) parentIds.add(element.parent_id as string);
+  }
+
+  const domaineParParentId = new Map<string, string | null>();
+  await Promise.all(
+    Array.from(parentIds).map(async (pid) => {
+      const { data: chemin } = await supabase.rpc("chemin_element_programme", {
+        p_element_id: pid,
+      });
+      domaineParParentId.set(pid, (chemin as string | null)?.split(" > ")[0] ?? null);
+    })
+  );
+
+  const domainesParActivite = new Map<string, Set<string>>();
+  for (const o of toutesObservations ?? []) {
+    const element = Array.isArray(o.elements_programme)
+      ? o.elements_programme[0]
+      : o.elements_programme;
+    const domaine = element?.parent_id
+      ? domaineParParentId.get(element.parent_id as string)
+      : null;
+    if (!domaine) continue;
+    const set = domainesParActivite.get(o.activite_id as string) ?? new Set<string>();
+    set.add(domaine);
+    domainesParActivite.set(o.activite_id as string, set);
+  }
+
   const candidatsParDomaine = new Map<
     string,
     { id: string; favori: boolean; date: string }[]
   >();
 
   for (const a of activites) {
-    const { data: obs } = await supabase
-      .from("observations_elements_programme")
-      .select("elements_programme(parent_id)")
-      .eq("activite_id", a.id);
-
-    const domainesActivite = new Set<string>();
-    for (const o of obs ?? []) {
-      const element = Array.isArray(o.elements_programme)
-        ? o.elements_programme[0]
-        : o.elements_programme;
-      if (!element?.parent_id) continue;
-      const { data: chemin } = await supabase.rpc("chemin_element_programme", {
-        p_element_id: element.parent_id as string,
-      });
-      const domaine = (chemin as string | null)?.split(" > ")[0];
-      if (domaine) domainesActivite.add(domaine);
-    }
-
+    const domainesActivite = domainesParActivite.get(a.id as string) ?? new Set<string>();
     for (const domaine of domainesActivite) {
       const liste = candidatsParDomaine.get(domaine) ?? [];
       liste.push({ id: a.id as string, favori: Boolean(a.favori), date: a.date_activite as string });
@@ -676,20 +702,22 @@ export async function finaliserDossierJournal(
     (a.date_activite as string).localeCompare(b.date_activite as string)
   );
 
-  const activites: ActiviteJournal[] = [];
-  for (const a of activitesIncluses) {
-    const contexte = Array.isArray(a.contextes_activite)
-      ? a.contextes_activite[0]
-      : a.contextes_activite;
+  const idsActivitesIncluses = activitesIncluses.map((a) => a.id as string);
+  const { data: tracesToutesActivites } =
+    idsActivitesIncluses.length > 0
+      ? await supabase
+          .from("traces")
+          .select("activite_id, legende, contenu_texte, chemin_stockage, types_trace(code)")
+          .in("activite_id", idsActivitesIncluses)
+          .order("date_trace", { ascending: true })
+      : { data: [] };
 
-    const { data: tracesActivite } = await supabase
-      .from("traces")
-      .select("legende, contenu_texte, chemin_stockage, types_trace(code)")
-      .eq("activite_id", a.id as string)
-      .order("date_trace", { ascending: true });
-
-    const traces: { imageBase64?: string; contenuTexte?: string }[] = [];
-    for (const t of tracesActivite ?? []) {
+  // Telechargement de toutes les photos en parallele (au lieu d'une par
+  // une, activite par activite) -- meme correctif que finaliserDossier,
+  // applique ici aussi pour eviter le meme depassement de delai sur une
+  // periode chargee.
+  const tracesResolues = await Promise.all(
+    (tracesToutesActivites ?? []).map(async (t) => {
       const type = Array.isArray(t.types_trace) ? t.types_trace[0] : t.types_trace;
       let imageBase64: string | undefined;
       if (t.chemin_stockage && type?.code === "photo") {
@@ -698,11 +726,33 @@ export async function finaliserDossierJournal(
           .download(t.chemin_stockage as string);
         if (fichier) imageBase64 = Buffer.from(await fichier.arrayBuffer()).toString("base64");
       }
-      traces.push({
-        imageBase64,
-        contenuTexte: (t.contenu_texte as string | null) ?? undefined,
-      });
-    }
+      return {
+        activiteId: t.activite_id as string,
+        trace: {
+          imageBase64,
+          contenuTexte: (t.contenu_texte as string | null) ?? undefined,
+        },
+      };
+    })
+  );
+
+  const tracesParActiviteJournal = new Map<
+    string,
+    { imageBase64?: string; contenuTexte?: string }[]
+  >();
+  for (const r of tracesResolues) {
+    const liste = tracesParActiviteJournal.get(r.activiteId) ?? [];
+    liste.push(r.trace);
+    tracesParActiviteJournal.set(r.activiteId, liste);
+  }
+
+  const activites: ActiviteJournal[] = [];
+  for (const a of activitesIncluses) {
+    const contexte = Array.isArray(a.contextes_activite)
+      ? a.contextes_activite[0]
+      : a.contextes_activite;
+
+    const traces = tracesParActiviteJournal.get(a.id as string) ?? [];
 
     const texte = [a.description as string | null, a.observations as string | null]
       .filter(Boolean)

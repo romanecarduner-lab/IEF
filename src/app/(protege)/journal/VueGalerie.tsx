@@ -35,16 +35,31 @@ export async function VueGalerie({
       .from("observations_elements_programme")
       .select("activite_id, elements_programme(parent_id)");
 
+    const parentIds = new Set<string>();
+    for (const o of observations ?? []) {
+      const element = Array.isArray(o.elements_programme)
+        ? o.elements_programme[0]
+        : o.elements_programme;
+      if (element?.parent_id) parentIds.add(element.parent_id as string);
+    }
+
+    const domaineParParentId = new Map<string, string | null>();
+    await Promise.all(
+      Array.from(parentIds).map(async (pid) => {
+        const { data: chemin } = await supabase.rpc("chemin_element_programme", {
+          p_element_id: pid,
+        });
+        domaineParParentId.set(pid, (chemin as string | null)?.split(" > ")[0] ?? null);
+      })
+    );
+
     const idsRetenus = new Set<string>();
     for (const o of observations ?? []) {
       const element = Array.isArray(o.elements_programme)
         ? o.elements_programme[0]
         : o.elements_programme;
       if (!element?.parent_id) continue;
-      const { data: chemin } = await supabase.rpc("chemin_element_programme", {
-        p_element_id: element.parent_id as string,
-      });
-      if ((chemin as string | null)?.split(" > ")[0] === domaineChoisi) {
+      if (domaineParParentId.get(element.parent_id as string) === domaineChoisi) {
         idsRetenus.add(o.activite_id as string);
       }
     }

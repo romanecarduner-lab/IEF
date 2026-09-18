@@ -16,7 +16,7 @@ export function BoutonFinaliserJournal({ dossierId }: { dossierId: string }) {
     setEnCours(true);
     setErreur(null);
     try {
-      const resultat = await avecDelaiMaximal(finaliserDossierJournal(dossierId), 45000);
+      const resultat = await avecDelaiMaximal(finaliserDossierJournal(dossierId), 60000);
       if ("erreur" in resultat) {
         setErreur(resultat.erreur);
         return;

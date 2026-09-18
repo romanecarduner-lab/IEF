@@ -98,13 +98,16 @@ export async function exporterFichiersZIP(): Promise<
   }
 
   const zip = new JSZip();
-  for (const chemin of chemins) {
-    const { data: fichier } = await supabase.storage
-      .from("traces-pedagogiques")
-      .download(chemin);
-    if (fichier) {
-      zip.file(chemin.split("/").slice(1).join("/"), await fichier.arrayBuffer());
-    }
+  const fichiersTelecharges = await Promise.all(
+    chemins.map(async (chemin) => {
+      const { data: fichier } = await supabase.storage
+        .from("traces-pedagogiques")
+        .download(chemin);
+      return fichier ? { chemin, contenu: await fichier.arrayBuffer() } : null;
+    })
+  );
+  for (const f of fichiersTelecharges) {
+    if (f) zip.file(f.chemin.split("/").slice(1).join("/"), f.contenu);
   }
 
   const buffer = await zip.generateAsync({ type: "nodebuffer" });

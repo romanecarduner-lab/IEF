@@ -26,7 +26,7 @@ export function BoutonRemplissageAutomatique({
     try {
       const resultat = await avecDelaiMaximal(
         remplirBilanAutomatique(dossierId, parcoursId, maxParDomaine),
-        30000
+        60000
       );
       if ("erreur" in resultat) {
         setErreur(resultat.erreur);

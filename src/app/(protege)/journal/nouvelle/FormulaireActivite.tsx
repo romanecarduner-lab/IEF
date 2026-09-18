@@ -21,6 +21,12 @@ import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaxima
 type Option = { id: string; libelle: string };
 type OptionParcours = Option & { prenomEnfant: string };
 
+// Meme si plus de photos sont selectionnees pour l'activite (toutes
+// seront quand meme ajoutees comme traces), seules les premieres sont
+// envoyees a l'IA -- au-dela, la requete devient trop lourde et l'IA
+// finit par echouer silencieusement.
+const NB_MAX_PHOTOS_IA = 6;
+
 const DONNEES_VIDES: DonneesBrouillonActivite = {
   parcoursId: "",
   dateActivite: new Date().toISOString().slice(0, 10),
@@ -112,6 +118,7 @@ export function FormulaireActivite({
   const [demandeIAFaite, setDemandeIAFaite] = useState(false);
 
   const [chargementDescriptionIA, setChargementDescriptionIA] = useState(false);
+  const [nbPhotosSelectionnees, setNbPhotosSelectionnees] = useState(0);
   const [erreurDescriptionIA, setErreurDescriptionIA] = useState<string | null>(null);
 
   const [chargementFormulation, setChargementFormulation] = useState(false);
@@ -178,8 +185,9 @@ export function FormulaireActivite({
     setDemandeIAFaite(true);
     try {
       const fichiers = Array.from(inputPhotoRef.current?.files ?? []).filter(estImage);
+      const fichiersPourIA = fichiers.slice(0, NB_MAX_PHOTOS_IA);
       const images = await Promise.all(
-        fichiers.map(async (fichier) => {
+        fichiersPourIA.map(async (fichier) => {
           const { miniature } = await preparerImage(fichier);
           return {
             base64: arrayBufferVersBase64(await miniature.arrayBuffer()),
@@ -493,7 +501,10 @@ export function FormulaireActivite({
             type="file"
             multiple
             accept="image/jpeg,image/png,image/webp,application/pdf,application/msword,.docx"
-            onChange={() => setErreurDescriptionIA(null)}
+            onChange={(e) => {
+              setErreurDescriptionIA(null);
+              setNbPhotosSelectionnees(Array.from(e.target.files ?? []).filter(estImage).length);
+            }}
             className="w-full text-sm text-encre"
           />
           <p className="mt-1.5 text-xs text-ardoise">
@@ -563,6 +574,14 @@ export function FormulaireActivite({
             Regarde le titre et la ou les photo(s), rédige une courte
             description et propose directement les compétences officielles
             concernées — en une seule fois.
+            {nbPhotosSelectionnees > NB_MAX_PHOTOS_IA && (
+              <>
+                {" "}
+                Seules les {NB_MAX_PHOTOS_IA} premières photos sont
+                analysées par l&rsquo;IA (les autres seront quand même
+                ajoutées à l&rsquo;activité).
+              </>
+            )}
           </p>
 
           {erreurDescriptionIA && (
