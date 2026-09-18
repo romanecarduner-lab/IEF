@@ -10,6 +10,14 @@ const nextConfig = {
     staleTimes: {
       dynamic: 0,
     },
+    // Par defaut, Next.js limite a 1 Mo les donnees envoyees a une action
+    // serveur -- trop juste des qu'on envoie plusieurs photos a l'IA en
+    // une fois (formulaire "Decrire l'activite et identifier les
+    // competences"), meme apres compression cote client. Relevee pour
+    // laisser de la marge sans redevenir illimitee.
+    serverActions: {
+      bodySizeLimit: "12mb",
+    },
   },
 };
 

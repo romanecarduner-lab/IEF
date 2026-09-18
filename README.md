@@ -434,6 +434,41 @@ formulation pédagogique) réessaient maintenant automatiquement une fois
 si la réponse est vide ou coupée, avant d'abandonner. Ne devrait plus se
 produire que très rarement.
 
+## Correction — l'IA échouait avec plusieurs photos sur une activité
+
+Cause trouvée : Next.js limite par défaut à 1 Mo les données envoyées à
+une action serveur — plusieurs photos analysées d'un coup par l'IA
+("Décrire l'activité et identifier les compétences") dépassaient
+facilement cette limite, même compressées côté client, faisant échouer
+la requête silencieusement avant même qu'elle n'atteigne le code.
+Corrigé sur deux plans :
+- La limite est relevée (`next.config.js`, 12 Mo) ;
+- Par sécurité supplémentaire, l'IA n'analyse plus que les 6 premières
+  photos sélectionnées (les suivantes sont quand même ajoutées comme
+  traces normalement) — avec un message clair si c'est le cas, plutôt
+  qu'une limite invisible.
+
+## Balayage complet des lenteurs à l'échelle (même famille de bug)
+
+Suite au timeout sur "Remplir automatiquement", recherche systématique de
+toutes les boucles séquentielles restantes dans l'app (le même défaut
+qui avait causé le timeout de la finalisation). Quatre autres endroits
+corrigés avec le même principe (requêtes groupées + résolutions en
+parallèle + mise en cache) :
+- **`remplirBilanAutomatique`** — le pire cas : une requête *et* un appel
+  réseau par compétence, pour *chaque* activité du parcours, à chaque
+  clic. Largement responsable du nouveau timeout avec 57 activités.
+- **`finaliserDossierJournal`** — même correctif que `finaliserDossier`
+  appliqué la dernière fois, mais oublié sur le journal de période :
+  téléchargement des photos maintenant en parallèle.
+- **Galerie du Journal**, filtre par domaine — résolution de domaine
+  maintenant mise en cache et parallélisée.
+- **Export de mes fichiers** (Confidentialité, RGPD) — téléchargements
+  parallélisés.
+
+Délais de sécurité côté client relevés en conséquence (remplissage
+automatique : 60s, finalisation du journal : 60s).
+
 ## Correction critique — timeout à la finalisation d'un dossier pédagogique volumineux
 
 Cause : plusieurs boucles enchaînaient des appels réseau **un par un**
