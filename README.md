@@ -434,6 +434,17 @@ formulation pédagogique) réessaient maintenant automatiquement une fois
 si la réponse est vide ou coupée, avant d'abandonner. Ne devrait plus se
 produire que très rarement.
 
+## "Idées pour continuer" sur le tableau de bord
+
+À la connexion, une nouvelle carte apparaît dans la colonne de droite du
+tableau de bord (à côté de "Dernières traces") : jusqu'à 3 compétences
+jamais encore reliées à une activité, une par domaine pour varier. **Choix
+volontaire** : la sélection des compétences est immédiate et gratuite
+(pas d'IA), mais l'idée d'activité concrète reste à un clic — via le
+même bouton "💡 Idées d'activités" qu'ailleurs dans l'app — plutôt que de
+générer automatiquement 1 à 3 idées par IA à chaque connexion, ce qui
+ralentirait et coûterait sur la page la plus visitée de l'application.
+
 ## Correction — l'IA échouait avec plusieurs photos sur une activité
 
 Cause trouvée : Next.js limite par défaut à 1 Mo les données envoyées à
