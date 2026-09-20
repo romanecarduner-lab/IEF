@@ -438,12 +438,12 @@ produire que très rarement.
 
 À la connexion, une nouvelle carte apparaît dans la colonne de droite du
 tableau de bord (à côté de "Dernières traces") : jusqu'à 3 compétences
-jamais encore reliées à une activité, une par domaine pour varier. **Choix
-volontaire** : la sélection des compétences est immédiate et gratuite
-(pas d'IA), mais l'idée d'activité concrète reste à un clic — via le
-même bouton "💡 Idées d'activités" qu'ailleurs dans l'app — plutôt que de
-générer automatiquement 1 à 3 idées par IA à chaque connexion, ce qui
-ralentirait et coûterait sur la page la plus visitée de l'application.
+jamais encore reliées à une activité. **Tirage aléatoire à chaque
+chargement de la page** — domaines ET compétence dans chaque domaine —
+pour balayer largement tous les domaines au fil des visites, plutôt que
+de toujours pousser vers les 3 mêmes tant qu'elles ne sont pas traitées.
+La sélection reste gratuite et immédiate (pas d'IA) ; l'idée d'activité
+concrète reste à un clic, via le même bouton qu'ailleurs dans l'app.
 
 ## Correction — l'IA échouait avec plusieurs photos sur une activité
 
