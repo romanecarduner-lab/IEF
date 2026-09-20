@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { creerClientServeur } from "@/lib/supabase/server";
 import { libelleCourtDomaine } from "@/lib/libelleCourtDomaine";
+import { BoutonIdeesActivites } from "../progression/BoutonIdeesActivites";
 
 const DUREE_SIGNATURE_SECONDES = 60 * 60;
 
@@ -67,7 +68,7 @@ export default async function PageTableauDeBord() {
       .eq("statut", "finalise"),
     supabase
       .from("parcours_scolaires")
-      .select("id, enfants(prenom), annees_scolaires(libelle)")
+      .select("id, cycle_id, enfants(prenom), annees_scolaires(libelle)")
       .order("created_at", { ascending: false }),
     supabase
       .from("traces")
@@ -85,6 +86,7 @@ export default async function PageTableauDeBord() {
       : p.annees_scolaires;
     return {
       id: p.id as string,
+      cycleId: p.cycle_id as string,
       enfant: enfant?.prenom as string | undefined,
       annee: annee?.libelle as string | undefined,
     };
@@ -113,6 +115,39 @@ export default async function PageTableauDeBord() {
         pourcentage: total > 0 ? Math.round((nbValides / total) * 100) : 0,
       };
     });
+  }
+
+  // Jusqu'a 3 competences jamais reliees a une activite, une par domaine
+  // pour varier -- proposees des la connexion comme point de depart,
+  // sans generer l'idee elle-meme ici (couterait un appel IA a chaque
+  // chargement de cette page, la plus visitee de l'app) : l'idee
+  // concrete reste a un clic, via le meme bouton qu'ailleurs dans l'app.
+  let suggestionsCompetences: { id: string; libelle: string; domaine: string }[] = [];
+  if (parcoursPrincipal) {
+    const [{ data: tousLesObjectifs }, { data: observations }] = await Promise.all([
+      supabase
+        .from("v_objectif_domaine")
+        .select("objectif_id, libelle, domaine")
+        .eq("cycle_id", parcoursPrincipal.cycleId)
+        .order("domaine"),
+      supabase
+        .from("observations_elements_programme")
+        .select("element_programme_id, activites!inner(parcours_id)")
+        .eq("activites.parcours_id", parcoursPrincipal.id),
+    ]);
+
+    const idsAbordes = new Set(
+      (observations ?? []).map((o) => o.element_programme_id as string)
+    );
+    const domainesVus = new Set<string>();
+    for (const o of tousLesObjectifs ?? []) {
+      if (suggestionsCompetences.length >= 3) break;
+      const id = o.objectif_id as string;
+      const domaine = o.domaine as string;
+      if (idsAbordes.has(id) || domainesVus.has(domaine)) continue;
+      domainesVus.add(domaine);
+      suggestionsCompetences.push({ id, libelle: o.libelle as string, domaine });
+    }
   }
 
   const traces = await Promise.all(
@@ -313,6 +348,33 @@ export default async function PageTableauDeBord() {
               Voir toutes les traces →
             </Link>
           </div>
+
+          {suggestionsCompetences.length > 0 && (
+            <div className="rounded-doux border border-trait bg-white/80 p-4 shadow-doux sm:p-5">
+              <p className="mb-1 font-display text-base italic text-encre sm:text-lg">
+                Idées pour continuer
+              </p>
+              <p className="mb-3 text-xs text-ardoise">
+                Quelques compétences pas encore abordées — juste des pistes,
+                rien d&rsquo;obligatoire.
+              </p>
+              <ul className="space-y-3">
+                {suggestionsCompetences.map((s) => (
+                  <li key={s.id} className="border-b border-trait pb-3 last:border-b-0 last:pb-0">
+                    <p className="text-xs font-medium text-argile">
+                      {libelleCourtDomaine(s.domaine)}
+                    </p>
+                    <p className="mb-1 text-sm text-encre">{s.libelle}</p>
+                    <BoutonIdeesActivites
+                      objectifId={s.id}
+                      objectifLibelle={s.libelle}
+                      parcoursId={parcoursPrincipal!.id}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="flex items-center gap-4 rounded-doux border border-trait bg-white/80 p-4 shadow-doux sm:p-5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
