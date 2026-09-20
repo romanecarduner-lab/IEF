@@ -122,14 +122,18 @@ export default async function PageTableauDeBord() {
   // sans generer l'idee elle-meme ici (couterait un appel IA a chaque
   // chargement de cette page, la plus visitee de l'app) : l'idee
   // concrete reste a un clic, via le meme bouton qu'ailleurs dans l'app.
+  //
+  // Tirage aleatoire a chaque chargement (domaines ET competence dans
+  // chaque domaine) : le but est de balayer largement tous les domaines
+  // au fil des visites, plutot que de toujours mettre en avant les 3
+  // memes competences jusqu'a ce qu'elles soient traitees.
   let suggestionsCompetences: { id: string; libelle: string; domaine: string }[] = [];
   if (parcoursPrincipal) {
     const [{ data: tousLesObjectifs }, { data: observations }] = await Promise.all([
       supabase
         .from("v_objectif_domaine")
         .select("objectif_id, libelle, domaine")
-        .eq("cycle_id", parcoursPrincipal.cycleId)
-        .order("domaine"),
+        .eq("cycle_id", parcoursPrincipal.cycleId),
       supabase
         .from("observations_elements_programme")
         .select("element_programme_id, activites!inner(parcours_id)")
@@ -139,14 +143,31 @@ export default async function PageTableauDeBord() {
     const idsAbordes = new Set(
       (observations ?? []).map((o) => o.element_programme_id as string)
     );
-    const domainesVus = new Set<string>();
+
+    const nonAbordesParDomaine = new Map<string, { id: string; libelle: string }[]>();
     for (const o of tousLesObjectifs ?? []) {
-      if (suggestionsCompetences.length >= 3) break;
       const id = o.objectif_id as string;
+      if (idsAbordes.has(id)) continue;
       const domaine = o.domaine as string;
-      if (idsAbordes.has(id) || domainesVus.has(domaine)) continue;
-      domainesVus.add(domaine);
-      suggestionsCompetences.push({ id, libelle: o.libelle as string, domaine });
+      const liste = nonAbordesParDomaine.get(domaine) ?? [];
+      liste.push({ id, libelle: o.libelle as string });
+      nonAbordesParDomaine.set(domaine, liste);
+    }
+
+    const domainesDisponibles = Array.from(nonAbordesParDomaine.keys());
+    for (let i = domainesDisponibles.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const temp = domainesDisponibles[i];
+      domainesDisponibles[i] = domainesDisponibles[j]!;
+      domainesDisponibles[j] = temp!;
+    }
+
+    for (const domaine of domainesDisponibles.slice(0, 3)) {
+      const objectifs = nonAbordesParDomaine.get(domaine);
+      if (!objectifs || objectifs.length === 0) continue;
+      const choisi = objectifs[Math.floor(Math.random() * objectifs.length)];
+      if (!choisi) continue;
+      suggestionsCompetences.push({ id: choisi.id, libelle: choisi.libelle, domaine });
     }
   }
 
