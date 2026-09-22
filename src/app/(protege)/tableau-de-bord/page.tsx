@@ -17,6 +17,7 @@ import {
 import { creerClientServeur } from "@/lib/supabase/server";
 import { libelleCourtDomaine } from "@/lib/libelleCourtDomaine";
 import { BoutonIdeesActivites } from "../progression/BoutonIdeesActivites";
+import { SelecteurParcoursTableauDeBord } from "./SelecteurParcoursTableauDeBord";
 
 const DUREE_SIGNATURE_SECONDES = 60 * 60;
 
@@ -36,14 +37,28 @@ function libelleDate(date: string): string {
   const aujourdhui = new Date();
   const hier = new Date();
   hier.setDate(aujourdhui.getDate() - 1);
-  const meme = (a: Date, b: Date) =>
-    a.toDateString() === b.toDateString();
+  const meme = (a: Date, b: Date) => a.toDateString() === b.toDateString();
   if (meme(d, aujourdhui)) return "Aujourd'hui";
   if (meme(d, hier)) return "Hier";
   return d.toLocaleDateString("fr-FR");
 }
 
-export default async function PageTableauDeBord() {
+function melanger<T>(tableau: T[]): T[] {
+  const copie = [...tableau];
+  for (let i = copie.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const temp = copie[i];
+    copie[i] = copie[j]!;
+    copie[j] = temp!;
+  }
+  return copie;
+}
+
+export default async function PageTableauDeBord({
+  searchParams,
+}: {
+  searchParams: { parcours?: string };
+}) {
   const supabase = creerClientServeur();
 
   const {
@@ -73,7 +88,8 @@ export default async function PageTableauDeBord() {
     supabase
       .from("traces")
       .select(
-        "id, legende, date_trace, miniature_chemin_stockage, types_trace(libelle), activites(id, titre)"
+        `id, legende, date_trace, miniature_chemin_stockage, types_trace(libelle),
+         activites(id, titre, parcours_scolaires(enfants(prenom)))`
       )
       .order("date_trace", { ascending: false })
       .limit(3),
@@ -87,21 +103,23 @@ export default async function PageTableauDeBord() {
     return {
       id: p.id as string,
       cycleId: p.cycle_id as string,
-      enfant: enfant?.prenom as string | undefined,
+      enfant: (enfant?.prenom as string | undefined) ?? "?",
       annee: annee?.libelle as string | undefined,
     };
   });
 
-  const parcoursPrincipal = parcours[0];
+  const plusieursEnfants = parcours.length > 1;
+  const parcoursSelectionne =
+    parcours.find((p) => p.id === searchParams.parcours) ?? parcours[0];
 
   let domainesProgression: { nom: string; pourcentage: number }[] = [];
-  if (parcoursPrincipal) {
+  if (parcoursSelectionne) {
     const [{ data: totauxDomaine }, { data: repartitionDomaine }] = await Promise.all([
       supabase.from("v_total_objectifs_par_domaine").select("domaine, total_objectifs"),
       supabase
         .from("v_progression_par_domaine")
         .select("domaine, statut_code, nb")
-        .eq("parcours_id", parcoursPrincipal.id),
+        .eq("parcours_id", parcoursSelectionne.id),
     ]);
 
     domainesProgression = (totauxDomaine ?? []).map((t) => {
@@ -117,64 +135,73 @@ export default async function PageTableauDeBord() {
     });
   }
 
-  // Jusqu'a 3 competences jamais reliees a une activite, une par domaine
-  // pour varier -- proposees des la connexion comme point de depart,
-  // sans generer l'idee elle-meme ici (couterait un appel IA a chaque
-  // chargement de cette page, la plus visitee de l'app) : l'idee
-  // concrete reste a un clic, via le meme bouton qu'ailleurs dans l'app.
-  //
-  // Tirage aleatoire a chaque chargement (domaines ET competence dans
-  // chaque domaine) : le but est de balayer largement tous les domaines
-  // au fil des visites, plutot que de toujours mettre en avant les 3
-  // memes competences jusqu'a ce qu'elles soient traitees.
-  let suggestionsCompetences: { id: string; libelle: string; domaine: string }[] = [];
-  if (parcoursPrincipal) {
-    const [{ data: tousLesObjectifs }, { data: observations }] = await Promise.all([
-      supabase
-        .from("v_objectif_domaine")
-        .select("objectif_id, libelle, domaine")
-        .eq("cycle_id", parcoursPrincipal.cycleId),
-      supabase
-        .from("observations_elements_programme")
-        .select("element_programme_id, activites!inner(parcours_id)")
-        .eq("activites.parcours_id", parcoursPrincipal.id),
-    ]);
+  // Jusqu'a 3 competences jamais reliees a une activite -- une par
+  // domaine ET reparties entre tous les enfants du foyer (pas seulement
+  // celui affiche dans "Le parcours de..." ci-dessus), pour que chaque
+  // enfant ait ses chances d'apparaitre au fil des visites. Choix
+  // volontaire : la selection est gratuite et immediate (pas d'IA),
+  // l'idee concrete reste a un clic. Tirage aleatoire a chaque
+  // chargement (enfant, domaine, ET competence dans le domaine).
+  type Candidat = { id: string; libelle: string; domaine: string; enfantPrenom: string; parcoursId: string };
+  const candidatsParEnfant = await Promise.all(
+    parcours.map(async (p) => {
+      const [{ data: tousLesObjectifs }, { data: observations }] = await Promise.all([
+        supabase
+          .from("v_objectif_domaine")
+          .select("objectif_id, libelle, domaine")
+          .eq("cycle_id", p.cycleId),
+        supabase
+          .from("observations_elements_programme")
+          .select("element_programme_id, activites!inner(parcours_id)")
+          .eq("activites.parcours_id", p.id),
+      ]);
 
-    const idsAbordes = new Set(
-      (observations ?? []).map((o) => o.element_programme_id as string)
-    );
+      const idsAbordes = new Set(
+        (observations ?? []).map((o) => o.element_programme_id as string)
+      );
 
-    const nonAbordesParDomaine = new Map<string, { id: string; libelle: string }[]>();
-    for (const o of tousLesObjectifs ?? []) {
-      const id = o.objectif_id as string;
-      if (idsAbordes.has(id)) continue;
-      const domaine = o.domaine as string;
-      const liste = nonAbordesParDomaine.get(domaine) ?? [];
-      liste.push({ id, libelle: o.libelle as string });
-      nonAbordesParDomaine.set(domaine, liste);
-    }
+      const nonAbordesParDomaine = new Map<string, { id: string; libelle: string }[]>();
+      for (const o of tousLesObjectifs ?? []) {
+        const id = o.objectif_id as string;
+        if (idsAbordes.has(id)) continue;
+        const domaine = o.domaine as string;
+        const liste = nonAbordesParDomaine.get(domaine) ?? [];
+        liste.push({ id, libelle: o.libelle as string });
+        nonAbordesParDomaine.set(domaine, liste);
+      }
 
-    const domainesDisponibles = Array.from(nonAbordesParDomaine.keys());
-    for (let i = domainesDisponibles.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      const temp = domainesDisponibles[i];
-      domainesDisponibles[i] = domainesDisponibles[j]!;
-      domainesDisponibles[j] = temp!;
-    }
+      const candidats: Candidat[] = [];
+      for (const [domaine, objectifs] of nonAbordesParDomaine) {
+        const choisi = objectifs[Math.floor(Math.random() * objectifs.length)];
+        if (!choisi) continue;
+        candidats.push({
+          id: choisi.id,
+          libelle: choisi.libelle,
+          domaine,
+          enfantPrenom: p.enfant,
+          parcoursId: p.id,
+        });
+      }
+      return candidats;
+    })
+  );
 
-    for (const domaine of domainesDisponibles.slice(0, 3)) {
-      const objectifs = nonAbordesParDomaine.get(domaine);
-      if (!objectifs || objectifs.length === 0) continue;
-      const choisi = objectifs[Math.floor(Math.random() * objectifs.length)];
-      if (!choisi) continue;
-      suggestionsCompetences.push({ id: choisi.id, libelle: choisi.libelle, domaine });
-    }
-  }
+  const suggestionsCompetences = melanger(candidatsParEnfant.flat()).slice(0, 3);
 
   const traces = await Promise.all(
     (tracesBrutes ?? []).map(async (t) => {
       const type = Array.isArray(t.types_trace) ? t.types_trace[0] : t.types_trace;
       const activite = Array.isArray(t.activites) ? t.activites[0] : t.activites;
+      const parcoursActivite = activite
+        ? Array.isArray(activite.parcours_scolaires)
+          ? activite.parcours_scolaires[0]
+          : activite.parcours_scolaires
+        : null;
+      const enfantActivite = parcoursActivite
+        ? Array.isArray(parcoursActivite.enfants)
+          ? parcoursActivite.enfants[0]
+          : parcoursActivite.enfants
+        : null;
       let urlMiniature: string | null = null;
       if (t.miniature_chemin_stockage) {
         const { data } = await supabase.storage
@@ -188,6 +215,7 @@ export default async function PageTableauDeBord() {
         date: t.date_trace as string,
         typeLibelle: type?.libelle as string | undefined,
         activiteId: activite?.id as string | undefined,
+        enfantPrenom: enfantActivite?.prenom as string | undefined,
         urlMiniature,
       };
     })
@@ -213,8 +241,10 @@ export default async function PageTableauDeBord() {
             Bonjour{prenom ? ` ${prenom}` : ""},
           </h1>
           <p className="mb-4 text-sm text-ardoise sm:mb-6 sm:text-base">
-            {parcoursPrincipal
-              ? `Un regard sur le chemin parcouru par ${parcoursPrincipal.enfant}.`
+            {plusieursEnfants
+              ? "Un regard sur le chemin parcouru par vos enfants."
+              : parcoursSelectionne
+              ? `Un regard sur le chemin parcouru par ${parcoursSelectionne.enfant}.`
               : "Un regard sur le chemin parcouru par votre enfant."}
           </p>
           <Link
@@ -250,15 +280,24 @@ export default async function PageTableauDeBord() {
 
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-[1fr_360px]">
         <div className="rounded-doux border border-trait bg-white/80 p-4 shadow-doux sm:p-6">
-          {parcoursPrincipal ? (
+          {parcoursSelectionne ? (
             <>
               <div className="mb-1 flex flex-wrap items-center gap-2">
                 <p className="font-display text-lg italic text-encre sm:text-xl">
-                  Le parcours de {parcoursPrincipal.enfant}
+                  Le parcours de {parcoursSelectionne.enfant}
                 </p>
                 <span className="rounded-full bg-lin px-2.5 py-0.5 text-xs text-ardoise">
-                  Année {parcoursPrincipal.annee}
+                  Année {parcoursSelectionne.annee}
                 </span>
+                {plusieursEnfants && (
+                  <SelecteurParcoursTableauDeBord
+                    parcoursId={parcoursSelectionne.id}
+                    options={parcours.map((p) => ({
+                      id: p.id,
+                      libelle: `${p.enfant} — ${p.annee}`,
+                    }))}
+                  />
+                )}
               </div>
               <p className="mb-2 text-sm font-medium text-encre">
                 Les apprentissages en mouvement
@@ -310,7 +349,7 @@ export default async function PageTableauDeBord() {
               )}
 
               <Link
-                href={`/progression?parcours=${parcoursPrincipal.id}`}
+                href={`/progression?parcours=${parcoursSelectionne.id}`}
                 className="inline-flex min-h-[44px] items-center gap-1 text-sm font-medium text-mousse-fonce underline underline-offset-2"
               >
                 Voir le détail des compétences →
@@ -353,6 +392,9 @@ export default async function PageTableauDeBord() {
                       )}
                       <span className="min-w-0 flex-1 truncate text-sm text-encre">
                         {t.legende}
+                        {plusieursEnfants && t.enfantPrenom && (
+                          <span className="text-ardoise"> · {t.enfantPrenom}</span>
+                        )}
                       </span>
                       <span className="shrink-0 rounded-full bg-ocre/20 px-2 py-0.5 text-xs text-encre">
                         {libelleDate(t.date)}
@@ -384,12 +426,13 @@ export default async function PageTableauDeBord() {
                   <li key={s.id} className="border-b border-trait pb-3 last:border-b-0 last:pb-0">
                     <p className="text-xs font-medium text-argile">
                       {libelleCourtDomaine(s.domaine)}
+                      {plusieursEnfants && ` · ${s.enfantPrenom}`}
                     </p>
                     <p className="mb-1 text-sm text-encre">{s.libelle}</p>
                     <BoutonIdeesActivites
                       objectifId={s.id}
                       objectifLibelle={s.libelle}
-                      parcoursId={parcoursPrincipal!.id}
+                      parcoursId={s.parcoursId}
                     />
                   </li>
                 ))}
@@ -411,7 +454,12 @@ export default async function PageTableauDeBord() {
               </p>
               <p className="mb-3 text-xs text-ardoise">
                 Chaque trace compte pour comprendre le chemin
-                {parcoursPrincipal ? ` de ${parcoursPrincipal.enfant}` : ""}.
+                {plusieursEnfants
+                  ? " de vos enfants"
+                  : parcoursSelectionne
+                  ? ` de ${parcoursSelectionne.enfant}`
+                  : ""}
+                .
               </p>
               <Link
                 href="/journal/nouvelle"
