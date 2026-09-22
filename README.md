@@ -89,6 +89,30 @@ sources) : le délai de sécurité côté client (15 secondes par défaut)
 pouvait s'avérer trop court. Porté à 30 secondes sur ces trois actions,
 20 secondes sur "Ignorer".
 
+## Correction critique — fuite de domaines entre cycles
+
+`v_total_objectifs_par_domaine` comptait les objectifs de **tous les
+cycles confondus**, sans distinction. Avec un seul cycle en base, le
+défaut ne se voyait pas ; dès l'ajout du cycle 2, ses domaines (ex.
+"Français") se sont mis à apparaître pour les enfants du cycle 1 aussi,
+à 0% puisqu'ils n'y ont jamais rien observé. La vue expose maintenant le
+`cycle_id`, et les quatre écrans qui l'utilisent (tableau de bord,
+Progression, éditeur de dossier, finalisation du dossier pédagogique)
+filtrent désormais par le cycle réel du parcours affiché. La Galerie du
+Journal (filtre par domaine, volontairement familial et non lié à un
+seul enfant) reste inchangée sur le fond, avec juste une déduplication
+de sécurité ajoutée.
+
+## Chantier cycle 2 — import du français complet (5/5 sous-domaines)
+
+Import, sous-domaine par sous-domaine et vérifié à chaque étape : Lecture,
+Écriture, Oral, Vocabulaire, Grammaire et orthographe — CP/CE1/CE2,
+transcrits depuis le BO du 31 octobre 2024. Le cycle 2 lui-même
+("Cycle 2 (CP, CE1, CE2)") a aussi été créé, avec une correction en
+cours de route (rattaché par erreur à un référentiel archivé, corrigé
+depuis). Suite prévue : Mathématiques, EMC, Vie affective, puis les
+spécificités CP et CE1/CE2 restantes.
+
 ## Correctif critique — authentification bloquée indéfiniment
 
 Un bug a été corrigé après un premier déploiement : les formulaires de
