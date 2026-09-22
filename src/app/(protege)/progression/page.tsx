@@ -80,7 +80,10 @@ export default async function PageProgression({
         "element_programme_id, statut_global_id, synthese_ia, synthese_ia_generee_le, statut_propose_id, justification_proposition"
       )
       .eq("parcours_id", parcoursId),
-    supabase.from("v_total_objectifs_par_domaine").select("domaine, total_objectifs"),
+    supabase
+      .from("v_total_objectifs_par_domaine")
+      .select("domaine, total_objectifs")
+      .eq("cycle_id", parcoursActuel?.cycle_id ?? ""),
     supabase
       .from("v_progression_par_domaine")
       .select("domaine, statut_code, nb")

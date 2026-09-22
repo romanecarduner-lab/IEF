@@ -233,7 +233,7 @@ export async function finaliserDossier(
   const { data: dossier } = await supabase
     .from("dossiers_export")
     .select(
-      "id, titre, parcours_id, parcours_scolaires(enfants(prenom, famille_id), annees_scolaires(libelle), cycles(libelle))"
+      "id, titre, parcours_id, parcours_scolaires(cycle_id, enfants(prenom, famille_id), annees_scolaires(libelle), cycles(libelle))"
     )
     .eq("id", dossierId)
     .maybeSingle();
@@ -458,7 +458,10 @@ export async function finaliserDossier(
 
   // --- Synthese de progression par domaine, pour ce parcours (graphique) ---
   const [{ data: totauxDomaine }, { data: repartitionDomaine }] = await Promise.all([
-    supabase.from("v_total_objectifs_par_domaine").select("domaine, total_objectifs"),
+    supabase
+      .from("v_total_objectifs_par_domaine")
+      .select("domaine, total_objectifs")
+      .eq("cycle_id", parcours?.cycle_id ?? ""),
     supabase
       .from("v_progression_par_domaine")
       .select("domaine, statut_code, nb")

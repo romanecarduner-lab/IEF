@@ -115,7 +115,10 @@ export default async function PageTableauDeBord({
   let domainesProgression: { nom: string; pourcentage: number }[] = [];
   if (parcoursSelectionne) {
     const [{ data: totauxDomaine }, { data: repartitionDomaine }] = await Promise.all([
-      supabase.from("v_total_objectifs_par_domaine").select("domaine, total_objectifs"),
+      supabase
+        .from("v_total_objectifs_par_domaine")
+        .select("domaine, total_objectifs")
+        .eq("cycle_id", parcoursSelectionne.cycleId),
       supabase
         .from("v_progression_par_domaine")
         .select("domaine, statut_code, nb")

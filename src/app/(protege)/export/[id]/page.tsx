@@ -19,7 +19,7 @@ export default async function PageDossierExport({
   const { data: dossier } = await supabase
     .from("dossiers_export")
     .select(
-      "id, titre, statut, parcours_id, type_dossier, periode_debut, periode_fin, pdf_final_storage_path, pptx_final_storage_path, parcours_scolaires(enfants(prenom), annees_scolaires(libelle))"
+      "id, titre, statut, parcours_id, type_dossier, periode_debut, periode_fin, pdf_final_storage_path, pptx_final_storage_path, parcours_scolaires(cycle_id, enfants(prenom), annees_scolaires(libelle))"
     )
     .eq("id", params.id)
     .maybeSingle();
@@ -189,7 +189,10 @@ export default async function PageDossierExport({
       .from("traces")
       .select("id, activites!inner(parcours_id)", { count: "exact", head: true })
       .eq("activites.parcours_id", dossier.parcours_id),
-    supabase.from("v_total_objectifs_par_domaine").select("domaine, total_objectifs"),
+    supabase
+      .from("v_total_objectifs_par_domaine")
+      .select("domaine, total_objectifs")
+      .eq("cycle_id", parcours?.cycle_id ?? ""),
     supabase
       .from("v_progression_par_domaine")
       .select("domaine, statut_code, statut_ordre, nb")

@@ -144,11 +144,13 @@ export async function VueGalerie({
             className="w-full rounded-doux border border-trait bg-white px-3 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
           >
             <option value="">Tous</option>
-            {(domainesBruts ?? []).map((d) => (
-              <option key={d.domaine as string} value={d.domaine as string}>
-                {d.domaine as string}
-              </option>
-            ))}
+            {Array.from(new Set((domainesBruts ?? []).map((d) => d.domaine as string))).map(
+              (domaine) => (
+                <option key={domaine} value={domaine}>
+                  {domaine}
+                </option>
+              )
+            )}
           </select>
         </div>
         <div>
