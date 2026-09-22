@@ -434,6 +434,24 @@ formulation pédagogique) réessaient maintenant automatiquement une fois
 si la réponse est vide ou coupée, avant d'abandonner. Ne devrait plus se
 produire que très rarement.
 
+## Tableau de bord — prêt pour plusieurs enfants
+
+- **"Le parcours de..."** : un sélecteur apparaît dès qu'il y a plus d'un
+  enfant, pour choisir lequel afficher en détail (même mécanisme que sur
+  Progression).
+- **"Idées pour continuer"** : pioche maintenant parmi **tous les
+  enfants du foyer**, pas seulement celui affiché dans "Le parcours
+  de..." — chaque suggestion précise le prénom concerné dès qu'il y a
+  plusieurs enfants. Toujours un tirage aléatoire à chaque chargement.
+- **"Dernières traces"** : précise aussi le prénom de l'enfant concerné
+  dès qu'il y en a plusieurs (rien n'était indiqué avant).
+- La salutation s'adapte ("vos enfants" au pluriel) dès qu'il y a plus
+  d'un parcours.
+- Les cartes de statistiques et "Dernières traces" étaient déjà
+  familiales (tous enfants confondus) — inchangées.
+
+**Fichier créé** : `SelecteurParcoursTableauDeBord.tsx`.
+
 ## "Idées pour continuer" sur le tableau de bord
 
 À la connexion, une nouvelle carte apparaît dans la colonne de droite du
