@@ -6,16 +6,21 @@
 -- observe. La vue expose maintenant le cycle_id, pour que chaque
 -- ecran ne compte que les domaines du cycle reellement suivi par le
 -- parcours affiche.
+--
+-- cycle_id est ajoute en DERNIERE position (pas en premier) : Postgres
+-- interdit a CREATE OR REPLACE VIEW de deplacer ou d'inserer une
+-- colonne avant celles qui existent deja, seulement d'en ajouter a la
+-- fin (erreur 42P16 sinon).
 
 create or replace view v_total_objectifs_par_domaine
 with (security_invoker = true)
 as
 select
-  o.cycle_id,
   split_part(chemin_element_programme(o.id), ' > ', 1) as domaine,
-  count(*) as total_objectifs
+  count(*) as total_objectifs,
+  o.cycle_id
 from elements_programme o
 where o.type_element_id = (select id from types_element_programme where code = 'objectif')
-group by o.cycle_id, 2;
+group by o.cycle_id, 1;
 
 grant select on v_total_objectifs_par_domaine to authenticated;
