@@ -103,6 +103,18 @@ Journal (filtre par domaine, volontairement familial et non lié à un
 seul enfant) reste inchangée sur le fond, avec juste une déduplication
 de sécurité ajoutée.
 
+## Correction de performance — "Ce qui reste à voir" lent à charger
+
+`v_objectif_domaine` et `v_total_objectifs_par_domaine` appelaient
+`chemin_element_programme()` (une requête récursive complète) **une
+fois par objectif**, à chaque interrogation. Avec le cycle 1 seul
+(~424 objectifs) c'était déjà coûteux mais tolérable ; avec le cycle 2
+ajouté (~750 objectifs au total), c'est devenu nettement plus lent.
+Remplacé par une seule requête récursive calculant le domaine de tous
+les objectifs à la fois, dans une nouvelle vue de base partagée
+(`v_domaine_par_objectif`) — la signature des deux vues existantes ne
+change pas, donc aucun changement côté application n'est nécessaire.
+
 ## Correction — bulles d'aide coupées et en italique + page de bienvenue
 
 Deux défauts trouvés après retour utilisatrice sur l'aide contextuelle
