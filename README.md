@@ -107,12 +107,16 @@ de sécurité ajoutée.
 
 À la demande de l'utilisatrice : les boutons qui utilisent déjà
 seulement l'icône ✨ ou 💡 sans le mot "IA" restent inchangés (c'était
-déjà la majorité). Les 4 endroits qui disaient "IA" explicitement sont
-adoucis : "L'IA rédige…" / "L'IA réfléchit…" deviennent "Rédaction en
-cours…" / "Analyse en cours…", et le bouton "Générer une synthèse
-pédagogique IA" perd son "IA" final. Rien de caché ni de retiré
-fonctionnellement : uniquement le mot lui-même, qui n'était plus voulu
-en avant-plan de l'interface.
+déjà la majorité). Passe en deux temps sur les mentions explicites,
+la seconde après un signalement de ce qui avait été raté la première
+fois : "L'IA rédige…" / "L'IA réfléchit…" deviennent "Rédaction en
+cours…" / "Analyse en cours…" / "Aucun objectif clairement lié n'a été
+trouvé" selon le contexte ; "Suggestions de l'IA (à valider)" devient
+"Suggestions (à valider)" ; le bouton "Générer une synthèse pédagogique
+IA" perd son "IA" final ; la mention "(mots-clés et/ou IA)" et
+"analysées par l'IA" (limite des 6 photos) sont retirées. Rien de
+caché ni de retiré fonctionnellement : uniquement le mot lui-même, qui
+n'était plus voulu en avant-plan de l'interface.
 
 ## Correction critique — suggestions par mots-clés mélangeaient les cycles
 
