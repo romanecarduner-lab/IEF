@@ -103,6 +103,17 @@ Journal (filtre par domaine, volontairement familial et non lié à un
 seul enfant) reste inchangée sur le fond, avec juste une déduplication
 de sécurité ajoutée.
 
+## Libellés — "IA" moins visible de prime abord
+
+À la demande de l'utilisatrice : les boutons qui utilisent déjà
+seulement l'icône ✨ ou 💡 sans le mot "IA" restent inchangés (c'était
+déjà la majorité). Les 4 endroits qui disaient "IA" explicitement sont
+adoucis : "L'IA rédige…" / "L'IA réfléchit…" deviennent "Rédaction en
+cours…" / "Analyse en cours…", et le bouton "Générer une synthèse
+pédagogique IA" perd son "IA" final. Rien de caché ni de retiré
+fonctionnellement : uniquement le mot lui-même, qui n'était plus voulu
+en avant-plan de l'interface.
+
 ## Correction critique — suggestions par mots-clés mélangeaient les cycles
 
 Trouvé après un signalement : le bouton IA était bien corrigé, mais les
