@@ -103,6 +103,44 @@ Journal (filtre par domaine, volontairement familial et non lié à un
 seul enfant) reste inchangée sur le fond, avec juste une déduplication
 de sécurité ajoutée.
 
+## Correction critique — suggestions par mots-clés mélangeaient les cycles
+
+Trouvé après un signalement : le bouton IA était bien corrigé, mais les
+**suggestions par mots-clés** (celles qui apparaissent en tapant le
+titre, avant même de cliquer sur le bouton IA) utilisaient deux
+fonctions SQL (`suggerer_objectifs_programme`,
+`rechercher_objectifs_programme`) qui, comme `v_total_objectifs_par_domaine`
+avant elles, cherchaient dans tous les cycles confondus. Un troisième
+endroit avait le même défaut : la navigation par arborescence sur la
+page de modification des compétences d'une activité. Les trois sont
+corrigés : les deux fonctions SQL acceptent maintenant un cycle en
+paramètre (optionnel, sans rien casser), et les trois écrans
+concernés (création d'activité, page compétences avec sa recherche et
+son arbre) le fournissent désormais.
+
+## Cycle 2 — dernière pièce et adaptation de l'IA au bon cycle
+
+- **Médiation CE1/CE2 des langues vivantes** complétée (dernier point en
+  suspens du cycle 2, transcrit depuis le PDF fourni par l'utilisatrice) —
+  **le cycle 2 est désormais entièrement complet**.
+- **Correction fonctionnelle importante** : les cinq fonctions IA de
+  l'app (description + compétences, formulation pédagogique, synthèse,
+  estimation de progression, idées d'activités) disaient toutes en dur
+  "cycle 1, école maternelle française", quel que soit l'enfant réel.
+  Plus grave : la fonction de suggestion de compétences à la création
+  d'une activité ne filtrait même pas par cycle, mélangeant les
+  objectifs du cycle 1 et du cycle 2. Toutes recherchent maintenant le
+  vrai cycle du parcours concerné (ou, pour la génération de la liste
+  de compétences, de l'élément du programme lui-même) et l'utilisent à
+  la fois pour filtrer les objectifs proposés et pour adapter le texte
+  envoyé au modèle. Repli sûr si le cycle n'est pas encore déterminable
+  (formulaire de création avant sélection du parcours) : aucune mention
+  de cycle plutôt qu'une mention fausse.
+- **Vérifié sans modification nécessaire** : les "exemples de réussite
+  officiels" (`lister_exemples_reussite`) sont déjà génériques par
+  objectif, sans référence au cycle — ils fonctionnent tels quels pour
+  le cycle 2, exactement comme pour le cycle 1.
+
 ## Chantier cycle 2 — import du français complet (5/5 sous-domaines)
 
 Import, sous-domaine par sous-domaine et vérifié à chaque étape : Lecture,
