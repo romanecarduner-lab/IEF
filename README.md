@@ -103,6 +103,24 @@ Journal (filtre par domaine, volontairement familial et non lié à un
 seul enfant) reste inchangée sur le fond, avec juste une déduplication
 de sécurité ajoutée.
 
+## Aide contextuelle pour les nouvelles familles + responsabilité parentale
+
+Un petit bouton "?" apparaît maintenant à côté du titre des pages
+principales (Tableau de bord, Journal, Ajouter une activité,
+Progression, Export, Famille) — au clic, une courte explication de ce
+que fait la page. Pensé pour les familles qui découvrent
+l&rsquo;application (amis testeurs).
+
+Sur "Ajouter une activité" en particulier, en plus du "?" : un texte
+**toujours visible** (pas caché derrière le bouton d&rsquo;aide) à
+côté des suggestions de compétences précise qu&rsquo;elles sont
+librement modifiables et que le suivi pédagogique reste de la
+responsabilité du parent — l&rsquo;application propose, jamais
+n&rsquo;impose. Même principe repris dans l&rsquo;aide de Progression.
+
+**Fichier créé** : `src/components/AideContextuelle.tsx`, réutilisable
+pour ajouter de l&rsquo;aide ailleurs si besoin.
+
 ## Libellés — "IA" moins visible de prime abord
 
 À la demande de l'utilisatrice : les boutons qui utilisent déjà
