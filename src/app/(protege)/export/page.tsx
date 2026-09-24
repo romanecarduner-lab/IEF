@@ -42,14 +42,14 @@ export default async function PageExport() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="font-display text-2xl italic text-encre">
           Dossiers d&rsquo;export
-          <AideContextuelle titre="Les dossiers d'export">
-            De quoi préparer un document à présenter (dossier
-            pédagogique pour un contrôle, ou simple journal d&rsquo;une
-            semaine ou d&rsquo;un mois). Vous choisissez et ajustez ce
-            qui y figure avant de le finaliser — rien n&rsquo;est généré
-            ni figé sans votre validation.
-          </AideContextuelle>
         </h1>
+        <AideContextuelle titre="Les dossiers d'export" variante="page">
+          De quoi préparer un document à présenter (dossier
+          pédagogique pour un contrôle, ou simple journal d&rsquo;une
+          semaine ou d&rsquo;un mois). Vous choisissez et ajustez ce
+          qui y figure avant de le finaliser — rien n&rsquo;est généré
+          ni figé sans votre validation.
+        </AideContextuelle>
         <Link
           href="/export/nouveau"
           className="rounded-doux bg-mousse-fonce px-4 py-2 text-sm font-medium text-white hover:bg-mousse"

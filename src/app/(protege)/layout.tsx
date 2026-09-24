@@ -51,11 +51,12 @@ export default async function LayoutProtege({
 
   const { data: appartenances } = await supabase
     .from("utilisateurs_familles")
-    .select("famille_id, familles(nom)")
+    .select("famille_id, familles(nom, onboarding_termine)")
     .eq("user_id", user.id)
     .limit(1);
 
   let nomFamille: string;
+  let onboardingTermine = false;
 
   if (!appartenances || appartenances.length === 0) {
     const nomDemande =
@@ -73,14 +74,20 @@ export default async function LayoutProtege({
       );
     }
     nomFamille = nomDemande;
+    // Famille tout juste creee : onboarding_termine vaut false par defaut,
+    // pas besoin de le relire.
   } else {
     const famille = appartenances[0]?.familles as unknown as
-      | { nom: string }
-      | { nom: string }[]
+      | { nom: string; onboarding_termine: boolean }
+      | { nom: string; onboarding_termine: boolean }[]
       | null;
-    nomFamille = Array.isArray(famille)
-      ? famille[0]?.nom ?? "Votre espace"
-      : famille?.nom ?? "Votre espace";
+    const familleUnique = Array.isArray(famille) ? famille[0] : famille;
+    nomFamille = familleUnique?.nom ?? "Votre espace";
+    onboardingTermine = familleUnique?.onboarding_termine ?? false;
+  }
+
+  if (!onboardingTermine) {
+    redirect("/bienvenue");
   }
 
   return (

@@ -46,15 +46,13 @@ export default async function PageFamille() {
 
   return (
     <div className="space-y-12">
-      <h1 className="font-display text-2xl italic text-encre">
-        Famille
-        <AideContextuelle titre="Famille">
-          C&rsquo;est ici que vous ajoutez vos enfants, les années
-          scolaires, et le parcours de chacun (enfant + année + cycle).
-          Un parcours doit exister avant de pouvoir ajouter des
-          activités pour cet enfant.
-        </AideContextuelle>
-      </h1>
+      <h1 className="font-display text-2xl italic text-encre">Famille</h1>
+      <AideContextuelle titre="Famille" variante="page">
+        C&rsquo;est ici que vous ajoutez vos enfants, les années
+        scolaires, et le parcours de chacun (enfant + année + cycle).
+        Un parcours doit exister avant de pouvoir ajouter des
+        activités pour cet enfant.
+      </AideContextuelle>
 
       {/* --- Enfants --- */}
       <section className="grid gap-8 md:grid-cols-[1fr_320px]">

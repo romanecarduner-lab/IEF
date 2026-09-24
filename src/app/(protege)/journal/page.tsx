@@ -92,13 +92,13 @@ export default async function PageJournal({
       <div className="mb-6 flex items-center justify-between">
         <h1 className="font-display text-2xl italic text-encre">
           Journal pédagogique
-          <AideContextuelle titre="Le journal pédagogique">
-            C&rsquo;est ici que vous notez chaque activité de votre
-            enfant (titre, description, photos) au fil du temps. C&rsquo;est
-            la base de tout le reste : la progression et les exports en
-            dépendent directement.
-          </AideContextuelle>
         </h1>
+        <AideContextuelle titre="Le journal pédagogique" variante="page">
+          C&rsquo;est ici que vous notez chaque activité de votre
+          enfant (titre, description, photos) au fil du temps. C&rsquo;est
+          la base de tout le reste : la progression et les exports en
+          dépendent directement.
+        </AideContextuelle>
         <Link
           href="/journal/nouvelle"
           className="rounded-doux bg-mousse-fonce px-4 py-2 text-sm font-medium text-white hover:bg-mousse"

@@ -211,15 +211,15 @@ export default async function PageProgression({
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-2xl italic text-encre">
           Progression
-          <AideContextuelle titre="La progression">
-            Cette page rassemble, par domaine du programme officiel, ce
-            qui a déjà été observé chez votre enfant — calculé à partir
-            des compétences reliées à vos activités dans le journal.
-            Les statuts et synthèses proposés restent modifiables à
-            tout moment : c&rsquo;est vous qui validez, jamais
-            l&rsquo;application à votre place.
-          </AideContextuelle>
         </h1>
+        <AideContextuelle titre="La progression" variante="page">
+          Cette page rassemble, par domaine du programme officiel, ce
+          qui a déjà été observé chez votre enfant — calculé à partir
+          des compétences reliées à vos activités dans le journal.
+          Les statuts et synthèses proposés restent modifiables à
+          tout moment : c&rsquo;est vous qui validez, jamais
+          l&rsquo;application à votre place.
+        </AideContextuelle>
 
         {parcoursOptions.length > 0 && (
           <SelecteurParcours parcoursId={parcoursId} options={parcoursOptions} />
