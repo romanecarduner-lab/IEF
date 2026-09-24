@@ -38,7 +38,13 @@ export function FormulaireModifierActivite({
     setErreurFormulation(null);
     try {
       const resultat = await avecDelaiMaximal(
-        proposerFormulationPedagogique(donnees.titre, donnees.description, competencesReliees),
+        proposerFormulationPedagogique(
+          donnees.titre,
+          donnees.description,
+          competencesReliees,
+          undefined,
+          activiteId
+        ),
         20000
       );
       if ("erreur" in resultat) {

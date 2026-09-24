@@ -18,11 +18,13 @@ export function SelecteurCompetences({
   arbre,
   niveaux,
   elementsDejaObserves,
+  cycleId,
 }: {
   activiteId: string;
   arbre: NoeudArbre[];
   niveaux: NiveauAutonomie[];
   elementsDejaObserves: Set<string>;
+  cycleId: string | null;
 }) {
   const router = useRouter();
 
@@ -48,13 +50,14 @@ export function SelecteurCompetences({
         const supabase = creerClientNavigateur();
         const { data } = await supabase.rpc("rechercher_objectifs_programme", {
           p_recherche: termeRecherche.trim(),
+          p_cycle_id: cycleId,
         });
         setResultatsRecherche(data ?? []);
       } finally {
         setRechercheEnCours(false);
       }
     }, 400);
-  }, [termeRecherche]);
+  }, [termeRecherche, cycleId]);
 
   // --- Navigation en cascade (pour qui préfère parcourir le programme) ---
   const [domaineId, setDomaineId] = useState("");

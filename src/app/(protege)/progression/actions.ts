@@ -316,7 +316,8 @@ async function estimerProgressionAutomatiqueInterne(
     const resultatIA = await estimerProgressionIA(
       (element?.libelle as string) ?? "cette compétence",
       resultat.raison,
-      observationsPourIA
+      observationsPourIA,
+      parcoursId
     );
 
     if ("erreur" in resultatIA) {

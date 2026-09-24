@@ -99,18 +99,44 @@ function nettoyerJSON(texte: string): string {
 export async function genererDescriptionEtCompetencesIA(
   titre: string,
   prenomEnfant: string,
-  images: { base64: string; mediaType: string }[]
+  images: { base64: string; mediaType: string }[],
+  parcoursId: string
 ): Promise<ResultatDescriptionCompetences> {
   if (!titre.trim()) {
     return { erreur: "Le titre est requis." };
   }
 
   const supabase = creerClientServeur();
-  const { data: objectifsBruts, error: erreurRequete } = await supabase
+
+  // Determine le cycle reel du parcours pour ne proposer que ses propres
+  // objectifs (plusieurs cycles coexistent desormais) et adapter la
+  // mention du cycle dans l'invite envoyee au modele. Si le parcours
+  // n'est pas encore selectionne (le bouton ne l'exige pas), on retombe
+  // sur tous les objectifs, tous cycles confondus, plutot que de bloquer
+  // la fonctionnalite.
+  let cycleId: string | null = null;
+  let mentionCycle = "";
+  if (parcoursId) {
+    const { data: parcours } = await supabase
+      .from("parcours_scolaires")
+      .select("cycle_id, cycles(libelle)")
+      .eq("id", parcoursId)
+      .maybeSingle();
+    if (parcours) {
+      cycleId = parcours.cycle_id as string;
+      const cycle = Array.isArray(parcours.cycles) ? parcours.cycles[0] : parcours.cycles;
+      if (cycle?.libelle) mentionCycle = ` (${cycle.libelle as string})`;
+    }
+  }
+
+  let requete = supabase
     .from("elements_programme")
     .select("id, parent_id, libelle, types_element_programme!inner(code)")
     .eq("types_element_programme.code", "objectif")
     .order("libelle");
+  if (cycleId) requete = requete.eq("cycle_id", cycleId);
+
+  const { data: objectifsBruts, error: erreurRequete } = await requete;
 
   if (erreurRequete || !objectifsBruts || objectifsBruts.length === 0) {
     return { erreur: "Impossible de charger le programme officiel." };
@@ -126,7 +152,7 @@ export async function genererDescriptionEtCompetencesIA(
   const nomEnfant = prenomEnfant.trim() || "l'enfant";
   const aDesImages = images.length > 0;
 
-  const prompt = `Tu aides un parent qui pratique l'instruction en famille (cycle 1, école maternelle française) à documenter une activité de son enfant, ${nomEnfant}, pour son carnet de suivi pédagogique — en vue d'un contrôle académique.
+  const prompt = `Tu aides un parent qui pratique l'instruction en famille${mentionCycle} à documenter une activité de son enfant, ${nomEnfant}, pour son carnet de suivi pédagogique — en vue d'un contrôle académique.
 
 ${aDesImages ? "Regarde la ou les photo(s) ci-jointe(s). " : ""}Titre donné par le parent : "${titre.trim()}"
 
@@ -220,7 +246,9 @@ Règles impératives :
 export async function proposerFormulationPedagogique(
   titre: string,
   descriptionBrute: string,
-  competencesRetenues: string[]
+  competencesRetenues: string[],
+  parcoursId?: string,
+  activiteId?: string
 ): Promise<ResultatFormulation> {
   if (!titre.trim()) {
     return { erreur: "Le titre est requis pour proposer une formulation." };
@@ -231,9 +259,31 @@ export async function proposerFormulationPedagogique(
     };
   }
 
+  const supabase = creerClientServeur();
+  let idParcoursReel = parcoursId;
+  if (!idParcoursReel && activiteId) {
+    const { data: activite } = await supabase
+      .from("activites")
+      .select("parcours_id")
+      .eq("id", activiteId)
+      .maybeSingle();
+    idParcoursReel = (activite?.parcours_id as string | undefined) ?? undefined;
+  }
+
+  let mentionCycle = "";
+  if (idParcoursReel) {
+    const { data: parcours } = await supabase
+      .from("parcours_scolaires")
+      .select("cycles(libelle)")
+      .eq("id", idParcoursReel)
+      .maybeSingle();
+    const cycle = Array.isArray(parcours?.cycles) ? parcours.cycles[0] : parcours?.cycles;
+    if (cycle?.libelle) mentionCycle = ` (${cycle.libelle as string})`;
+  }
+
   const listeCompetences = competencesRetenues.map((c) => `- ${c}`).join("\n");
 
-  const prompt = `Tu aides un parent qui pratique l'instruction en famille (cycle 1, école maternelle française) à rédiger une observation pédagogique pour son carnet de suivi.
+  const prompt = `Tu aides un parent qui pratique l'instruction en famille${mentionCycle} à rédiger une observation pédagogique pour son carnet de suivi.
 
 Ce que le parent a déjà écrit :
 Titre : "${titre.trim()}"

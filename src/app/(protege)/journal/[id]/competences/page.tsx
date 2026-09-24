@@ -16,11 +16,16 @@ export default async function PageCompetencesActivite({
 
   const { data: activite } = await supabase
     .from("activites")
-    .select("id, titre, description")
+    .select("id, titre, description, parcours_scolaires(cycle_id)")
     .eq("id", params.id)
     .maybeSingle();
 
   if (!activite) notFound();
+
+  const parcoursActivite = Array.isArray(activite.parcours_scolaires)
+    ? activite.parcours_scolaires[0]
+    : activite.parcours_scolaires;
+  const cycleId = (parcoursActivite?.cycle_id as string | undefined) ?? null;
 
   const [{ data: arbreBrut }, { data: niveaux }, { data: observationsBrutes }] =
     await Promise.all([
@@ -28,6 +33,7 @@ export default async function PageCompetencesActivite({
         .from("elements_programme")
         .select("id, parent_id, libelle, types_element_programme!inner(code)")
         .in("types_element_programme.code", TYPES_ARBRE)
+        .eq("cycle_id", cycleId ?? "")
         .order("ordre"),
       supabase
         .from("niveaux_autonomie")
@@ -98,6 +104,7 @@ export default async function PageCompetencesActivite({
           arbre={arbre}
           niveaux={niveaux ?? []}
           elementsDejaObserves={setIdsObserves}
+          cycleId={cycleId}
         />
 
         <div>

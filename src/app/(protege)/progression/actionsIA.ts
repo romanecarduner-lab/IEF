@@ -102,6 +102,14 @@ export async function genererSyntheseCompetenceIA(
     return { erreur: "Aucune observation enregistrée pour cette compétence." };
   }
 
+  const { data: parcours } = await supabase
+    .from("parcours_scolaires")
+    .select("cycles(libelle)")
+    .eq("id", parcoursId)
+    .maybeSingle();
+  const cycle = Array.isArray(parcours?.cycles) ? parcours.cycles[0] : parcours?.cycles;
+  const mentionCycle = cycle?.libelle ? ` (${cycle.libelle as string})` : "";
+
   const observationsTexte = observations
     .map((o, i) => {
       const a = Array.isArray(o.activites) ? o.activites[0] : o.activites;
@@ -121,7 +129,7 @@ export async function genererSyntheseCompetenceIA(
     })
     .join("\n\n");
 
-  const prompt = `Tu aides un parent qui pratique l'instruction en famille (cycle 1, école maternelle française) à rédiger, pour le contrôle pédagogique académique, une synthèse sur une compétence précise du programme officiel.
+  const prompt = `Tu aides un parent qui pratique l'instruction en famille${mentionCycle} à rédiger, pour le contrôle pédagogique académique, une synthèse sur une compétence précise du programme officiel.
 
 Compétence concernée : "${element.libelle}"
 Contexte dans le programme : ${chemin ?? ""}
@@ -287,8 +295,21 @@ const CODES_STATUTS_VALIDES = [
 export async function estimerProgressionIA(
   competenceLibelle: string,
   raisonNonConcluant: string,
-  observations: ObservationPourEstimationIA[]
+  observations: ObservationPourEstimationIA[],
+  parcoursId?: string
 ): Promise<ResultatEstimationIA> {
+  let mentionCycle = "";
+  if (parcoursId) {
+    const supabase = creerClientServeur();
+    const { data: parcours } = await supabase
+      .from("parcours_scolaires")
+      .select("cycles(libelle)")
+      .eq("id", parcoursId)
+      .maybeSingle();
+    const cycle = Array.isArray(parcours?.cycles) ? parcours.cycles[0] : parcours?.cycles;
+    if (cycle?.libelle) mentionCycle = ` (${cycle.libelle as string})`;
+  }
+
   const listeObservations = observations
     .map((o, i) => {
       const morceaux = [
@@ -300,7 +321,7 @@ export async function estimerProgressionIA(
     })
     .join("\n\n");
 
-  const prompt = `Tu aides à analyser la progression d'un enfant en instruction en famille (cycle 1, école maternelle française) sur une compétence précise du programme officiel, dans un cas que des règles automatiques simples n'ont pas réussi à trancher.
+  const prompt = `Tu aides à analyser la progression d'un enfant en instruction en famille${mentionCycle} sur une compétence précise du programme officiel, dans un cas que des règles automatiques simples n'ont pas réussi à trancher.
 
 Compétence : "${competenceLibelle}"
 
@@ -383,11 +404,14 @@ export async function genererIdeesActivites(
 
   const { data: element } = await supabase
     .from("elements_programme")
-    .select("libelle, parent_id")
+    .select("libelle, parent_id, cycles(libelle)")
     .eq("id", elementProgrammeId)
     .maybeSingle();
 
   if (!element) return { erreur: "Compétence introuvable." };
+
+  const cycle = Array.isArray(element.cycles) ? element.cycles[0] : element.cycles;
+  const mentionCycle = cycle?.libelle ? ` (${cycle.libelle as string})` : "";
 
   const [{ data: chemin }, { data: exemples }] = await Promise.all([
     supabase.rpc("chemin_element_programme", { p_element_id: element.parent_id as string }),
@@ -398,7 +422,7 @@ export async function genererIdeesActivites(
     .map((e: { exemple: string }) => `- ${e.exemple}`)
     .join("\n");
 
-  const prompt = `Tu aides un parent qui pratique l'instruction en famille (cycle 1, école maternelle française) à trouver des idées d'activités concrètes pour travailler une compétence précise du programme officiel, que son enfant n'a pas encore abordée.
+  const prompt = `Tu aides un parent qui pratique l'instruction en famille${mentionCycle} à trouver des idées d'activités concrètes pour travailler une compétence précise du programme officiel, que son enfant n'a pas encore abordée.
 
 Compétence : "${element.libelle}"
 Contexte dans le programme : ${chemin ?? ""}

@@ -19,7 +19,7 @@ import {
 import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaximal";
 
 type Option = { id: string; libelle: string };
-type OptionParcours = Option & { prenomEnfant: string };
+type OptionParcours = Option & { prenomEnfant: string; cycleId: string };
 
 // Meme si plus de photos sont selectionnees pour l'activite (toutes
 // seront quand meme ajoutees comme traces), seules les premieres sont
@@ -152,15 +152,17 @@ export function FormulaireActivite({
       setChargementSuggestions(true);
       try {
         const supabase = creerClientNavigateur();
+        const cycleId = parcours.find((p) => p.id === donnees.parcoursId)?.cycleId;
         const { data } = await supabase.rpc("suggerer_objectifs_programme", {
           p_texte: donnees.titre,
+          p_cycle_id: cycleId ?? null,
         });
         setSuggestions(data ?? []);
       } finally {
         setChargementSuggestions(false);
       }
     }, 500);
-  }, [donnees.titre]);
+  }, [donnees.titre, donnees.parcoursId, parcours]);
 
   function basculerSuggestion(id: string, libelle: string) {
     setSuggestionsChoisies((precedent) => {
@@ -200,7 +202,7 @@ export function FormulaireActivite({
         parcours.find((p) => p.id === donnees.parcoursId)?.prenomEnfant ?? "";
 
       const resultat = await avecDelaiMaximal(
-        genererDescriptionEtCompetencesIA(donnees.titre, prenomEnfant, images),
+        genererDescriptionEtCompetencesIA(donnees.titre, prenomEnfant, images, donnees.parcoursId),
         45000
       );
       if ("erreur" in resultat) {
@@ -228,7 +230,8 @@ export function FormulaireActivite({
         proposerFormulationPedagogique(
           donnees.titre,
           donnees.description,
-          Array.from(suggestionsChoisies.values())
+          Array.from(suggestionsChoisies.values()),
+          donnees.parcoursId
         ),
         20000
       );

@@ -29,7 +29,13 @@ export function BoutonFormulationCompetences({
     setErreur(null);
     try {
       const resultat = await avecDelaiMaximal(
-        proposerFormulationPedagogique(titre, description, competencesReliees),
+        proposerFormulationPedagogique(
+          titre,
+          description,
+          competencesReliees,
+          undefined,
+          activiteId
+        ),
         30000
       );
       if ("erreur" in resultat) {
