@@ -117,7 +117,7 @@ export function BoutonFormulationCompetences({
         className="text-xs font-medium text-mousse-fonce underline decoration-mousse-clair/60 underline-offset-2 hover:text-mousse disabled:cursor-not-allowed disabled:opacity-50"
       >
         {chargementGeneration
-          ? "L'IA rédige…"
+          ? "Rédaction en cours…"
           : texte !== null
           ? "✨ Régénérer avec les compétences actuelles"
           : "✨ Générer la formulation pédagogique"}

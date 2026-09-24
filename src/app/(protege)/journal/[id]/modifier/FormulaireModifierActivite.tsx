@@ -168,7 +168,7 @@ export function FormulaireModifierActivite({
           }
           className="mt-1.5 text-xs font-medium text-mousse-fonce underline decoration-mousse-clair/60 underline-offset-2 hover:text-mousse disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {chargementFormulation ? "L'IA rédige…" : "✨ Proposer une formulation pédagogique"}
+          {chargementFormulation ? "Rédaction en cours…" : "✨ Proposer une formulation pédagogique"}
         </button>
         {erreurFormulation && (
           <p className="mt-1.5 text-xs text-alerte">{erreurFormulation}</p>

@@ -570,7 +570,7 @@ export function FormulaireActivite({
             className="text-xs font-medium text-mousse-fonce underline decoration-mousse-clair/60 underline-offset-2 hover:text-mousse disabled:cursor-not-allowed disabled:opacity-50"
           >
             {chargementDescriptionIA
-              ? "L'IA réfléchit…"
+              ? "Analyse en cours…"
               : "✨ Décrire l'activité et identifier les compétences (photo + attendus)"}
           </button>
           <p className="mt-1 text-xs text-ardoise">
@@ -715,7 +715,7 @@ export function FormulaireActivite({
             className="mt-1.5 text-xs font-medium text-mousse-fonce underline decoration-mousse-clair/60 underline-offset-2 hover:text-mousse disabled:cursor-not-allowed disabled:opacity-50"
           >
             {chargementFormulation
-              ? "L'IA rédige…"
+              ? "Rédaction en cours…"
               : "✨ Proposer une formulation pédagogique"}
           </button>
 

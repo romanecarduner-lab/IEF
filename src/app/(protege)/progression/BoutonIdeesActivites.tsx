@@ -57,7 +57,7 @@ export function BoutonIdeesActivites({
         disabled={enCours}
         className="text-xs font-medium text-mousse-fonce underline decoration-mousse-clair/60 underline-offset-2 hover:text-mousse disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {enCours ? "L'IA réfléchit…" : "💡 Idées d'activités"}
+        {enCours ? "Analyse en cours…" : "💡 Idées d'activités"}
       </button>
       {erreur && <p className="mt-1 text-xs text-alerte">{erreur}</p>}
       {idees && idees.length > 0 && (
