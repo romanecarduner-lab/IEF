@@ -524,8 +524,10 @@ export function FormulaireActivite({
           </p>
           <p className="mb-3 text-xs text-ardoise">
             Pour relier cette activité aux compétences officielles qu&rsquo;elle
-            pourrait développer — vous cocherez ensuite celles qui conviennent
-            vraiment.
+            pourrait développer — ce sont des propositions, à vous de
+            cocher, décocher ou ajuster celles qui conviennent vraiment.
+            Vous restez seule ou seul responsable du suivi pédagogique
+            de votre enfant.
           </p>
         </div>
 

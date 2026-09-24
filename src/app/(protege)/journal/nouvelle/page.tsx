@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { creerClientServeur } from "@/lib/supabase/server";
 import { FormulaireActivite } from "./FormulaireActivite";
+import { AideContextuelle } from "@/components/AideContextuelle";
 
 export default async function PageNouvelleActivite({
   searchParams,
@@ -66,6 +67,15 @@ export default async function PageNouvelleActivite({
       </Link>
       <h1 className="mb-6 font-display text-2xl italic text-encre">
         Ajouter une activité
+        <AideContextuelle titre="Ajouter une activité">
+          Décrivez ce que votre enfant a fait, avec une ou plusieurs
+          photos si vous le souhaitez. Des compétences du programme
+          officiel peuvent être suggérées automatiquement (par
+          mots-clés ou par le bouton ✨) — ce ne sont que des
+          propositions : cochez, décochez ou modifiez-les librement.
+          L&rsquo;application propose, mais le suivi pédagogique de
+          votre enfant reste entièrement de votre responsabilité.
+        </AideContextuelle>
       </h1>
 
       {parcours.length === 0 || !appartenance ? (

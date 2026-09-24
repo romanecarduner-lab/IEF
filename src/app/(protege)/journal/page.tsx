@@ -2,6 +2,7 @@ import Link from "next/link";
 import { creerClientServeur } from "@/lib/supabase/server";
 import { supprimerActivite, basculerFavori, basculerStatutActivite } from "./actions";
 import { VueGalerie } from "./VueGalerie";
+import { AideContextuelle } from "@/components/AideContextuelle";
 
 export default async function PageJournal({
   searchParams,
@@ -91,6 +92,12 @@ export default async function PageJournal({
       <div className="mb-6 flex items-center justify-between">
         <h1 className="font-display text-2xl italic text-encre">
           Journal pédagogique
+          <AideContextuelle titre="Le journal pédagogique">
+            C&rsquo;est ici que vous notez chaque activité de votre
+            enfant (titre, description, photos) au fil du temps. C&rsquo;est
+            la base de tout le reste : la progression et les exports en
+            dépendent directement.
+          </AideContextuelle>
         </h1>
         <Link
           href="/journal/nouvelle"

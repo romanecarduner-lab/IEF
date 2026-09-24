@@ -5,6 +5,7 @@ import { supprimerParcours } from "../parcours/actions";
 import { FormulaireNouvelleAnnee } from "../annees-scolaires/FormulaireNouvelleAnnee";
 import { FormulaireNouveauParcours } from "../parcours/FormulaireNouveauParcours";
 import { FormulaireEnfant } from "./FormulaireEnfant";
+import { AideContextuelle } from "@/components/AideContextuelle";
 
 export default async function PageFamille() {
   const supabase = creerClientServeur();
@@ -45,7 +46,15 @@ export default async function PageFamille() {
 
   return (
     <div className="space-y-12">
-      <h1 className="font-display text-2xl italic text-encre">Famille</h1>
+      <h1 className="font-display text-2xl italic text-encre">
+        Famille
+        <AideContextuelle titre="Famille">
+          C&rsquo;est ici que vous ajoutez vos enfants, les années
+          scolaires, et le parcours de chacun (enfant + année + cycle).
+          Un parcours doit exister avant de pouvoir ajouter des
+          activités pour cet enfant.
+        </AideContextuelle>
+      </h1>
 
       {/* --- Enfants --- */}
       <section className="grid gap-8 md:grid-cols-[1fr_320px]">

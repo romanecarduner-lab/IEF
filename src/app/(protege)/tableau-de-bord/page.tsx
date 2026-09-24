@@ -17,6 +17,7 @@ import {
 import { creerClientServeur } from "@/lib/supabase/server";
 import { libelleCourtDomaine } from "@/lib/libelleCourtDomaine";
 import { BoutonIdeesActivites } from "../progression/BoutonIdeesActivites";
+import { AideContextuelle } from "@/components/AideContextuelle";
 import { SelecteurParcoursTableauDeBord } from "./SelecteurParcoursTableauDeBord";
 
 const DUREE_SIGNATURE_SECONDES = 60 * 60;
@@ -242,6 +243,13 @@ export default async function PageTableauDeBord({
         <div className="relative z-10 max-w-md">
           <h1 className="mb-1 font-display text-2xl italic text-encre sm:text-3xl">
             Bonjour{prenom ? ` ${prenom}` : ""},
+            <AideContextuelle titre="Le tableau de bord">
+              C&rsquo;est votre page d&rsquo;accueil : un résumé de ce qui a
+              déjà été fait (activités, traces) et, à droite, des idées
+              pour continuer. Rien n&rsquo;est automatique ni obligatoire
+              : vous restez seule ou seul maître de ce que vous décidez
+              de faire.
+            </AideContextuelle>
           </h1>
           <p className="mb-4 text-sm text-ardoise sm:mb-6 sm:text-base">
             {plusieursEnfants
