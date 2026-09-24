@@ -15,6 +15,7 @@ const PAGES_PROTEGEES = [
   "/progression",
   "/export",
   "/confidentialite",
+  "/bienvenue",
 ];
 
 export async function middleware(request: NextRequest) {

@@ -103,6 +103,38 @@ Journal (filtre par domaine, volontairement familial et non lié à un
 seul enfant) reste inchangée sur le fond, avec juste une déduplication
 de sécurité ajoutée.
 
+## Correction — bulles d'aide coupées et en italique + page de bienvenue
+
+Deux défauts trouvés après retour utilisatrice sur l'aide contextuelle
+ajoutée juste avant :
+- **Le texte s'affichait en italique** (police des titres) : la bulle
+  héritait du style du `<h1>` qui la contenait, faute de forcer
+  explicitement une police normale. Corrigé.
+- **Le texte était coupé** : la bulle était nichée dans un conteneur
+  avec `overflow-hidden` (nécessaire par ailleurs pour l'illustration du
+  tableau de bord), qui rognait tout débordement. Corrigée en
+  distinguant deux façons d'utiliser le composant : `variante="page"`
+  (bouton fixe en haut à droite de l'écran, bulle affichée via un
+  portail React directement dans `document.body` — ne peut plus jamais
+  être coupée par un conteneur parent, quel que soit l'endroit du
+  bouton dans la page) pour une explication de toute la page, et
+  `variante="inline"` (comportement d'origine, à côté d'un élément
+  précis) pour une explication ciblée. Les 6 aides déjà en place
+  (Tableau de bord, Journal, Ajouter une activité, Progression, Export,
+  Famille) sont toutes passées en `variante="page"`, puisqu'elles
+  expliquent chacune la page entière plutôt qu'un point précis.
+
+**Nouvelle page `/bienvenue`** : affichée une seule fois, à la première
+connexion d'une famille (nouvelle colonne `onboarding_termine` sur
+`familles`, `false` par défaut). Explique l'objectif de l'application,
+présente les trois sections principales (Journal, Progression, Export)
+en quelques lignes, et mentionne les boutons "?". Un bouton "Commencer"
+marque l'onboarding comme terminé et redirige vers le tableau de bord ;
+elle ne réapparaît plus ensuite, même en y retournant manuellement.
+Placée hors du groupe de pages protégées habituel (avec sa propre
+vérification d'authentification) pour éviter toute boucle de
+redirection.
+
 ## Aide contextuelle pour les nouvelles familles + responsabilité parentale
 
 Un petit bouton "?" apparaît maintenant à côté du titre des pages
