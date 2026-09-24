@@ -581,7 +581,7 @@ export function FormulaireActivite({
               <>
                 {" "}
                 Seules les {NB_MAX_PHOTOS_IA} premières photos sont
-                analysées par l&rsquo;IA (les autres seront quand même
+                analysées (les autres seront quand même
                 ajoutées à l&rsquo;activité).
               </>
             )}
@@ -596,14 +596,14 @@ export function FormulaireActivite({
             !erreurDescriptionIA &&
             suggestionsIA.length === 0 && (
               <p className="mt-1.5 text-xs text-ardoise">
-                L&rsquo;IA n&rsquo;a trouvé aucun objectif clairement lié.
+                Aucun objectif clairement lié n&rsquo;a été trouvé.
               </p>
             )}
 
           {suggestionsIA.length > 0 && (
             <div className="mt-2 rounded-doux border border-argile/30 bg-argile/5 p-3">
               <p className="mb-2 text-xs font-medium text-encre">
-                Suggestions de l&rsquo;IA (à valider) :
+                Suggestions (à valider) :
               </p>
               <ul className="max-h-40 space-y-1 overflow-y-auto">
                 {suggestionsIA.map((s) => (
@@ -634,7 +634,7 @@ export function FormulaireActivite({
             <p className="mb-2 text-xs text-encre">
               {suggestionsChoisies.size} compétence
               {suggestionsChoisies.size > 1 ? "s" : ""} sélectionnée
-              {suggestionsChoisies.size > 1 ? "s" : ""} (mots-clés et/ou IA) —
+              {suggestionsChoisies.size > 1 ? "s" : ""} —
               sera{suggestionsChoisies.size > 1 ? "ont" : ""} enregistrée
               {suggestionsChoisies.size > 1 ? "s" : ""} avec cette activité.
             </p>
