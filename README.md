@@ -103,6 +103,64 @@ Journal (filtre par domaine, volontairement familial et non lié à un
 seul enfant) reste inchangée sur le fond, avec juste une déduplication
 de sécurité ajoutée.
 
+## Ajustements sur les activités partagées, après retour utilisatrice
+
+Trois points corrigés sur la fonctionnalité de la veille :
+
+1. **Compétences jamais copiées automatiquement**, même entre deux
+   enfants du même cycle — retiré entièrement de
+   `dupliquerActiviteVersParcours`. Chaque enfant a toujours ses
+   compétences choisies séparément, sans exception.
+2. **Nouvelle page `/journal/nouvelle/recapitulatif`** : quand une
+   activité est créée pour plusieurs enfants ("Concerne aussi"), le
+   parent est redirigé vers cette page plutôt que vers la fiche d'un
+   seul enfant — elle liste chaque enfant avec un lien direct
+   "Compléter" vers ses compétences, sans avoir à les retrouver dans
+   le journal. Un lien "Terminer plus tard" reste disponible pour ne
+   pas forcer à tout compléter immédiatement.
+3. **Échec de duplication clairement signalé** : si la copie échoue
+   pour un ou plusieurs enfants, le parent reste sur le formulaire et
+   voit un message précis ("L'activité a bien été enregistrée, mais la
+   copie a échoué pour : [prénom]"), au lieu d'être redirigé comme si
+   tout s'était bien passé. Il est orienté vers "Dupliquer pour un
+   autre enfant" depuis la fiche pour réessayer.
+
+**Fichier créé** : `src/app/(protege)/journal/nouvelle/recapitulatif/page.tsx`.
+
+## Activités partagées entre plusieurs enfants d'un même foyer
+
+Aucun changement de modèle de données : chaque activité reste liée à un
+seul enfant, exactement comme avant — c'est ce qui garantit nativement
+que modifier les compétences ou l'observation de l'un ne touche jamais
+l'autre. La nouveauté porte sur la façon de créer, sans retaper, une
+activité identique pour plusieurs enfants :
+
+- **À la création** : un bloc "Concerne aussi" (visible seulement si le
+  foyer compte plusieurs enfants) permet de cocher d'autres enfants.
+  Une copie est créée automatiquement pour chacun (titre, description,
+  photos) une fois l'activité principale enregistrée — sans
+  compétences ni observation, à compléter séparément pour chacun.
+- **Depuis une activité existante** : bouton "Dupliquer pour un autre
+  enfant" sur la fiche détaillée, avec un sélecteur des autres enfants
+  du foyer.
+
+Les deux s'appuient sur la même fonction centrale,
+`dupliquerActiviteVersParcours` (`journal/actions.ts`) : copie le
+titre/description/contexte/lieu, relie les mêmes fichiers de traces
+sans les re-téléverser (le stockage n'est rattaché qu'à la famille, pas
+à l'activité précise). Les compétences ne sont jamais copiées, même
+entre deux enfants du même cycle (voir correction ci-dessous) ; les
+observations libres, paroles d'enfant et personnes présentes non plus,
+à rédiger séparément pour chaque enfant, comme demandé. Chaque copie
+démarre en statut "brouillon".
+
+Rien à changer côté Journal, Progression ou Export de chaque enfant :
+ces pages affichent déjà uniquement les activités liées à cet enfant,
+donc chaque copie y apparaît naturellement comme une activité à part
+entière.
+
+**Fichier créé** : `src/app/(protege)/journal/[id]/BoutonDupliquerActivite.tsx`.
+
 ## Correction — compétence préremplie invisible (jamais "cochée" à l'écran)
 
 Quand on arrivait sur "Ajouter une activité" via "Créer cette activité"
