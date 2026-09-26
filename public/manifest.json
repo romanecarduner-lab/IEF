@@ -1,0 +1,29 @@
+{
+  "name": "Chemins d'apprentissage",
+  "short_name": "Chemins d'apprentissage",
+  "description": "Suivi pédagogique pour l'instruction en famille",
+  "start_url": "/tableau-de-bord",
+  "display": "standalone",
+  "background_color": "#F6F1E8",
+  "theme_color": "#264C3B",
+  "icons": [
+    {
+      "src": "/icones/icone-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icones/icone-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icones/icone-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

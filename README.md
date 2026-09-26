@@ -103,6 +103,74 @@ Journal (filtre par domaine, volontairement familial et non lié à un
 seul enfant) reste inchangée sur le fond, avec juste une déduplication
 de sécurité ajoutée.
 
+## Clarification — génération de description et d'observation
+
+Vérification demandée sur deux points, après un test poussé par
+l'utilisatrice :
+
+1. **Description** : déjà correctement implémenté — un texte préalable
+   du parent est traité comme des faits établis à préserver, tandis que
+   l'IA continue son analyse complète (titre, photos, programme
+   officiel) pour reformuler, organiser et enrichir plutôt que de
+   paraphraser. Aucun changement nécessaire.
+2. **Observation** : un vrai écart trouvé sur la page "Compétences
+   observées" — la description utilisée pour générer l'observation y
+   était figée au chargement de la page, sans refléter une modification
+   faite entre-temps ailleurs (notamment depuis le formulaire de
+   modification). Corrigé en relisant la description directement depuis
+   la base juste avant chaque génération sur cette page précise.
+   Le formulaire de création et le formulaire de modification
+   utilisaient déjà la valeur actuellement affichée à l'écran (y
+   compris les modifications non enregistrées) : laissés inchangés,
+   volontairement, pour ne pas risquer d'écraser un texte que le parent
+   viendrait de taper avant de cliquer sur "Générer" sans avoir encore
+   enregistré.
+
+## Génération d'observation — équilibre entre les faits, élaboration pédagogique conservée
+
+Sur un exemple concret, l'observation générée traitait longuement un
+premier fait de la description (le choix de livres) et n'évoquait le
+second (la réflexion sur les éléments naturels à cueillir) qu'en une
+courte mention finale. Première tentative de correctif trop stricte
+(interdiction d'élaborer au-delà des mots exacts du parent) écartée
+immédiatement sur retour de l'utilisatrice : l'élaboration pédagogique
+(interpréter, développer ce que chaque étape mobilise probablement)
+est précisément l'objet voulu d'une observation, pas un défaut à
+corriger. Le prompt final garde cette liberté d'élaboration intacte et
+ajoute uniquement une exigence d'équilibre : quand la description
+mentionne plusieurs éléments distincts, chacun doit être développé
+avec une attention comparable, sans que le premier n'écrase les
+suivants.
+
+## Icône d'écran d'accueil qui redemandait la connexion à chaque fois
+
+Cause : l'application n'avait jamais eu de manifeste PWA. Sans ça, "Ajouter
+à l'écran d'accueil" sur iOS crée un simple signet, dont le stockage de
+session est traité par Safari de façon nettement moins stable qu'une
+vraie application installée (effacé plus facilement par le système).
+Mise en place du correctif standard :
+- `public/manifest.json` (nom, couleurs, icônes, `display: standalone`).
+- Icônes générées aux couleurs de l'app (feuille crème sur fond vert
+  mousse foncé), en 192px, 512px et une variante "maskable" pour
+  Android, plus un favicon.
+- Balises `apple-mobile-web-app-*` ajoutées aux métadonnées
+  (`src/app/layout.tsx`), pour qu'iOS reconnaisse l'app comme une
+  installation à part entière plutôt qu'un onglet Safari classique.
+
+**Important à savoir en testant** : l'icône déjà présente sur l'écran
+d'accueil a été créée avant ce changement et ne se mettra pas à jour
+toute seule. Il faut la supprimer et refaire "Ajouter à l'écran
+d'accueil" après le déploiement pour qu'iOS la reconnaisse comme une
+vraie application. Ce correctif suit la pratique standard et devrait
+nettement améliorer la stabilité de la connexion, mais je ne peux pas
+garantir à 100% qu'iOS ne redemandera plus jamais la connexion :
+c'est un point qu'iOS gère parfois de façon capricieuse, indépendamment
+du code de l'application.
+
+**Fichiers créés** : `public/manifest.json`,
+`public/icones/icone-192.png`, `public/icones/icone-512.png`,
+`public/icones/icone-maskable-512.png`, `public/icones/favicon-32.png`.
+
 ## Ajustements sur les activités partagées, après retour utilisatrice
 
 Trois points corrigés sur la fonctionnalité de la veille :
