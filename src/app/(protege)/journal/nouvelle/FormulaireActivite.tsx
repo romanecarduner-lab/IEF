@@ -203,7 +203,13 @@ export function FormulaireActivite({
         parcours.find((p) => p.id === donnees.parcoursId)?.prenomEnfant ?? "";
 
       const resultat = await avecDelaiMaximal(
-        genererDescriptionEtCompetencesIA(donnees.titre, prenomEnfant, images, donnees.parcoursId),
+        genererDescriptionEtCompetencesIA(
+          donnees.titre,
+          prenomEnfant,
+          images,
+          donnees.parcoursId,
+          donnees.description
+        ),
         45000
       );
       if ("erreur" in resultat) {
@@ -663,9 +669,10 @@ export function FormulaireActivite({
               : "✨ Décrire l'activité et identifier les compétences (photo + attendus)"}
           </button>
           <p className="mt-1 text-xs text-ardoise">
-            Regarde le titre et la ou les photo(s), rédige une courte
-            description et propose directement les compétences officielles
-            concernées — en une seule fois.
+            Regarde le titre, la ou les photo(s) et ce que vous avez déjà
+            écrit dans la description pour la compléter, puis propose
+            directement les compétences officielles concernées — en une
+            seule fois.
             {nbPhotosSelectionnees > NB_MAX_PHOTOS_IA && (
               <>
                 {" "}

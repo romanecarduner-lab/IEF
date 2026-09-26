@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { proposerFormulationPedagogique } from "../../nouvelle/actionsIA";
 import { modifierObservationsActivite } from "../../actions";
 import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaximal";
+import { creerClientNavigateur } from "@/lib/supabase/client";
 
 export function BoutonFormulationCompetences({
   activiteId,
@@ -28,10 +29,24 @@ export function BoutonFormulationCompetences({
     setChargementGeneration(true);
     setErreur(null);
     try {
+      // Cette page n'edite pas la description elle-meme : la prop recue
+      // reflete seulement son etat au chargement de la page, qui peut
+      // etre perimee si elle a ete modifiee entre-temps (formulaire de
+      // modification, par exemple). On relit donc sa valeur la plus
+      // recente juste avant de generer, plutot que de faire confiance a
+      // une valeur potentiellement ancienne.
+      const supabase = creerClientNavigateur();
+      const { data: activiteActuelle } = await supabase
+        .from("activites")
+        .select("description")
+        .eq("id", activiteId)
+        .maybeSingle();
+      const descriptionAJour = (activiteActuelle?.description as string | null) ?? description;
+
       const resultat = await avecDelaiMaximal(
         proposerFormulationPedagogique(
           titre,
-          description,
+          descriptionAJour,
           competencesReliees,
           undefined,
           activiteId

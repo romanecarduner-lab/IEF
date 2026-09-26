@@ -100,7 +100,8 @@ export async function genererDescriptionEtCompetencesIA(
   titre: string,
   prenomEnfant: string,
   images: { base64: string; mediaType: string }[],
-  parcoursId: string
+  parcoursId: string,
+  descriptionExistante?: string
 ): Promise<ResultatDescriptionCompetences> {
   if (!titre.trim()) {
     return { erreur: "Le titre est requis." };
@@ -151,22 +152,30 @@ export async function genererDescriptionEtCompetencesIA(
 
   const nomEnfant = prenomEnfant.trim() || "l'enfant";
   const aDesImages = images.length > 0;
+  const descriptionDeja = descriptionExistante?.trim() || "";
 
   const prompt = `Tu aides un parent qui pratique l'instruction en famille${mentionCycle} à documenter une activité de son enfant, ${nomEnfant}, pour son carnet de suivi pédagogique — en vue d'un contrôle académique.
 
-${aDesImages ? "Regarde la ou les photo(s) ci-jointe(s). " : ""}Titre donné par le parent : "${titre.trim()}"
+${descriptionDeja ? `Le parent a déjà écrit ce début de description — considère-le comme des FAITS ÉTABLIS sur l'activité, à ne jamais perdre, ignorer ou contredire :
+"${descriptionDeja}"
+
+` : ""}${aDesImages ? "Regarde la ou les photo(s) ci-jointe(s). " : ""}Titre donné par le parent : "${titre.trim()}"
 
 Voici la liste numérotée de tous les objectifs du programme officiel :
 ${listeNumerotee}
 
 Fais deux choses en une seule réflexion, comme le ferait le parent lui-même :
 
-1. Rédige un TRÈS COURT texte (2 à 3 phrases maximum), à la première personne du point de vue du parent qui observe ${nomEnfant} — pas une description visuelle exhaustive, mais l'essentiel de l'action et de ce qu'elle mobilise comme apprentissage. Utilise le prénom ${nomEnfant}, jamais "l'enfant". Ne décris JAMAIS l'apparence physique de ${nomEnfant} (couleur des cheveux, vêtements, traits du visage) : ce n'est pas pertinent pour un carnet pédagogique.
+1. Rédige un TRÈS COURT texte (2 à 3 phrases maximum), à la première personne du point de vue du parent qui observe ${nomEnfant} — pas une description visuelle exhaustive, mais l'essentiel de l'action et de ce qu'elle mobilise comme apprentissage.${
+    descriptionDeja
+      ? " Appuie-toi sur ce que le parent a déjà écrit ci-dessus : tu peux reformuler, réorganiser et enrichir avec ce que montrent la ou les photo(s), mais sans perdre aucun fait qu'il a donné ni le contredire."
+      : ""
+  } Utilise le prénom ${nomEnfant}, jamais "l'enfant". Ne décris JAMAIS l'apparence physique de ${nomEnfant} (couleur des cheveux, vêtements, traits du visage) : ce n'est pas pertinent pour un carnet pédagogique.
 
 2. Identifie, parmi la liste numérotée ci-dessus, les objectifs clairement mobilisés par cette activité (au maximum 5, du plus au moins pertinent).
 
 Règles impératives :
-- Ne décris et n'évoque que ce qui est visible ou clairement suggéré par le titre et la ou les photo(s) : n'invente aucun détail, aucune réaction, aucun résultat.
+- Ne décris et n'évoque que ce qui est établi par le parent (titre, description déjà écrite le cas échéant) ou clairement visible sur la ou les photo(s) : n'invente aucun détail, aucune réaction, aucun résultat qui ne soit pas l'un de ces deux éléments.
 - Réponds UNIQUEMENT avec un objet JSON de cette forme exacte, sans rien d'autre autour :
 {"description": "...", "objectifs": [12, 87]}`;
 
@@ -292,10 +301,11 @@ Description : "${descriptionBrute.trim() || "(aucune)"}"
 Compétences du programme officiel déjà retenues pour cette activité :
 ${listeCompetences}
 
-Rédige un court paragraphe (3 à 5 phrases) qui décrit cette activité de façon factuelle et nuancée, en reliant clairement ce que l'enfant a fait aux compétences ci-dessus, avec un vocabulaire pédagogique clair et adapté.
+Rédige un court paragraphe (3 à 5 phrases) qui décrit cette activité de façon factuelle et nuancée, en reliant clairement ce que l'enfant a fait aux compétences ci-dessus, avec un vocabulaire pédagogique clair et adapté. Tu peux développer et interpréter pédagogiquement ce que chaque étape mobilise probablement (attention portée aux détails, raisonnement, geste, etc.) — c'est justement l'objet d'une observation pédagogique, pas une simple redite du texte du parent.
 
 Règles impératives :
-- N'invente aucun détail, aucune réaction, aucun résultat que le parent n'a pas mentionné. S'il manque de détails, reste général plutôt que d'inventer.
+- Si la description mentionne plusieurs éléments ou étapes distincts, développe et interprète pédagogiquement CHACUN d'eux avec une attention comparable : ne consacre pas l'essentiel du paragraphe au premier élément en réduisant les autres à une simple mention en fin de phrase.
+- Si la description ne donne pas assez d'éléments pour développer longuement le lien avec une compétence, préfère un paragraphe plus court et fidèle plutôt que de compléter par des détails non vérifiés.
 - Ne recopie jamais le texte du programme officiel mot pour mot : reformule entièrement avec tes propres mots.
 - N'ajoute ni introduction, ni titre, ni commentaire : réponds uniquement avec le paragraphe.`;
 
