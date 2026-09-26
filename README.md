@@ -103,6 +103,18 @@ Journal (filtre par domaine, volontairement familial et non lié à un
 seul enfant) reste inchangée sur le fond, avec juste une déduplication
 de sécurité ajoutée.
 
+## Correction — compétence préremplie invisible (jamais "cochée" à l'écran)
+
+Quand on arrivait sur "Ajouter une activité" via "Créer cette activité"
+depuis les Idées d'activités, la compétence était bien enregistrée en
+interne (elle aurait été sauvegardée correctement à la validation),
+mais **rien ne l'affichait à l'écran** : juste un texte générique "1
+compétence sélectionnée", sans son nom ni case visible. D'où
+l'impression qu'elle n'était pas prise en compte. La liste des
+compétences sélectionnées affiche maintenant chaque compétence par son
+nom, avec sa case cochée (et décochable), quelle que soit son origine
+(mots-clés, IA, ou préremplissage depuis une idée d'activité).
+
 ## Correction de performance — "Ce qui reste à voir" lent à charger
 
 `v_objectif_domaine` et `v_total_objectifs_par_domaine` appelaient
