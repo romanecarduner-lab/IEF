@@ -633,13 +633,27 @@ export function FormulaireActivite({
 
         {suggestionsChoisies.size > 0 && (
           <div className="mb-4 rounded-doux border border-trait bg-white/60 p-3">
-            <p className="mb-2 text-xs text-encre">
-              {suggestionsChoisies.size} compétence
-              {suggestionsChoisies.size > 1 ? "s" : ""} sélectionnée
-              {suggestionsChoisies.size > 1 ? "s" : ""} —
-              sera{suggestionsChoisies.size > 1 ? "ont" : ""} enregistrée
-              {suggestionsChoisies.size > 1 ? "s" : ""} avec cette activité.
+            <p className="mb-2 text-xs font-medium text-encre">
+              Compétence{suggestionsChoisies.size > 1 ? "s" : ""} sélectionnée
+              {suggestionsChoisies.size > 1 ? "s" : ""} — sera
+              {suggestionsChoisies.size > 1 ? "ont" : ""} enregistrée
+              {suggestionsChoisies.size > 1 ? "s" : ""} avec cette activité :
             </p>
+            <ul className="mb-3 space-y-1">
+              {Array.from(suggestionsChoisies.entries()).map(([id, libelle]) => (
+                <li key={id}>
+                  <label className="flex items-start gap-2 text-sm text-encre">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked
+                      onChange={() => basculerSuggestion(id, libelle)}
+                    />
+                    <span>{libelle}</span>
+                  </label>
+                </li>
+              ))}
+            </ul>
             <label
               htmlFor="niveau-competences"
               className="mb-1 block text-xs font-medium text-encre"
