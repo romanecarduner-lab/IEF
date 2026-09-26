@@ -188,3 +188,94 @@ export async function modifierObservationsActivite(
   revalidatePath(`/journal/${activiteId}/modifier`);
   return { ok: true };
 }
+
+/**
+ * Duplique une activite pour un autre enfant (parcours). Le titre, la
+ * description et les traces (photos, sans re-televersement -- meme
+ * fichier de stockage reutilise) sont copies. Les compétences ne sont
+ * JAMAIS copiees, meme si les deux enfants sont au meme cycle : le
+ * parent doit toujours les choisir separement pour chaque enfant,
+ * plutot que de risquer une attribution automatique inexacte. Les
+ * observations libres, paroles d'enfant et personnes presentes ne
+ * sont pas copiees non plus, pour rester propres a chaque enfant des
+ * la creation. Le nouveau statut repart toujours a "brouillon", pour
+ * que le parent sache qu'il reste a completer.
+ */
+export async function dupliquerActiviteVersParcours(
+  activiteSourceId: string,
+  parcoursCibleId: string
+): Promise<{ erreur: string } | { id: string }> {
+  const supabase = creerClientServeur();
+
+  const { data: source } = await supabase
+    .from("activites")
+    .select("titre, description, date_activite, contexte_id, lieu")
+    .eq("id", activiteSourceId)
+    .maybeSingle();
+
+  if (!source) return { erreur: "Activité source introuvable." };
+
+  const { data: cible } = await supabase
+    .from("parcours_scolaires")
+    .select("id")
+    .eq("id", parcoursCibleId)
+    .maybeSingle();
+
+  if (!cible) return { erreur: "Parcours cible introuvable." };
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { erreur: "Votre session a expiré. Merci de vous reconnecter." };
+
+  const { data: statut } = await supabase
+    .from("statuts_activite")
+    .select("id")
+    .eq("code", "brouillon")
+    .maybeSingle();
+  if (!statut) return { erreur: "Statut d'activité introuvable." };
+
+  const { data: nouvelleActivite, error: erreurCreation } = await supabase
+    .from("activites")
+    .insert({
+      parcours_id: parcoursCibleId,
+      auteur_id: user.id,
+      auteur_nom_affiche: user.email ?? "Parent",
+      date_activite: source.date_activite,
+      titre: source.titre,
+      description: source.description,
+      contexte_id: source.contexte_id,
+      lieu: source.lieu,
+      statut_id: statut.id,
+    })
+    .select("id")
+    .single();
+
+  if (erreurCreation || !nouvelleActivite) {
+    return { erreur: "Impossible de dupliquer cette activité. Merci de réessayer." };
+  }
+
+  // Traces : nouvelles lignes reliees au meme fichier de stockage, pas de
+  // re-televersement -- la politique de stockage ne verifie que
+  // l'appartenance a la famille, pas l'activite precise.
+  const { data: traces } = await supabase
+    .from("traces")
+    .select(
+      "type_id, chemin_stockage, miniature_chemin_stockage, contenu_texte, legende, date_trace, statut_id, ordre_affichage"
+    )
+    .eq("activite_id", activiteSourceId);
+
+  if (traces && traces.length > 0) {
+    await supabase.from("traces").insert(
+      traces.map((t) => ({
+        ...t,
+        activite_id: nouvelleActivite.id,
+        auteur_id: user.id,
+        auteur_nom_affiche: user.email ?? "Parent",
+      }))
+    );
+  }
+
+  revalidatePath("/journal");
+  return { id: nouvelleActivite.id as string };
+}

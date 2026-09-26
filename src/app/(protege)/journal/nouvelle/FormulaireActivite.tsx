@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Champ, MessageStatut } from "@/components/Formulaire";
-import { creerActivite, type DonneesActivite } from "../actions";
+import { creerActivite, dupliquerActiviteVersParcours, type DonneesActivite } from "../actions";
 import { creerTrace } from "../[id]/actions";
 import { creerObservations } from "../[id]/competences/actions";
 import { genererDescriptionEtCompetencesIA, proposerFormulationPedagogique } from "./actionsIA";
@@ -119,6 +119,7 @@ export function FormulaireActivite({
 
   const [chargementDescriptionIA, setChargementDescriptionIA] = useState(false);
   const [nbPhotosSelectionnees, setNbPhotosSelectionnees] = useState(0);
+  const [autresEnfantsChoisis, setAutresEnfantsChoisis] = useState<Set<string>>(new Set());
   const [erreurDescriptionIA, setErreurDescriptionIA] = useState<string | null>(null);
 
   const [chargementFormulation, setChargementFormulation] = useState(false);
@@ -374,7 +375,59 @@ export function FormulaireActivite({
         }
       }
 
-      router.push(fichiers.length > 0 || suggestionsChoisies.size > 0 ? `/journal/${resultat.id}` : "/journal");
+      // Duplication vers les autres enfants coches ("Concerne aussi").
+      const ciblesValides = Array.from(autresEnfantsChoisis).filter(
+        (id) => id !== donnees.parcoursId
+      );
+
+      const idsActivitesCreees: string[] = [resultat.id];
+      const echecs: string[] = [];
+
+      if (ciblesValides.length > 0) {
+        const resultats = await Promise.all(
+          ciblesValides.map(async (parcoursCibleId) => {
+            const prenom = parcours.find((p) => p.id === parcoursCibleId)?.prenomEnfant;
+            try {
+              const r = await avecDelaiMaximal(
+                dupliquerActiviteVersParcours(resultat.id, parcoursCibleId),
+                20000
+              );
+              return { parcoursCibleId, prenom, r };
+            } catch (erreurInattendue) {
+              console.error("Erreur lors de la duplication vers un autre enfant", erreurInattendue);
+              return { parcoursCibleId, prenom, r: { erreur: messagePourErreurInattendue(erreurInattendue) } };
+            }
+          })
+        );
+
+        for (const { prenom, r } of resultats) {
+          if ("erreur" in r) {
+            echecs.push(prenom ?? "un enfant");
+          } else {
+            idsActivitesCreees.push(r.id);
+          }
+        }
+      }
+
+      // Un echec de duplication ne doit jamais etre presente comme un
+      // succes complet : on reste sur la page et on le dit clairement,
+      // plutot que de rediriger comme si tout s'etait bien passe.
+      if (echecs.length > 0) {
+        setErreur(
+          `L'activité a bien été enregistrée, mais la copie a échoué pour : ${echecs.join(
+            ", "
+          )}. Vous pouvez réessayer depuis la fiche de l'activité, avec "Dupliquer pour un autre enfant".`
+        );
+        erreurRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        router.refresh();
+        return;
+      }
+
+      if (idsActivitesCreees.length > 1) {
+        router.push(`/journal/nouvelle/recapitulatif?ids=${idsActivitesCreees.join(",")}`);
+      } else {
+        router.push(fichiers.length > 0 || suggestionsChoisies.size > 0 ? `/journal/${resultat.id}` : "/journal");
+      }
       router.refresh();
     } catch (erreurInattendue) {
       console.error("Erreur inattendue lors de la création de l'activité", erreurInattendue);
@@ -447,6 +500,40 @@ export function FormulaireActivite({
             ))}
           </select>
         </div>
+
+        {parcours.length > 1 && (
+          <div className="mb-4">
+            <p className="mb-1.5 text-sm font-medium text-encre">
+              Concerne aussi (facultatif)
+            </p>
+            <p className="mb-2 text-xs text-ardoise">
+              Une copie sera créée pour chaque enfant coché — même titre,
+              description et photos, mais des compétences et une
+              observation à choisir séparément pour chacun.
+            </p>
+            <div className="space-y-1.5">
+              {parcours
+                .filter((p) => p.id !== donnees.parcoursId)
+                .map((p) => (
+                  <label key={p.id} className="flex items-center gap-2 text-sm text-encre">
+                    <input
+                      type="checkbox"
+                      checked={autresEnfantsChoisis.has(p.id)}
+                      onChange={() =>
+                        setAutresEnfantsChoisis((precedent) => {
+                          const suivant = new Set(precedent);
+                          if (suivant.has(p.id)) suivant.delete(p.id);
+                          else suivant.add(p.id);
+                          return suivant;
+                        })
+                      }
+                    />
+                    {p.libelle}
+                  </label>
+                ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <Champ

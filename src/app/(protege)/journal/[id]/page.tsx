@@ -5,6 +5,7 @@ import { FormulaireTrace } from "./FormulaireTrace";
 import { supprimerTrace } from "./actions";
 import { basculerStatutActivite } from "../actions";
 import { supprimerObservation } from "./competences/actions";
+import { BoutonDupliquerActivite } from "./BoutonDupliquerActivite";
 
 const DUREE_SIGNATURE_SECONDES = 60 * 60; // 1 heure, cf. Corrections-Schema-et-Lot1.md, section 11
 
@@ -14,7 +15,7 @@ export default async function PageActivite({ params }: { params: { id: string } 
   const { data: activite } = await supabase
     .from("activites")
     .select(
-      `id, titre, description, date_activite, lieu, observations, paroles_enfant,
+      `id, titre, description, date_activite, lieu, observations, paroles_enfant, parcours_id,
        contextes_activite(libelle), statuts_activite(code, libelle),
        parcours_scolaires(enfants(prenom, famille_id), annees_scolaires(libelle))`
     )
@@ -44,6 +45,20 @@ export default async function PageActivite({ params }: { params: { id: string } 
     : activite.statuts_activite;
 
   const familleId = enfant?.famille_id as string | undefined;
+
+  const { data: autresParcoursBruts } = familleId
+    ? await supabase
+        .from("parcours_scolaires")
+        .select("id, enfants!inner(prenom, famille_id), annees_scolaires(libelle)")
+        .eq("enfants.famille_id", familleId)
+        .neq("id", activite.parcours_id as string)
+    : { data: null };
+
+  const autresParcours = (autresParcoursBruts ?? []).map((p) => {
+    const e = Array.isArray(p.enfants) ? p.enfants[0] : p.enfants;
+    const a = Array.isArray(p.annees_scolaires) ? p.annees_scolaires[0] : p.annees_scolaires;
+    return { id: p.id as string, libelle: `${e?.prenom ?? "?"} — ${a?.libelle ?? "?"}` };
+  });
 
   const [{ data: tracesBrutes }, { data: typesBruts }, { data: observationsBrutes }] =
     await Promise.all([
@@ -125,12 +140,20 @@ export default async function PageActivite({ params }: { params: { id: string } 
 
         <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
           <h1 className="font-display text-2xl italic text-encre">{activite.titre}</h1>
-          <Link
-            href={`/journal/${params.id}/modifier`}
-            className="text-sm font-medium text-mousse-fonce underline underline-offset-2 hover:text-mousse"
-          >
-            Modifier
-          </Link>
+          <div className="flex items-center gap-3">
+            {autresParcours.length > 0 && (
+              <BoutonDupliquerActivite
+                activiteId={params.id}
+                autresParcours={autresParcours}
+              />
+            )}
+            <Link
+              href={`/journal/${params.id}/modifier`}
+              className="text-sm font-medium text-mousse-fonce underline underline-offset-2 hover:text-mousse"
+            >
+              Modifier
+            </Link>
+          </div>
         </div>
         <p className="mb-4 text-sm text-ardoise">
           {enfant?.prenom} · {annee?.libelle} ·{" "}
