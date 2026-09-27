@@ -2,6 +2,61 @@
 
 import { revalidatePath } from "next/cache";
 import { creerClientServeur } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+/**
+ * L'annee scolaire d'une activite doit toujours correspondre a sa date
+ * reelle (1er septembre au 31 aout suivant), jamais au parcours choisi
+ * manuellement -- utile notamment quand une nouvelle annee est creee
+ * apres coup. Retourne le parcours_id a utiliser reellement (peut
+ * differer de p_parcoursActuelId si la date ne correspond plus), ou une
+ * erreur si aucun parcours n'existe pour le bon enfant sur la bonne
+ * annee (on ne devine jamais un cycle, l'utilisatrice doit le creer).
+ */
+async function resoudreParcoursPourDate(
+  supabase: SupabaseClient,
+  parcoursActuelId: string,
+  dateActivite: string
+): Promise<{ parcoursId: string } | { erreur: string }> {
+  const { data: actuel } = await supabase
+    .from("parcours_scolaires")
+    .select("enfant_id, enfants(prenom), annees_scolaires(date_debut, date_fin)")
+    .eq("id", parcoursActuelId)
+    .maybeSingle();
+
+  if (!actuel) return { erreur: "Parcours introuvable." };
+
+  const anneeActuelle = Array.isArray(actuel.annees_scolaires)
+    ? actuel.annees_scolaires[0]
+    : actuel.annees_scolaires;
+
+  if (
+    anneeActuelle &&
+    dateActivite >= (anneeActuelle.date_debut as string) &&
+    dateActivite <= (anneeActuelle.date_fin as string)
+  ) {
+    return { parcoursId: parcoursActuelId };
+  }
+
+  const { data: candidats } = await supabase
+    .from("parcours_scolaires")
+    .select("id, annees_scolaires!inner(date_debut, date_fin)")
+    .eq("enfant_id", actuel.enfant_id)
+    .lte("annees_scolaires.date_debut", dateActivite)
+    .gte("annees_scolaires.date_fin", dateActivite)
+    .limit(1);
+
+  if (candidats && candidats.length > 0 && candidats[0]) {
+    return { parcoursId: candidats[0].id as string };
+  }
+
+  const enfant = Array.isArray(actuel.enfants) ? actuel.enfants[0] : actuel.enfants;
+  return {
+    erreur: `Aucune année scolaire n'existe pour ${
+      enfant?.prenom ?? "cet enfant"
+    } couvrant cette date. Créez-la depuis "Famille" avant d'enregistrer.`,
+  };
+}
 
 export type DonneesActivite = {
   idLocal: string;
@@ -60,9 +115,16 @@ export async function creerActivite(
     return { erreur: "Statut d'activité introuvable." };
   }
 
+  const resolution = await resoudreParcoursPourDate(
+    supabase,
+    donnees.parcoursId,
+    donnees.dateActivite
+  );
+  if ("erreur" in resolution) return resolution;
+
   const { error } = await supabase.from("activites").insert({
     id: donnees.idLocal,
-    parcours_id: donnees.parcoursId,
+    parcours_id: resolution.parcoursId,
     auteur_id: user.id,
     auteur_nom_affiche: user.email ?? "Parent",
     date_activite: donnees.dateActivite,
@@ -108,9 +170,28 @@ export async function modifierActivite(
   }
 
   const supabase = creerClientServeur();
+
+  const { data: activiteActuelle } = await supabase
+    .from("activites")
+    .select("parcours_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!activiteActuelle) {
+    return { erreur: "Activité introuvable." };
+  }
+
+  const resolution = await resoudreParcoursPourDate(
+    supabase,
+    activiteActuelle.parcours_id as string,
+    donnees.dateActivite
+  );
+  if ("erreur" in resolution) return resolution;
+
   const { error } = await supabase
     .from("activites")
     .update({
+      parcours_id: resolution.parcoursId,
       date_activite: donnees.dateActivite,
       titre: donnees.titre.trim(),
       description: donnees.description || null,

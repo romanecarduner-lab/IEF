@@ -289,8 +289,8 @@ export default async function PageTableauDeBord({
         ))}
       </div>
 
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-[1fr_360px]">
-        <div className="rounded-doux border border-trait bg-white/80 p-4 shadow-doux sm:p-6">
+      <div className="grid min-w-0 gap-4 sm:gap-6 lg:grid-cols-[1fr_360px]">
+        <div className="min-w-0 rounded-doux border border-trait bg-white/80 p-4 shadow-doux sm:p-6">
           {parcoursSelectionne ? (
             <>
               <div className="mb-1 flex flex-wrap items-center gap-2">
@@ -374,7 +374,7 @@ export default async function PageTableauDeBord({
           )}
         </div>
 
-        <div className="space-y-4 sm:space-y-6">
+        <div className="min-w-0 space-y-4 sm:space-y-6">
           <div className="rounded-doux border border-trait bg-white/80 p-4 shadow-doux sm:p-5">
             <p className="mb-3 font-display text-base italic text-encre sm:text-lg">
               Dernières traces

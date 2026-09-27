@@ -9,6 +9,11 @@
 html,
 body {
   height: 100%;
+  /* Filet de securite : un element isole qui deborde (select natif,
+     texte non coupe, etc.) ne doit jamais faire defiler toute la page
+     horizontalement -- corrige ici une bonne fois plutot qu'au cas par
+     cas a chaque nouvel element ajoute. */
+  overflow-x: hidden;
 }
 
 body {

@@ -24,7 +24,9 @@ export default async function PageNouvelleActivite({
     await Promise.all([
       supabase
         .from("parcours_scolaires")
-        .select("id, cycle_id, enfants(prenom), annees_scolaires(libelle)")
+        .select(
+          "id, cycle_id, enfant_id, enfants(prenom), annees_scolaires(libelle, date_debut, date_fin)"
+        )
         .order("created_at", { ascending: false }),
       supabase
         .from("contextes_activite")
@@ -52,8 +54,11 @@ export default async function PageNouvelleActivite({
     return {
       id: p.id as string,
       cycleId: p.cycle_id as string,
+      enfantId: p.enfant_id as string,
       libelle: `${enfant?.prenom ?? "?"} — ${annee?.libelle ?? "?"}`,
       prenomEnfant: (enfant?.prenom as string | undefined) ?? "",
+      dateDebutAnnee: (annee?.date_debut as string | undefined) ?? "",
+      dateFinAnnee: (annee?.date_fin as string | undefined) ?? "",
     };
   });
 

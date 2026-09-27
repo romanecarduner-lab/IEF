@@ -19,7 +19,13 @@ import {
 import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaximal";
 
 type Option = { id: string; libelle: string };
-type OptionParcours = Option & { prenomEnfant: string; cycleId: string };
+type OptionParcours = Option & {
+  prenomEnfant: string;
+  cycleId: string;
+  enfantId: string;
+  dateDebutAnnee: string;
+  dateFinAnnee: string;
+};
 
 // Meme si plus de photos sont selectionnees pour l'activite (toutes
 // seront quand meme ajoutees comme traces), seules les premieres sont
@@ -119,6 +125,58 @@ export function FormulaireActivite({
 
   const [chargementDescriptionIA, setChargementDescriptionIA] = useState(false);
   const [nbPhotosSelectionnees, setNbPhotosSelectionnees] = useState(0);
+  const [noteAnneeAjustee, setNoteAnneeAjustee] = useState<string | null>(null);
+  const [erreurAucunParcoursPourDate, setErreurAucunParcoursPourDate] = useState<string | null>(
+    null
+  );
+
+  // L'annee scolaire doit toujours correspondre a la date reelle de
+  // l'activite (1er septembre au 31 aout suivant), pas au parcours
+  // choisi manuellement : des qu'une date sort de la plage de l'annee
+  // actuellement selectionnee, on bascule automatiquement vers le bon
+  // parcours du MEME enfant, sans jamais changer d'enfant tout seul.
+  // Si aucun parcours n'existe pour cet enfant sur la bonne annee, on
+  // previent clairement plutot que de deviner ou de bloquer en silence.
+  useEffect(() => {
+    if (!donnees.parcoursId || !donnees.dateActivite) {
+      setNoteAnneeAjustee(null);
+      setErreurAucunParcoursPourDate(null);
+      return;
+    }
+    const actuel = parcours.find((p) => p.id === donnees.parcoursId);
+    if (!actuel || !actuel.dateDebutAnnee || !actuel.dateFinAnnee) return;
+
+    const dateOk =
+      donnees.dateActivite >= actuel.dateDebutAnnee && donnees.dateActivite <= actuel.dateFinAnnee;
+    if (dateOk) {
+      setNoteAnneeAjustee(null);
+      setErreurAucunParcoursPourDate(null);
+      return;
+    }
+
+    const bonParcours = parcours.find(
+      (p) =>
+        p.enfantId === actuel.enfantId &&
+        p.dateDebutAnnee &&
+        p.dateFinAnnee &&
+        donnees.dateActivite >= p.dateDebutAnnee &&
+        donnees.dateActivite <= p.dateFinAnnee
+    );
+
+    if (bonParcours) {
+      setDonnees((precedent) => ({ ...precedent, parcoursId: bonParcours.id }));
+      setNoteAnneeAjustee(
+        `Année scolaire ajustée automatiquement d'après la date (${bonParcours.libelle}).`
+      );
+      setErreurAucunParcoursPourDate(null);
+    } else {
+      setErreurAucunParcoursPourDate(
+        `Aucune année scolaire n'existe pour ${actuel.prenomEnfant} couvrant cette date. Créez-la depuis "Famille" avant d'enregistrer, sinon l'activité restera classée dans "${actuel.libelle}".`
+      );
+      setNoteAnneeAjustee(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [donnees.dateActivite, donnees.parcoursId]);
   const [autresEnfantsChoisis, setAutresEnfantsChoisis] = useState<Set<string>>(new Set());
   const [erreurDescriptionIA, setErreurDescriptionIA] = useState<string | null>(null);
 
@@ -300,6 +358,12 @@ export function FormulaireActivite({
           ? champsManquants[0]
           : `${champsManquants.slice(0, -1).join(", ")} et ${champsManquants.at(-1)}`;
       setErreur(`Il manque : ${liste}.`);
+      erreurRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+
+    if (erreurAucunParcoursPourDate) {
+      setErreur(erreurAucunParcoursPourDate);
       erreurRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
@@ -573,6 +637,17 @@ export function FormulaireActivite({
             </select>
           </div>
         </div>
+
+        {noteAnneeAjustee && (
+          <p className="mb-4 rounded-doux bg-mousse/10 px-3 py-2 text-xs text-mousse-fonce">
+            {noteAnneeAjustee}
+          </p>
+        )}
+        {erreurAucunParcoursPourDate && (
+          <p className="mb-4 rounded-doux bg-argile/10 px-3 py-2 text-xs text-argile">
+            {erreurAucunParcoursPourDate}
+          </p>
+        )}
 
         <Champ
           label="Titre"
