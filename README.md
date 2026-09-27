@@ -142,6 +142,58 @@ mentionne plusieurs éléments distincts, chacun doit être développé
 avec une attention comparable, sans que le premier n'écrase les
 suivants.
 
+## Débordement horizontal sur le tableau de bord
+
+Le sélecteur d'enfant (menu déroulant natif) n'avait pas de largeur
+maximale bridée, ce qui pouvait le faire déborder dans sa ligne
+flexible et forcer un défilement horizontal sur toute la page.
+Corrigé (`max-w-full` sur le sélecteur), et une protection ajoutée au
+niveau global (`overflow-x: hidden` sur `html`/`body`) pour qu'un
+débordement isolé ailleurs ne puisse plus jamais faire défiler toute
+la page horizontalement.
+
+## Année scolaire déterminée automatiquement par la date de l'activité
+
+Jusqu'ici, l'année scolaire d'une activité dépendait uniquement du
+parcours choisi à la saisie — une activité de septembre 2026 restait
+classée dans 2025-2026 si cette année-là était encore sélectionnée par
+défaut, même après la création de 2026-2027. Corrigé sur trois plans :
+
+1. **Activités déjà saisies** (migration) : chaque activité est
+   réattribuée au parcours du même enfant dont l'année couvre
+   réellement sa date, quand ce parcours existe déjà. Rien n'est
+   supprimé ni dupliqué (traces, observations, compétences : toutes
+   attachées par `activite_id`, jamais touchées). Si le changement
+   d'année traverse aussi un changement de cycle, l'activité est bien
+   déplacée mais un message le signale précisément (les compétences
+   déjà choisies restent celles de l'ancien cycle et ne s'afficheront
+   plus dans le nouveau) : à vérifier manuellement au cas par cas,
+   plutôt que de perdre ou deviner quoi que ce soit. Si aucun parcours
+   n'existe encore pour le bon enfant sur la bonne année, l'activité
+   n'est pas déplacée et le rapport final en donne le nombre.
+2. **À la création** : dès que la date choisie sort de la plage de
+   l'année actuellement sélectionnée, le parcours bascule
+   automatiquement vers la bonne année pour le même enfant (jamais de
+   changement d'enfant automatique), avec une note affichée. Si aucune
+   année ne couvre cette date pour cet enfant, un message clair
+   l'indique et empêche l'enregistrement tant que l'année n'a pas été
+   créée depuis "Famille".
+3. **À la modification** : même logique côté serveur — si la date est
+   changée vers une autre année scolaire, le parcours est corrigé
+   automatiquement à l'enregistrement, ou l'enregistrement est refusé
+   avec un message clair si aucune année ne correspond.
+
+Par prudence, la vérification est faite deux fois : une fois côté
+formulaire de création (retour immédiat pendant la saisie) et une
+seconde fois côté serveur dans `creerActivite`/`modifierActivite`
+(fonction partagée `resoudreParcoursPourDate`), qui fait foi dans tous
+les cas, y compris si la vérification côté formulaire était contournée
+ou périmée.
+
+Progression et export n'ont besoin d'aucune modification : ils
+affichent déjà les activités du parcours réellement sélectionné, donc
+une fois l'activité au bon endroit, tout s'aligne automatiquement.
+
 ## Correction critique — titre "Test" livré par erreur sur plusieurs ZIP
 
 Erreur de ma part : pour vérifier que le projet compile dans mon
