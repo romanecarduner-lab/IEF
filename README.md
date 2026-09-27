@@ -142,6 +142,21 @@ mentionne plusieurs éléments distincts, chacun doit être développé
 avec une attention comparable, sans que le premier n'écrase les
 suivants.
 
+## Correction critique — titre "Test" livré par erreur sur plusieurs ZIP
+
+Erreur de ma part : pour vérifier que le projet compile dans mon
+environnement, je remplace temporairement `layout.tsx` par une version
+simplifiée (les polices Google n'y sont pas accessibles), puis je suis
+censé restaurer le vrai fichier avant de livrer. Sur au moins un tour
+récent, cette restauration n'a pas eu lieu correctement, et le fichier
+de test ("Test" comme titre et description) s'est retrouvé livré dans
+le ZIP final — d'où le nom "Test" affiché comme titre d'onglet et
+proposé pour l'écran d'accueil, sans lien avec le manifeste PWA ni
+avec Safari/Chrome. Corrigé, et cette fois vérifié en ouvrant
+directement le fichier à l'intérieur du ZIP livré (pas seulement le
+dossier de travail) pour m'assurer que l'erreur ne se reproduit pas
+silencieusement.
+
 ## Icône d'écran d'accueil qui redemandait la connexion à chaque fois
 
 Cause : l'application n'avait jamais eu de manifeste PWA. Sans ça, "Ajouter
