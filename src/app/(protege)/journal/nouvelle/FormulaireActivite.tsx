@@ -446,26 +446,24 @@ export function FormulaireActivite({
       }
 
       // Duplication vers les autres enfants coches ("Concerne aussi").
-      const ciblesValides = Array.from(autresEnfantsChoisis).filter(
-        (id) => id !== donnees.parcoursId
-      );
+      const enfantsCibles = Array.from(autresEnfantsChoisis);
 
       const idsActivitesCreees: string[] = [resultat.id];
       const echecs: string[] = [];
 
-      if (ciblesValides.length > 0) {
+      if (enfantsCibles.length > 0) {
         const resultats = await Promise.all(
-          ciblesValides.map(async (parcoursCibleId) => {
-            const prenom = parcours.find((p) => p.id === parcoursCibleId)?.prenomEnfant;
+          enfantsCibles.map(async (enfantCibleId) => {
+            const prenom = parcours.find((p) => p.enfantId === enfantCibleId)?.prenomEnfant;
             try {
               const r = await avecDelaiMaximal(
-                dupliquerActiviteVersParcours(resultat.id, parcoursCibleId),
+                dupliquerActiviteVersParcours(resultat.id, enfantCibleId),
                 20000
               );
-              return { parcoursCibleId, prenom, r };
+              return { enfantCibleId, prenom, r };
             } catch (erreurInattendue) {
               console.error("Erreur lors de la duplication vers un autre enfant", erreurInattendue);
-              return { parcoursCibleId, prenom, r: { erreur: messagePourErreurInattendue(erreurInattendue) } };
+              return { enfantCibleId, prenom, r: { erreur: messagePourErreurInattendue(erreurInattendue) } };
             }
           })
         );
@@ -571,39 +569,49 @@ export function FormulaireActivite({
           </select>
         </div>
 
-        {parcours.length > 1 && (
-          <div className="mb-4">
-            <p className="mb-1.5 text-sm font-medium text-encre">
-              Concerne aussi (facultatif)
-            </p>
-            <p className="mb-2 text-xs text-ardoise">
-              Une copie sera créée pour chaque enfant coché — même titre,
-              description et photos, mais des compétences et une
-              observation à choisir séparément pour chacun.
-            </p>
-            <div className="space-y-1.5">
-              {parcours
-                .filter((p) => p.id !== donnees.parcoursId)
-                .map((p) => (
-                  <label key={p.id} className="flex items-center gap-2 text-sm text-encre">
+        {(() => {
+          const enfantIdActuel = parcours.find((p) => p.id === donnees.parcoursId)?.enfantId;
+          const autresEnfants = Array.from(
+            new Map(
+              parcours
+                .filter((p) => p.enfantId !== enfantIdActuel)
+                .map((p) => [p.enfantId, p])
+            ).values()
+          );
+          if (autresEnfants.length === 0) return null;
+          return (
+            <div className="mb-4">
+              <p className="mb-1.5 text-sm font-medium text-encre">
+                Concerne aussi (facultatif)
+              </p>
+              <p className="mb-2 text-xs text-ardoise">
+                Une copie sera créée pour chaque enfant coché (sur son
+                année correspondant à la date ci-dessous) — même titre,
+                description et photos, mais des compétences et une
+                observation à choisir séparément pour chacun.
+              </p>
+              <div className="space-y-1.5">
+                {autresEnfants.map((p) => (
+                  <label key={p.enfantId} className="flex items-center gap-2 text-sm text-encre">
                     <input
                       type="checkbox"
-                      checked={autresEnfantsChoisis.has(p.id)}
+                      checked={autresEnfantsChoisis.has(p.enfantId)}
                       onChange={() =>
                         setAutresEnfantsChoisis((precedent) => {
                           const suivant = new Set(precedent);
-                          if (suivant.has(p.id)) suivant.delete(p.id);
-                          else suivant.add(p.id);
+                          if (suivant.has(p.enfantId)) suivant.delete(p.enfantId);
+                          else suivant.add(p.enfantId);
                           return suivant;
                         })
                       }
                     />
-                    {p.libelle}
+                    {p.prenomEnfant}
                   </label>
                 ))}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         <div className="grid grid-cols-2 gap-4">
           <Champ

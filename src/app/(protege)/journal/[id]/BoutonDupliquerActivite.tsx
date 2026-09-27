@@ -7,22 +7,22 @@ import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaxima
 
 export function BoutonDupliquerActivite({
   activiteId,
-  autresParcours,
+  autresEnfants,
 }: {
   activiteId: string;
-  autresParcours: { id: string; libelle: string }[];
+  autresEnfants: { id: string; prenom: string }[];
 }) {
   const router = useRouter();
   const [ouvert, setOuvert] = useState(false);
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
 
-  async function dupliquer(parcoursCibleId: string) {
+  async function dupliquer(enfantCibleId: string) {
     setEnCours(true);
     setErreur(null);
     try {
       const resultat = await avecDelaiMaximal(
-        dupliquerActiviteVersParcours(activiteId, parcoursCibleId)
+        dupliquerActiviteVersParcours(activiteId, enfantCibleId)
       );
       if ("erreur" in resultat) {
         setErreur(resultat.erreur);
@@ -64,9 +64,9 @@ export function BoutonDupliquerActivite({
         <option value="" disabled>
           {enCours ? "Duplication…" : "Choisir l'enfant…"}
         </option>
-        {autresParcours.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.libelle}
+        {autresEnfants.map((e) => (
+          <option key={e.id} value={e.id}>
+            {e.prenom}
           </option>
         ))}
       </select>

@@ -5,6 +5,42 @@ import { creerClientServeur } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
+ * Coeur commun : trouve le parcours d'un enfant dont l'annee couvre la
+ * date donnee. Reutilise a la fois pour corriger le parcours d'une
+ * activite existante (meme enfant) et pour resoudre le bon parcours
+ * d'un AUTRE enfant lors d'une duplication.
+ */
+async function resoudreParcoursPourEnfantEtDate(
+  supabase: SupabaseClient,
+  enfantId: string,
+  dateActivite: string
+): Promise<{ parcoursId: string } | { erreur: string }> {
+  const { data: candidats } = await supabase
+    .from("parcours_scolaires")
+    .select("id, annees_scolaires!inner(date_debut, date_fin)")
+    .eq("enfant_id", enfantId)
+    .lte("annees_scolaires.date_debut", dateActivite)
+    .gte("annees_scolaires.date_fin", dateActivite)
+    .limit(1);
+
+  if (candidats && candidats.length > 0 && candidats[0]) {
+    return { parcoursId: candidats[0].id as string };
+  }
+
+  const { data: enfant } = await supabase
+    .from("enfants")
+    .select("prenom")
+    .eq("id", enfantId)
+    .maybeSingle();
+
+  return {
+    erreur: `Aucune année scolaire n'existe pour ${
+      enfant?.prenom ?? "cet enfant"
+    } couvrant cette date. Créez-la depuis "Famille" avant d'enregistrer.`,
+  };
+}
+
+/**
  * L'annee scolaire d'une activite doit toujours correspondre a sa date
  * reelle (1er septembre au 31 aout suivant), jamais au parcours choisi
  * manuellement -- utile notamment quand une nouvelle annee est creee
@@ -20,7 +56,7 @@ async function resoudreParcoursPourDate(
 ): Promise<{ parcoursId: string } | { erreur: string }> {
   const { data: actuel } = await supabase
     .from("parcours_scolaires")
-    .select("enfant_id, enfants(prenom), annees_scolaires(date_debut, date_fin)")
+    .select("enfant_id, annees_scolaires(date_debut, date_fin)")
     .eq("id", parcoursActuelId)
     .maybeSingle();
 
@@ -38,24 +74,7 @@ async function resoudreParcoursPourDate(
     return { parcoursId: parcoursActuelId };
   }
 
-  const { data: candidats } = await supabase
-    .from("parcours_scolaires")
-    .select("id, annees_scolaires!inner(date_debut, date_fin)")
-    .eq("enfant_id", actuel.enfant_id)
-    .lte("annees_scolaires.date_debut", dateActivite)
-    .gte("annees_scolaires.date_fin", dateActivite)
-    .limit(1);
-
-  if (candidats && candidats.length > 0 && candidats[0]) {
-    return { parcoursId: candidats[0].id as string };
-  }
-
-  const enfant = Array.isArray(actuel.enfants) ? actuel.enfants[0] : actuel.enfants;
-  return {
-    erreur: `Aucune année scolaire n'existe pour ${
-      enfant?.prenom ?? "cet enfant"
-    } couvrant cette date. Créez-la depuis "Famille" avant d'enregistrer.`,
-  };
+  return resoudreParcoursPourEnfantEtDate(supabase, actuel.enfant_id as string, dateActivite);
 }
 
 export type DonneesActivite = {
@@ -282,9 +301,17 @@ export async function modifierObservationsActivite(
  * la creation. Le nouveau statut repart toujours a "brouillon", pour
  * que le parent sache qu'il reste a completer.
  */
+/**
+ * Duplique une activite pour un autre enfant. Prend un enfant (pas un
+ * parcours precis) : le bon parcours de cet enfant est resolu
+ * automatiquement d'apres la date reelle de l'activite source, comme
+ * pour la creation normale -- pour ne jamais proposer de choisir entre
+ * plusieurs annees du meme enfant (ca n'aurait pas de sens, dupliquer
+ * "pour un autre enfant" concerne justement un enfant different).
+ */
 export async function dupliquerActiviteVersParcours(
   activiteSourceId: string,
-  parcoursCibleId: string
+  enfantCibleId: string
 ): Promise<{ erreur: string } | { id: string }> {
   const supabase = creerClientServeur();
 
@@ -296,13 +323,13 @@ export async function dupliquerActiviteVersParcours(
 
   if (!source) return { erreur: "Activité source introuvable." };
 
-  const { data: cible } = await supabase
-    .from("parcours_scolaires")
-    .select("id")
-    .eq("id", parcoursCibleId)
-    .maybeSingle();
-
-  if (!cible) return { erreur: "Parcours cible introuvable." };
+  const resolution = await resoudreParcoursPourEnfantEtDate(
+    supabase,
+    enfantCibleId,
+    source.date_activite as string
+  );
+  if ("erreur" in resolution) return resolution;
+  const parcoursCibleId = resolution.parcoursId;
 
   const {
     data: { user },

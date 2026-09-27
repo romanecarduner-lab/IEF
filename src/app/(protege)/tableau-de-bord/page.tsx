@@ -84,7 +84,7 @@ export default async function PageTableauDeBord({
       .eq("statut", "finalise"),
     supabase
       .from("parcours_scolaires")
-      .select("id, cycle_id, enfant_id, enfants(prenom), annees_scolaires(libelle)")
+      .select("id, cycle_id, enfant_id, enfants(prenom), cycles(libelle), annees_scolaires(libelle)")
       .order("created_at", { ascending: false }),
     supabase
       .from("traces")
@@ -98,21 +98,35 @@ export default async function PageTableauDeBord({
 
   const parcours = (parcoursBruts ?? []).map((p) => {
     const enfant = Array.isArray(p.enfants) ? p.enfants[0] : p.enfants;
+    const cycle = Array.isArray(p.cycles) ? p.cycles[0] : p.cycles;
     const annee = Array.isArray(p.annees_scolaires)
       ? p.annees_scolaires[0]
       : p.annees_scolaires;
     return {
       id: p.id as string,
       cycleId: p.cycle_id as string,
+      cycleLibelle: (cycle?.libelle as string | undefined) ?? "?",
       enfantId: p.enfant_id as string,
       enfant: (enfant?.prenom as string | undefined) ?? "?",
       annee: annee?.libelle as string | undefined,
     };
   });
 
-  const plusieursEnfants = parcours.length > 1;
+  // La progression (tableau de bord, Progression) est desormais cumulee
+  // sur tout le cycle : choisir entre deux annees du meme enfant et du
+  // meme cycle n'y changerait plus rien a afficher. Le repere pertinent
+  // ici est donc l'enfant et son cycle, pas l'annee -- un seul parcours
+  // retenu par (enfant, cycle), le plus recent (deja l'ordre de la
+  // requete). Un enfant ayant change de cycle apparait, a juste titre,
+  // en plusieurs entrees distinctes (chaque cycle a sa propre
+  // progression, ca n'a pas de sens de les cumuler ensemble).
+  const enfantsUniques = Array.from(
+    new Map(parcours.map((p) => [`${p.enfantId}-${p.cycleId}`, p])).values()
+  );
+
+  const plusieursEnfants = enfantsUniques.length > 1;
   const parcoursSelectionne =
-    parcours.find((p) => p.id === searchParams.parcours) ?? parcours[0];
+    enfantsUniques.find((p) => p.id === searchParams.parcours) ?? enfantsUniques[0];
 
   let domainesProgression: { nom: string; pourcentage: number }[] = [];
   if (parcoursSelectionne) {
@@ -314,14 +328,17 @@ export default async function PageTableauDeBord({
                   Le parcours de {parcoursSelectionne.enfant}
                 </p>
                 <span className="rounded-full bg-lin px-2.5 py-0.5 text-xs text-ardoise">
-                  Année {parcoursSelectionne.annee}
+                  {parcoursSelectionne.cycleLibelle}
                 </span>
                 {plusieursEnfants && (
                   <SelecteurParcoursTableauDeBord
                     parcoursId={parcoursSelectionne.id}
-                    options={parcours.map((p) => ({
+                    options={enfantsUniques.map((p) => ({
                       id: p.id,
-                      libelle: `${p.enfant} — ${p.annee}`,
+                      libelle:
+                        enfantsUniques.filter((q) => q.enfantId === p.enfantId).length > 1
+                          ? `${p.enfant} — ${p.cycleLibelle}`
+                          : p.enfant,
                     }))}
                   />
                 )}
@@ -330,8 +347,8 @@ export default async function PageTableauDeBord({
                 Les apprentissages en mouvement
               </p>
               <p className="mb-3 text-sm text-ardoise sm:mb-4">
-                Une vue d&rsquo;ensemble des domaines explorés, à partir des
-                observations validées.
+                Une vue d&rsquo;ensemble, cumulée sur tout le cycle, des
+                domaines explorés à partir des observations validées.
               </p>
 
               {domainesProgression.length > 0 && (

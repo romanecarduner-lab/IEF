@@ -292,6 +292,15 @@ export default async function PageProgression({
         <VueHistorique parcoursId={parcoursId} />
       ) : (
         <>
+          <p className="mb-4 text-xs text-ardoise">
+            Cette vue est cumulée sur tout le cycle : une compétence
+            validée une année précédente reste acquise ici, quelle que
+            soit l&rsquo;année choisie ci-dessus. Le sélecteur ne sert
+            qu&rsquo;à retrouver l&rsquo;<Link href={`/progression?parcours=${parcoursId}&onglet=historique`} className="underline underline-offset-2 hover:text-encre">historique</Link> d&rsquo;une
+            période précise, ou une éventuelle proposition en attente
+            de validation propre à cette période.
+          </p>
+
           {donneesGraphique.length > 0 && (
             <GraphiqueProgression donnees={donneesGraphique} />
           )}
