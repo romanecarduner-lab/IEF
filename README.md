@@ -142,6 +142,50 @@ mentionne plusieurs éléments distincts, chacun doit être développé
 avec une attention comparable, sans que le premier n'écrase les
 suivants.
 
+## Le repère devient le cycle pour la progression, l'année pour les activités
+
+Suite à la réflexion menée avec l'utilisatrice avant toute modification
+(voir échange précédent) : le sélecteur d'année du tableau de bord et
+de la page Progression ne changeait plus rien à la progression
+affichée depuis qu'elle est cumulative — ce qui pouvait laisser croire
+à un chiffre différent par année alors que non.
+
+- **Tableau de bord** : "Année 2025-2026" devient le nom du **cycle**
+  ("Cycle 1", "Cycle 2 (CP, CE1, CE2)"...). Le sélecteur ne propose
+  plus qu'un choix par enfant **et** par cycle (dédupliqué) — un enfant
+  ayant plusieurs années dans le même cycle n'apparaît plus qu'une
+  fois, puisque choisir entre elles n'aurait plus rien changé à
+  afficher. Un enfant ayant changé de cycle apparaît, à juste titre, en
+  plusieurs entrées distinctes.
+- **Page Progression** : le sélecteur d'année reste présent, mais son
+  rôle est maintenant expliqué directement sur la page — il ne sert
+  plus qu'à retrouver l'historique d'une période précise ou une
+  proposition en attente de validation propre à cette période, jamais
+  à changer la vue d'ensemble par domaine (déjà cumulée).
+- Effet de bord positif : le texte "vos enfants" au pluriel ne
+  s'affichait plus correctement pour une famille avec un seul enfant
+  ayant plusieurs années (comptait comme "plusieurs enfants" à tort) —
+  corrigé du même coup, puisque le comptage se fait maintenant par
+  enfant réel plutôt que par ligne de parcours.
+- **Journal et Export restent inchangés** : le repère par année y garde
+  tout son sens (retrouver ce qui a été fait à une date précise,
+  préparer un dossier pour un contrôle donné).
+
+## Correction — "Concerne aussi" et "Dupliquer" proposaient deux fois le même enfant
+
+La liste des enfants à cocher (création) et le sélecteur "Dupliquer
+pour un autre enfant" (fiche détaillée) listaient chaque **parcours**
+(un par année), pas chaque **enfant** — un enfant ayant deux années
+créées apparaissait donc deux fois, comme s'il s'agissait de deux
+personnes différentes. Corrigé : les deux affichent maintenant chaque
+enfant une seule fois (dédupliqué), en excluant l'enfant déjà
+sélectionné pour l'activité en cours plutôt qu'un seul parcours précis.
+La bonne année de l'enfant choisi est résolue automatiquement d'après
+la date de l'activité au moment de la duplication (même mécanisme que
+la détection automatique d'année scolaire) : plus besoin de choisir
+entre plusieurs années pour un même enfant, ce qui n'aurait pas de sens
+ici.
+
 ## Progression cumulative sur tout le cycle, pas remise à zéro à la rentrée
 
 Diagnostic confirmé avec l'utilisatrice avant toute correction (comme
