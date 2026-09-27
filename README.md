@@ -142,6 +142,47 @@ mentionne plusieurs éléments distincts, chacun doit être développé
 avec une attention comparable, sans que le premier n'écrase les
 suivants.
 
+## Progression cumulative sur tout le cycle, pas remise à zéro à la rentrée
+
+Diagnostic confirmé avec l'utilisatrice avant toute correction (comme
+demandé) : les pourcentages, le détail par compétence et "Idées pour
+continuer" lisaient tous `syntheses_progression` (le statut *validé*
+de chaque compétence) filtré sur **un seul parcours** (une seule
+année). Rien n'était perdu ni cassé par la migration de réattribution
+des activités précédente : les 29 statuts déjà validés de Nino étaient
+restés, comme attendu, rattachés à 2025-2026 (l'année où ils avaient
+été validés), et 2026-2027 n'avait simplement encore aucun statut
+propre à elle — d'où le 0% partout sur cette nouvelle année.
+
+Corrigé en distinguant clairement lecture et écriture :
+- **Les validations restent enregistrées par année** (`syntheses_progression`
+  toujours rattachée au parcours réellement sélectionné au moment de
+  la validation) — c'est un historique légitime, jamais déplacé.
+- **La lecture devient cumulative** : trois nouvelles vues
+  (`v_synthese_cumulee_cycle`, `v_progression_par_domaine_cumulee`,
+  `v_indicateurs_observation_cumules`) retiennent, pour chaque
+  compétence, le statut le plus avancé validé sur n'importe quelle
+  année du même cycle pour le même enfant. Une compétence validée en
+  2025-2026 compte donc automatiquement dans le pourcentage de
+  2026-2027, sans avoir besoin d'être revalidée.
+- Les **propositions en attente de confirmation** (suggestions
+  automatiques non encore validées) restent volontairement propres à
+  l'année affichée : ce sont des suggestions issues de l'activité
+  récente de cette année précise, pas un fait cumulable comme un
+  statut déjà validé.
+- **"Idées pour continuer"** et **"Ce qui reste à voir"** vérifient
+  maintenant les observations sur toutes les années du même cycle pour
+  le même enfant avant de proposer une compétence comme non abordée —
+  fini les suggestions déjà couvertes l'année précédente.
+- **Les activités et les traces restent attachées à leur véritable
+  année**, comme demandé : rien ne change sur le Journal ni sur la
+  liste des activités par année, seule la lecture de la progression
+  devient cumulative.
+
+Vérifié : rien n'est inventé, aucune compétence acquise n'est supposée
+— seuls les statuts réellement validés par le parent, sur n'importe
+quelle année du cycle, sont désormais comptés ensemble.
+
 ## Débordement horizontal sur le tableau de bord
 
 Le sélecteur d'enfant (menu déroulant natif) n'avait pas de largeur
