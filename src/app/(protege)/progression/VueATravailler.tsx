@@ -3,9 +3,11 @@ import { BoutonIdeesActivites } from "./BoutonIdeesActivites";
 
 export async function VueATravailler({
   parcoursId,
+  parcoursMemeCycle,
   cycleId,
 }: {
   parcoursId: string;
+  parcoursMemeCycle: string[];
   cycleId: string;
 }) {
   const supabase = creerClientServeur();
@@ -19,7 +21,7 @@ export async function VueATravailler({
     supabase
       .from("observations_elements_programme")
       .select("element_programme_id, activites!inner(parcours_id)")
-      .eq("activites.parcours_id", parcoursId),
+      .in("activites.parcours_id", parcoursMemeCycle),
   ]);
 
   const idsAbordes = new Set(
@@ -56,7 +58,7 @@ export async function VueATravailler({
       {nonAbordesParDomaine.size === 0 ? (
         <p className="rounded-doux border border-dashed border-trait bg-white/50 p-8 text-center text-sm text-ardoise">
           Tous les objectifs du programme ont déjà été abordés au moins une
-          fois pour ce parcours.
+          fois pour ce cycle.
         </p>
       ) : (
         <div className="space-y-3">

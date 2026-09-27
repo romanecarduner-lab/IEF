@@ -84,7 +84,7 @@ export default async function PageTableauDeBord({
       .eq("statut", "finalise"),
     supabase
       .from("parcours_scolaires")
-      .select("id, cycle_id, enfants(prenom), annees_scolaires(libelle)")
+      .select("id, cycle_id, enfant_id, enfants(prenom), annees_scolaires(libelle)")
       .order("created_at", { ascending: false }),
     supabase
       .from("traces")
@@ -104,6 +104,7 @@ export default async function PageTableauDeBord({
     return {
       id: p.id as string,
       cycleId: p.cycle_id as string,
+      enfantId: p.enfant_id as string,
       enfant: (enfant?.prenom as string | undefined) ?? "?",
       annee: annee?.libelle as string | undefined,
     };
@@ -121,9 +122,10 @@ export default async function PageTableauDeBord({
         .select("domaine, total_objectifs")
         .eq("cycle_id", parcoursSelectionne.cycleId),
       supabase
-        .from("v_progression_par_domaine")
+        .from("v_progression_par_domaine_cumulee")
         .select("domaine, statut_code, nb")
-        .eq("parcours_id", parcoursSelectionne.id),
+        .eq("enfant_id", parcoursSelectionne.enfantId)
+        .eq("cycle_id", parcoursSelectionne.cycleId),
     ]);
 
     domainesProgression = (totauxDomaine ?? []).map((t) => {
@@ -147,8 +149,22 @@ export default async function PageTableauDeBord({
   // l'idee concrete reste a un clic. Tirage aleatoire a chaque
   // chargement (enfant, domaine, ET competence dans le domaine).
   type Candidat = { id: string; libelle: string; domaine: string; enfantPrenom: string; parcoursId: string };
+  // Un seul parcours traite par (enfant, cycle) : sinon, un enfant ayant
+  // deux annees du meme cycle verrait ses suggestions calculees deux
+  // fois (une par annee), pour le meme resultat en double.
+  const parcoursUnParEnfantCycle = Array.from(
+    new Map(parcours.map((p) => [`${p.enfantId}-${p.cycleId}`, p])).values()
+  );
   const candidatsParEnfant = await Promise.all(
-    parcours.map(async (p) => {
+    parcoursUnParEnfantCycle.map(async (p) => {
+      // Un objectif compte comme "aborde" des qu'il a ete observe sur
+      // N'IMPORTE QUELLE annee du meme cycle pour ce meme enfant -- pas
+      // seulement sur ce parcours precis -- pour ne pas reproposer une
+      // competence deja acquise l'annee precedente.
+      const parcoursMemeCycle = parcours
+        .filter((autre) => autre.enfantId === p.enfantId && autre.cycleId === p.cycleId)
+        .map((autre) => autre.id);
+
       const [{ data: tousLesObjectifs }, { data: observations }] = await Promise.all([
         supabase
           .from("v_objectif_domaine")
@@ -157,7 +173,7 @@ export default async function PageTableauDeBord({
         supabase
           .from("observations_elements_programme")
           .select("element_programme_id, activites!inner(parcours_id)")
-          .eq("activites.parcours_id", p.id),
+          .in("activites.parcours_id", parcoursMemeCycle),
       ]);
 
       const idsAbordes = new Set(

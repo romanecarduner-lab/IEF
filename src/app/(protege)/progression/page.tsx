@@ -22,7 +22,7 @@ export default async function PageProgression({
 
   const { data: parcoursBruts } = await supabase
     .from("parcours_scolaires")
-    .select("id, cycle_id, enfants(prenom), annees_scolaires(libelle)")
+    .select("id, cycle_id, enfant_id, enfants(prenom), annees_scolaires(libelle)")
     .order("created_at", { ascending: false });
 
   const parcoursOptions = (parcoursBruts ?? []).map((p) => {
@@ -58,41 +58,60 @@ export default async function PageProgression({
     );
   }
 
+  // Toutes les annees du meme cycle pour ce meme enfant : la progression
+  // affichee est cumulative sur le cycle entier, pas remise a zero a
+  // chaque rentree (une competence validee en 2025-2026 reste acquise
+  // en 2026-2027 tant que le cycle ne change pas).
+  const enfantIdActuel = parcoursActuel?.enfant_id as string | undefined;
+  const cycleIdActuel = parcoursActuel?.cycle_id as string | undefined;
+  const parcoursMemeCycle = (parcoursBruts ?? [])
+    .filter((p) => p.enfant_id === enfantIdActuel && p.cycle_id === cycleIdActuel)
+    .map((p) => p.id as string);
+
   const [
     { data: indicateurs },
     { data: statuts },
     { data: synthesesBrutes },
+    { data: propositionsBrutes },
     { data: totauxDomaine },
     { data: repartitionDomaine },
     { data: observationsAutonomie },
   ] = await Promise.all([
     supabase
-      .from("v_indicateurs_observation")
+      .from("v_indicateurs_observation_cumules")
       .select("element_programme_id, nb_observations, nb_dates_distinctes, nb_contextes_distincts")
-      .eq("parcours_id", parcoursId),
+      .eq("enfant_id", enfantIdActuel ?? "")
+      .eq("cycle_id", cycleIdActuel ?? ""),
     supabase
       .from("statuts_progression")
       .select("id, code, libelle")
       .eq("actif", true)
       .order("ordre"),
     supabase
+      .from("v_synthese_cumulee_cycle")
+      .select("element_programme_id, statut_global_id, synthese_ia, synthese_ia_generee_le")
+      .eq("enfant_id", enfantIdActuel ?? "")
+      .eq("cycle_id", cycleIdActuel ?? ""),
+    // Les propositions en attente de confirmation restent propres a
+    // l'annee affichee : ce sont des suggestions issues de l'activite
+    // recente de CETTE annee precisement, pas un fait cumulable.
+    supabase
       .from("syntheses_progression")
-      .select(
-        "element_programme_id, statut_global_id, synthese_ia, synthese_ia_generee_le, statut_propose_id, justification_proposition"
-      )
+      .select("element_programme_id, statut_propose_id, justification_proposition")
       .eq("parcours_id", parcoursId),
     supabase
       .from("v_total_objectifs_par_domaine")
       .select("domaine, total_objectifs")
       .eq("cycle_id", parcoursActuel?.cycle_id ?? ""),
     supabase
-      .from("v_progression_par_domaine")
+      .from("v_progression_par_domaine_cumulee")
       .select("domaine, statut_code, nb")
-      .eq("parcours_id", parcoursId),
+      .eq("enfant_id", enfantIdActuel ?? "")
+      .eq("cycle_id", cycleIdActuel ?? ""),
     supabase
       .from("observations_elements_programme")
       .select("element_programme_id, niveaux_autonomie(code, ordre), activites!inner(parcours_id)")
-      .eq("activites.parcours_id", parcoursId),
+      .in("activites.parcours_id", parcoursMemeCycle),
   ]);
 
   // Pour chaque element deja observe, on retient le niveau d'autonomie le
@@ -154,6 +173,8 @@ export default async function PageProgression({
         genereeLe: s.synthese_ia_generee_le as string | null,
       });
     }
+  }
+  for (const s of propositionsBrutes ?? []) {
     if (s.statut_propose_id) {
       const statutProposeLibelle = libelleParStatutId.get(s.statut_propose_id as string);
       if (statutProposeLibelle) {
@@ -261,7 +282,11 @@ export default async function PageProgression({
 
       {onglet === "a-travailler" ? (
         parcoursActuel ? (
-          <VueATravailler parcoursId={parcoursId} cycleId={parcoursActuel.cycle_id as string} />
+          <VueATravailler
+            parcoursId={parcoursId}
+            parcoursMemeCycle={parcoursMemeCycle}
+            cycleId={parcoursActuel.cycle_id as string}
+          />
         ) : null
       ) : onglet === "historique" ? (
         <VueHistorique parcoursId={parcoursId} />
