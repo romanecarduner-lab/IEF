@@ -142,6 +142,98 @@ mentionne plusieurs éléments distincts, chacun doit être développé
 avec une attention comparable, sans que le premier n'écrase les
 suivants.
 
+## Refonte du dossier pédagogique — couverture complète, préparation groupée
+
+Chantier majeur, suite à la proposition présentée et validée avec
+l'utilisatrice avant toute modification (voir échange précédent). Le
+dossier pédagogique ne part plus d'une sélection curatée d'activités
+par domaine : il couvre systématiquement **toutes les compétences du
+cycle**, avec leur statut cumulatif réel (validée / en cours / à
+travailler / non encore abordée), y compris celles sans aucune
+observation — affichées telles quelles, sans texte inventé.
+
+**Nouveau parcours** :
+1. Création simplifiée : plus de "remplissage automatique par
+   domaine" à paramétrer, la couverture est désormais toujours
+   complète.
+2. Bouton **"Préparer les formulations"** sur la fiche du dossier :
+   génère en une fois (regroupée par domaine, quelques appels IA au
+   lieu d'un par compétence) une formulation pédagogique pour chaque
+   compétence déjà observée, avec 1 à 2 exemples concrets — priorité
+   aux activités de l'année du dossier, repli sur une année précédente
+   du même cycle si aucune n'existe sur l'année en cours. Le prompt
+   reprend celui déjà utilisé pour les synthèses individuelles
+   (analyse qualitative, aucune date précise, jamais de déduction
+   d'acquisition), avec la consigne supplémentaire de rester
+   compatible avec n'importe quel statut plutôt que d'en suggérer un.
+3. **Écran de relecture unique** : chaque compétence, groupée par
+   domaine, avec son statut (toujours lu en direct depuis la vue
+   cumulative, jamais figé ni recalculé par l'export), ses exemples,
+   et sa formulation dans une zone de texte modifiable. Un texte
+   modifié à la main n'est plus jamais écrasé par une préparation
+   ultérieure.
+4. Finalisation : génère le PDF à partir de cette structure complète
+   (nouveau document `DocumentDossierPedagogique.tsx`), avec la même
+   fidélité que l'écran de relecture.
+
+**Non traité dans ce lot, à reprendre si besoin** : la version
+PowerPoint (pour Canva) n'est pas régénérée pour ce nouveau format —
+le générateur existant est conçu pour l'ancienne structure par
+activités sélectionnées. Le champ reste vide pour les nouveaux
+dossiers pédagogiques finalisés ; le PDF, lui, est complet.
+
+**Fichiers créés** :
+`export/[id]/actionsFormulations.ts`,
+`export/[id]/BoutonPreparerFormulations.tsx`,
+`export/[id]/EditeurFormulation.tsx`,
+`export/[id]/DocumentDossierPedagogique.tsx`.
+**Fichiers supprimés** (composants devenus inutiles) :
+`export/[id]/EditeurTexteElement.tsx`,
+`export/[id]/BoutonRemplissageAutomatique.tsx`.
+
+## Compétences au nom identique (tranches d'âge différentes) — A + B
+
+- **A. Contexte affiché quand il y a ambiguïté** : nouvelle vue
+  `v_chemin_complet_objectif`, calculant le chemin complet de chaque
+  compétence en une seule requête groupée (même principe que les
+  corrections de performance précédentes, pas un appel par
+  compétence). Le chemin (avec la tranche d'âge) s'affiche désormais
+  sous le libellé sur "Ce qui reste à voir" et "Idées pour continuer",
+  mais **seulement quand un même libellé apparaît plusieurs fois**
+  parmi ce qui est affiché à ce moment-là — pour ne pas surcharger les
+  nombreuses compétences qui n'ont pas ce problème. La page
+  Progression l'affichait déjà systématiquement, sans changement.
+- **B. Valider les deux d'un coup** : sur Progression, quand une
+  compétence a une "jumelle" (même libellé exact, déjà observée elle
+  aussi), une case à cocher apparaît sous le bouton "Confirmer" —
+  cochée par défaut, elle applique le même statut aux deux compétences
+  en une seule confirmation plutôt que de les valider séparément.
+
+## Quatre petites corrections, après retours utilisatrice
+
+1. **Texte obsolète retiré** — le champ "Compétences" mentionnait
+   encore "peut différer de l'autonomie générale de l'activité, réglée
+   plus bas", une référence à un champ supprimé du formulaire il y a
+   longtemps.
+2. **Enregistrer une activité vaut désormais validation directement** —
+   plus besoin de la marquer "rédaction terminée" dans un second temps
+   après coup (`creerActivite` insère maintenant avec le statut
+   "valide" plutôt que "brouillon"). Le badge de statut reste
+   disponible pour repasser une fiche en brouillon si besoin, mais ce
+   n'est plus l'étape de départ.
+3. **Vérifié, sans correction nécessaire** : "Ce qui reste à voir"
+   vérifie bien les observations sur toutes les années du même cycle,
+   et reste à jour automatiquement (pas de mise en cache sur ces
+   requêtes).
+4. **Formulaire de création** : le sélecteur ne propose plus qu'une
+   ligne par enfant (plus de choix d'année) — le bon parcours pour la
+   date du jour est choisi d'emblée, et s'ajuste automatiquement si la
+   date est changée ensuite (déjà en place).
+
+Point laissé en discussion, pas encore implémenté : la gestion des
+compétences au libellé strictement identique selon la tranche d'âge —
+propositions transmises, en attente d'un retour.
+
 ## Le repère devient le cycle pour la progression, l'année pour les activités
 
 Suite à la réflexion menée avec l'utilisatrice avant toute modification
