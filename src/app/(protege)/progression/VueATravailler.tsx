@@ -12,7 +12,7 @@ export async function VueATravailler({
 }) {
   const supabase = creerClientServeur();
 
-  const [{ data: tousLesObjectifs }, { data: observations }] = await Promise.all([
+  const [{ data: tousLesObjectifs }, { data: observations }, { data: chemins }] = await Promise.all([
     supabase
       .from("v_objectif_domaine")
       .select("objectif_id, libelle, domaine")
@@ -22,19 +22,27 @@ export async function VueATravailler({
       .from("observations_elements_programme")
       .select("element_programme_id, activites!inner(parcours_id)")
       .in("activites.parcours_id", parcoursMemeCycle),
+    supabase.from("v_chemin_complet_objectif").select("objectif_id, chemin"),
   ]);
+
+  const cheminParObjectif = new Map(
+    (chemins ?? []).map((c) => [c.objectif_id as string, c.chemin as string])
+  );
 
   const idsAbordes = new Set(
     (observations ?? []).map((o) => o.element_programme_id as string)
   );
 
-  const nonAbordesParDomaine = new Map<string, { id: string; libelle: string }[]>();
+  const nonAbordesParDomaine = new Map<
+    string,
+    { id: string; libelle: string; chemin?: string }[]
+  >();
   for (const o of tousLesObjectifs ?? []) {
     const id = o.objectif_id as string;
     if (idsAbordes.has(id)) continue;
     const domaine = o.domaine as string;
     const liste = nonAbordesParDomaine.get(domaine) ?? [];
-    liste.push({ id, libelle: o.libelle as string });
+    liste.push({ id, libelle: o.libelle as string, chemin: cheminParObjectif.get(id) });
     nonAbordesParDomaine.set(domaine, liste);
   }
 
@@ -76,16 +84,25 @@ export async function VueATravailler({
                 </span>
               </summary>
               <ul className="space-y-3 border-t border-trait p-4 pt-3">
-                {objectifs.map((o) => (
-                  <li key={o.id} className="border-b border-trait pb-2 text-sm text-encre last:border-b-0 last:pb-0">
-                    <p>{o.libelle}</p>
-                    <BoutonIdeesActivites
-                      objectifId={o.id}
-                      objectifLibelle={o.libelle}
-                      parcoursId={parcoursId}
-                    />
-                  </li>
-                ))}
+                {(() => {
+                  const compteParLibelle = new Map<string, number>();
+                  for (const o of objectifs) {
+                    compteParLibelle.set(o.libelle, (compteParLibelle.get(o.libelle) ?? 0) + 1);
+                  }
+                  return objectifs.map((o) => (
+                    <li key={o.id} className="border-b border-trait pb-2 text-sm text-encre last:border-b-0 last:pb-0">
+                      <p>{o.libelle}</p>
+                      {(compteParLibelle.get(o.libelle) ?? 0) > 1 && o.chemin && (
+                        <p className="text-xs text-ardoise">{o.chemin}</p>
+                      )}
+                      <BoutonIdeesActivites
+                        objectifId={o.id}
+                        objectifLibelle={o.libelle}
+                        parcoursId={parcoursId}
+                      />
+                    </li>
+                  ));
+                })()}
               </ul>
             </details>
           ))}

@@ -3,7 +3,6 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { creerClientServeur } from "@/lib/supabase/server";
-import { remplirBilanAutomatique } from "./[id]/actions";
 
 export async function creerDossier(
   _etatPrecedent: { erreur?: string },
@@ -80,9 +79,6 @@ export async function creerDossier(
     redirect(`/export/${dossier.id}`);
   }
 
-  const remplissageAuto = donnees.get("remplissage_auto") === "on";
-  const maxParDomaine = Number(donnees.get("max_par_domaine") ?? 3) || 3;
-
   const { data, error } = await supabase
     .from("dossiers_export")
     .insert({
@@ -97,13 +93,6 @@ export async function creerDossier(
 
   if (error || !data) {
     return { erreur: "Impossible de créer ce dossier. Merci de réessayer." };
-  }
-
-  // Le remplissage automatique peut echouer (par ex. aucune activite
-  // reliee a une competence) sans que ce soit bloquant : le dossier vide
-  // reste consultable et completable a la main.
-  if (remplissageAuto) {
-    await remplirBilanAutomatique(data.id, parcoursId, maxParDomaine);
   }
 
   revalidatePath("/export");

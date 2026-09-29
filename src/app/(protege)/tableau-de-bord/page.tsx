@@ -222,6 +222,23 @@ export default async function PageTableauDeBord({
 
   const suggestionsCompetences = melanger(candidatsParEnfant.flat()).slice(0, 3);
 
+  // Chemin complet (tranche d'age comprise) recupere seulement pour les
+  // quelques suggestions finalement retenues -- requete bornee, pas un
+  // appel par objectif du programme.
+  const { data: cheminsSuggestions } =
+    suggestionsCompetences.length > 0
+      ? await supabase
+          .from("v_chemin_complet_objectif")
+          .select("objectif_id, chemin")
+          .in(
+            "objectif_id",
+            suggestionsCompetences.map((s) => s.id)
+          )
+      : { data: [] };
+  const cheminParObjectifId = new Map(
+    (cheminsSuggestions ?? []).map((c) => [c.objectif_id as string, c.chemin as string])
+  );
+
   const traces = await Promise.all(
     (tracesBrutes ?? []).map(async (t) => {
       const type = Array.isArray(t.types_trace) ? t.types_trace[0] : t.types_trace;
@@ -466,20 +483,30 @@ export default async function PageTableauDeBord({
                 rien d&rsquo;obligatoire.
               </p>
               <ul className="space-y-3">
-                {suggestionsCompetences.map((s) => (
-                  <li key={s.id} className="border-b border-trait pb-3 last:border-b-0 last:pb-0">
-                    <p className="text-xs font-medium text-argile">
-                      {libelleCourtDomaine(s.domaine)}
-                      {plusieursEnfants && ` · ${s.enfantPrenom}`}
-                    </p>
-                    <p className="mb-1 text-sm text-encre">{s.libelle}</p>
-                    <BoutonIdeesActivites
-                      objectifId={s.id}
-                      objectifLibelle={s.libelle}
-                      parcoursId={s.parcoursId}
-                    />
-                  </li>
-                ))}
+                {suggestionsCompetences.map((s) => {
+                  const dupliqueParmiLesSuggestions =
+                    suggestionsCompetences.filter((autre) => autre.libelle === s.libelle).length >
+                    1;
+                  return (
+                    <li key={s.id} className="border-b border-trait pb-3 last:border-b-0 last:pb-0">
+                      <p className="text-xs font-medium text-argile">
+                        {libelleCourtDomaine(s.domaine)}
+                        {plusieursEnfants && ` · ${s.enfantPrenom}`}
+                      </p>
+                      <p className="mb-1 text-sm text-encre">{s.libelle}</p>
+                      {dupliqueParmiLesSuggestions && cheminParObjectifId.has(s.id) && (
+                        <p className="mb-1 text-xs text-ardoise">
+                          {cheminParObjectifId.get(s.id)}
+                        </p>
+                      )}
+                      <BoutonIdeesActivites
+                        objectifId={s.id}
+                        objectifLibelle={s.libelle}
+                        parcoursId={s.parcoursId}
+                      />
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}

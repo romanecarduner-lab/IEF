@@ -551,7 +551,7 @@ export function FormulaireActivite({
             htmlFor="parcours"
             className="mb-1.5 block text-sm font-medium text-encre"
           >
-            Enfant / année scolaire
+            Enfant
           </label>
           <select
             id="parcours"
@@ -561,9 +561,24 @@ export function FormulaireActivite({
             className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
           >
             <option value="">Sélectionner…</option>
-            {parcours.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.libelle}
+            {Array.from(
+              parcours.reduce((carte, p) => {
+                const aujourdhui = new Date().toISOString().slice(0, 10);
+                const correspondAujourdhui =
+                  p.dateDebutAnnee &&
+                  p.dateFinAnnee &&
+                  aujourdhui >= p.dateDebutAnnee &&
+                  aujourdhui <= p.dateFinAnnee;
+                const dejaRetenu = carte.get(p.enfantId);
+                // Retient de preference le parcours dont l'annee couvre la
+                // date du jour, pour eviter un ajustement automatique
+                // visible juste apres la selection de l'enfant.
+                if (!dejaRetenu || correspondAujourdhui) carte.set(p.enfantId, p);
+                return carte;
+              }, new Map<string, (typeof parcours)[number]>())
+            ).map(([enfantId, p]) => (
+              <option key={enfantId} value={p.id}>
+                {p.prenomEnfant}
               </option>
             ))}
           </select>
@@ -851,8 +866,7 @@ export function FormulaireActivite({
             </select>
             <p className="mt-1 text-xs text-ardoise">
               Décrit comment l&rsquo;enfant a mobilisé ces compétences
-              précises — peut différer de l&rsquo;autonomie générale de
-              l&rsquo;activité, réglée plus bas.
+              précises.
             </p>
           </div>
         )}

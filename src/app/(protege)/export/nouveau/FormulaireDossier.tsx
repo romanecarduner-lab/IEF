@@ -11,7 +11,7 @@ function dateVersISO(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-function BoutonCreer({ typeDossier, remplissageAuto }: { typeDossier: string; remplissageAuto: boolean }) {
+function BoutonCreer({ typeDossier }: { typeDossier: string }) {
   const { pending } = useFormStatus();
   return (
     <button
@@ -23,9 +23,7 @@ function BoutonCreer({ typeDossier, remplissageAuto }: { typeDossier: string; re
         ? "Création…"
         : typeDossier === "journal_periode"
         ? "Créer le journal de cette période"
-        : remplissageAuto
-        ? "Créer et remplir automatiquement"
-        : "Créer le dossier vide"}
+        : "Créer le dossier pédagogique"}
     </button>
   );
 }
@@ -37,7 +35,6 @@ export function FormulaireDossier({
 }) {
   const [etat, action] = useFormState(creerDossier, ETAT_INITIAL);
   const [typeDossier, setTypeDossier] = useState<"pedagogique" | "journal_periode">("pedagogique");
-  const [remplissageAuto, setRemplissageAuto] = useState(true);
 
   const aujourdhui = new Date();
   const [periodeDebut, setPeriodeDebut] = useState(dateVersISO(aujourdhui));
@@ -196,42 +193,17 @@ export function FormulaireDossier({
           </p>
         </div>
       ) : (
-        <div className="mb-4 rounded-doux border border-mousse/30 bg-mousse/5 p-3">
-          <label className="flex items-start gap-2 text-sm text-encre">
-            <input
-              type="checkbox"
-              name="remplissage_auto"
-              checked={remplissageAuto}
-              onChange={(e) => setRemplissageAuto(e.target.checked)}
-              className="mt-0.5"
-            />
-            <span>
-              Remplir automatiquement (recommandé) — sélectionne, pour chaque
-              domaine déjà abordé, vos activités favorites en priorité puis
-              les plus récentes. Vous pourrez toujours ajuster ensuite.
-            </span>
-          </label>
-
-          {remplissageAuto && (
-            <div className="mt-3 flex items-center gap-2">
-              <label htmlFor="max_par_domaine" className="text-xs text-ardoise">
-                Exemples par domaine
-              </label>
-              <input
-                id="max_par_domaine"
-                type="number"
-                name="max_par_domaine"
-                min={1}
-                max={10}
-                defaultValue={3}
-                className="w-16 rounded-doux border border-trait bg-white px-2 py-1 text-sm text-encre focus:border-mousse focus:outline-none"
-              />
-            </div>
-          )}
+        <div className="mb-4 rounded-doux border border-mousse/30 bg-mousse/5 p-3 text-sm text-encre">
+          Ce dossier couvrira automatiquement toutes les compétences du
+          cycle, avec leur statut réel (validée, en cours, à travailler
+          ou non encore abordée). Une fois créé, vous pourrez préparer
+          en un clic les formulations pédagogiques des compétences déjà
+          observées, puis les relire et les ajuster avant de générer le
+          document.
         </div>
       )}
 
-      <BoutonCreer typeDossier={typeDossier} remplissageAuto={remplissageAuto} />
+      <BoutonCreer typeDossier={typeDossier} />
     </form>
   );
 }

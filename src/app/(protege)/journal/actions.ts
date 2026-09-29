@@ -98,10 +98,10 @@ export type ResultatCreationActivite = { erreur: string } | { id: string };
  * (IndexedDB) : synchronisation uniquement après confirmation du serveur,
  * jamais avant (voir Corrections-Schema-et-Lot1.md, section 12).
  *
- * Le statut de la fiche demarre toujours a "brouillon" (la redaction vient
- * de commencer) : le parent le fait passer a "redaction terminee" ensuite,
- * en cliquant sur le badge de statut, plutot que de le choisir a la
- * creation (etape jugee inutile a l'usage).
+ * Le statut de la fiche demarre directement a "valide" : enregistrer
+ * l'activite vaut validation, sans etape separee a refaire ensuite (le
+ * badge de statut sur le Journal reste disponible pour repasser une
+ * fiche en brouillon si besoin, mais ce n'est plus l'etat de depart).
  */
 export async function creerActivite(
   donnees: DonneesActivite
@@ -127,7 +127,7 @@ export async function creerActivite(
   const { data: statut } = await supabase
     .from("statuts_activite")
     .select("id")
-    .eq("code", "brouillon")
+    .eq("code", "valide")
     .maybeSingle();
 
   if (!statut) {

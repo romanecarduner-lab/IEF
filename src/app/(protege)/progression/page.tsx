@@ -227,6 +227,18 @@ export default async function PageProgression({
 
   lignes.sort((a, b) => (a.chemin ?? "").localeCompare(b.chemin ?? ""));
 
+  // Compétences jumelles : meme libelle exact, presentes plusieurs fois
+  // dans le programme a des tranches d'age differentes -- pour proposer
+  // de valider les deux d'un coup plutot que de le refaire a la main a
+  // chaque fois.
+  const lignesParLibelle = new Map<string, typeof lignes>();
+  for (const l of lignes) {
+    if (!l.libelle) continue;
+    const liste = lignesParLibelle.get(l.libelle) ?? [];
+    liste.push(l);
+    lignesParLibelle.set(l.libelle, liste);
+  }
+
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -345,6 +357,9 @@ export default async function PageProgression({
                       statutActuelCode={l.statutCode}
                       dejaValide={l.dejaValide}
                       statuts={statuts ?? []}
+                      jumelles={(l.libelle ? lignesParLibelle.get(l.libelle) ?? [] : [])
+                        .filter((autre) => autre.elementId !== l.elementId)
+                        .map((autre) => ({ elementId: autre.elementId, chemin: autre.chemin }))}
                     />
                   </div>
                   {l.proposition && (
