@@ -142,6 +142,32 @@ mentionne plusieurs éléments distincts, chacun doit être développé
 avec une attention comparable, sans que le premier n'écrase les
 suivants.
 
+## Chercher une compétence dès la création d'une activité
+
+Jusqu'ici, la recherche libre et la navigation par domaine n'étaient
+disponibles qu'une fois l'activité déjà enregistrée (page "Compétences
+observées"). Elles sont désormais accessibles **dès la création**,
+avant même de valider l'activité :
+- Un champ de recherche par mots-clés, indépendant du titre (qui
+  continue de déclencher ses propres suggestions automatiques).
+- "Ou parcourir le programme par domaine" : les mêmes menus en
+  cascade (domaine → sous-domaine → compétence → tranche d'âge) qu'à
+  la page compétences.
+
+Nouveau composant autonome (`RechercheCompetences.tsx`) plutôt qu'une
+modification du composant existant de la page compétences, pour ne
+pas risquer de perturber ce qui fonctionne déjà là-bas. L'arborescence
+du programme est chargée à la demande, pour le cycle de l'enfant
+choisi, seulement quand "parcourir par domaine" est ouvert — jamais au
+chargement de la page, puisque le cycle n'est connu qu'une fois
+l'enfant sélectionné. Toute compétence trouvée par recherche ou par
+navigation rejoint la même liste "Compétences sélectionnées" déjà en
+place (avec son propre niveau d'autonomie), aux côtés de celles
+suggérées par mots-clés du titre ou par l'IA.
+
+**Fichiers créés** : `journal/nouvelle/RechercheCompetences.tsx`,
+`journal/nouvelle/actionsArbre.ts`.
+
 ## PowerPoint du dossier pédagogique, adapté à la nouvelle structure
 
 Suite du chantier précédent : `genererPptxDossierPedagogique` est
@@ -178,6 +204,21 @@ Deux corrections, après retour utilisatrice :
    avec le bon parcours choisi d'après la date du jour (régression
    introduite par un changement précédent, qui comptait les lignes de
    parcours plutôt que les enfants réels).
+
+## Lenteur sur Progression — même défaut déjà corrigé ailleurs, repéré ici
+
+Signalé par l'utilisatrice : l'application devenait lente, surtout sur
+Progression, depuis le passage au calcul cumulatif. Cause confirmée :
+une boucle déjà présente dans le code (antérieure à mes changements)
+faisait **deux requêtes séparées par compétence affichée** (son
+libellé, puis son chemin complet via `chemin_element_programme`) —
+exactement le même défaut déjà corrigé ailleurs dans le projet. Le
+passage au cumul remonte mécaniquement plus de compétences par page
+(toutes les années du cycle au lieu d'une seule), ce qui a rendu ce
+défaut latent nettement plus sensible. Corrigé en remplaçant ces deux
+boucles par deux requêtes groupées (une pour tous les libellés, une
+pour tous les chemins via la vue `v_chemin_complet_objectif` déjà en
+place), comme pour les corrections de performance précédentes.
 
 ## Refonte du dossier pédagogique — couverture complète, préparation groupée
 
