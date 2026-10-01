@@ -142,6 +142,43 @@ mentionne plusieurs éléments distincts, chacun doit être développé
 avec une attention comparable, sans que le premier n'écrase les
 suivants.
 
+## PowerPoint du dossier pédagogique, adapté à la nouvelle structure
+
+Suite du chantier précédent : `genererPptxDossierPedagogique` est
+réécrite pour la structure complète par compétence (elle visait encore
+l'ancien format par activités sélectionnées). Choix adapté au format
+diapositive, différent du PDF :
+- Une diapositive de couverture par domaine, listant **toutes** ses
+  compétences avec leur statut réel, de façon compacte (sur deux
+  colonnes si la liste est longue) — la couverture complète reste
+  visible même en PowerPoint, sans pour autant faire une diapositive
+  quasi vide par compétence non abordée.
+- Une diapositive dédiée pour chaque compétence **déjà observée**,
+  avec ses exemples et sa formulation — c'est là que l'espace d'une
+  diapositive entière a un sens.
+
+Le champ PowerPoint du dossier finalisé n'est plus laissé vide :
+`finaliserDossier` génère et téléverse à nouveau les deux formats.
+
+## Niveau d'autonomie par compétence, et enfant unique présélectionné
+
+Deux corrections, après retour utilisatrice :
+
+1. **Un niveau d'autonomie par compétence, plus un seul pour toutes** —
+   que ce soit à la création d'une activité ou sur la page
+   "Compétences observées", chaque compétence cochée a maintenant son
+   propre sélecteur de niveau, plutôt qu'un seul réglage appliqué à
+   toutes d'un coup. `creerObservations` accepte désormais une liste
+   `{ id, niveauAutonomieId }` par compétence au lieu d'un niveau
+   unique partagé.
+2. **Enfant unique présélectionné à la création** — la vérification se
+   fait maintenant sur le nombre d'**enfants** distincts, pas sur le
+   nombre de parcours : un enfant ayant plusieurs années (donc
+   plusieurs parcours) continue d'être présélectionné automatiquement,
+   avec le bon parcours choisi d'après la date du jour (régression
+   introduite par un changement précédent, qui comptait les lignes de
+   parcours plutôt que les enfants réels).
+
 ## Refonte du dossier pédagogique — couverture complète, préparation groupée
 
 Chantier majeur, suite à la proposition présentée et validée avec
