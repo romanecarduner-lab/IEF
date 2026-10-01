@@ -9,7 +9,7 @@ import {
   type ExempleDocument,
 } from "./DocumentDossierPedagogique";
 import { DocumentJournalPeriode, type ActiviteJournal } from "./DocumentJournalPeriode";
-import { genererPptxJournalPeriode } from "@/lib/pptxExport";
+import { genererPptxDossierPedagogique, genererPptxJournalPeriode } from "@/lib/pptxExport";
 
 export async function basculerActivite(
   dossierId: string,
@@ -389,16 +389,37 @@ export async function finaliserDossier(
     return { erreur: "Impossible d'enregistrer le PDF généré. Merci de réessayer." };
   }
 
-  // Pas de version PowerPoint pour cette nouvelle structure (couverture
-  // complete par competence) pour l'instant -- le generateur PPTX existant
-  // est concu pour l'ancien format par activites selectionnees. A refaire
-  // dans un prochain lot si le format PowerPoint reste utile ici.
+  // Version PowerPoint, en plus du PDF -- non bloquant : si elle echoue,
+  // le PDF reste disponible normalement.
+  let cheminPptx: string | null = null;
+  try {
+    const pptxBuffer = await genererPptxDossierPedagogique({
+      titreDossier: dossier.titre as string,
+      enfant: (enfant?.prenom as string) ?? "",
+      cycle: (cycle?.libelle as string) ?? "",
+      domaines,
+    });
+    cheminPptx = `${familleId}/dossiers/${dossierId}.pptx`;
+    const { error: erreurUploadPptx } = await supabase.storage
+      .from("traces-pedagogiques")
+      .upload(cheminPptx, pptxBuffer, {
+        contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        upsert: true,
+      });
+    if (erreurUploadPptx) {
+      console.error("Erreur upload PowerPoint", erreurUploadPptx);
+      cheminPptx = null;
+    }
+  } catch (erreurPptx) {
+    console.error("Erreur lors de la generation du PowerPoint", erreurPptx);
+  }
+
   await supabase
     .from("dossiers_export")
     .update({
       statut: "finalise",
       pdf_final_storage_path: cheminPdf,
-      pptx_final_storage_path: null,
+      pptx_final_storage_path: cheminPptx,
     })
     .eq("id", dossierId);
 

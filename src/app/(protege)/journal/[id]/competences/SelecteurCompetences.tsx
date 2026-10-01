@@ -121,10 +121,17 @@ export function SelecteurCompetences({
       else nouveau.set(id, libelle);
       return nouveau;
     });
+    setNiveauParObjectif((precedent) => {
+      if (!precedent.has(id)) return precedent;
+      const nouveau = new Map(precedent);
+      nouveau.delete(id);
+      return nouveau;
+    });
   }
 
   // --- Enregistrement partagé ---
   const [niveauAutonomieId, setNiveauAutonomieId] = useState(niveaux[0]?.id ?? "");
+  const [niveauParObjectif, setNiveauParObjectif] = useState<Map<string, string>>(new Map());
   const [justification, setJustification] = useState("");
   const [commentaire, setCommentaire] = useState("");
   const [chargement, setChargement] = useState(false);
@@ -146,8 +153,10 @@ export function SelecteurCompetences({
       const resultat = await avecDelaiMaximal(
         creerObservations({
           activiteId,
-          elementProgrammeIds: Array.from(selection.keys()),
-          niveauAutonomieId,
+          elements: Array.from(selection.keys()).map((id) => ({
+            id,
+            niveauAutonomieId: niveauParObjectif.get(id) || niveauAutonomieId,
+          })),
           justification,
           commentairePedagogique: commentaire,
         })
@@ -341,41 +350,43 @@ export function SelecteurCompetences({
           <p className="mb-2 text-sm font-medium text-encre">
             Objectifs sélectionnés ({selection.size})
           </p>
-          <ul className="mb-4 space-y-1">
+          <ul className="mb-4 space-y-2">
             {Array.from(selection.entries()).map(([id, libelle]) => (
               <li
                 key={id}
-                className="flex items-start justify-between gap-2 rounded-doux bg-lin px-2.5 py-1.5 text-sm text-encre"
+                className="rounded-doux bg-lin px-2.5 py-2 text-sm text-encre"
               >
-                <span>{libelle}</span>
-                <button
-                  type="button"
-                  onClick={() => basculerObjectif(id, libelle)}
-                  className="shrink-0 text-ardoise hover:text-alerte"
-                  title="Retirer"
+                <div className="flex items-start justify-between gap-2">
+                  <span>{libelle}</span>
+                  <button
+                    type="button"
+                    onClick={() => basculerObjectif(id, libelle)}
+                    className="shrink-0 text-ardoise hover:text-alerte"
+                    title="Retirer"
+                  >
+                    ×
+                  </button>
+                </div>
+                <select
+                  value={niveauParObjectif.get(id) ?? niveauAutonomieId}
+                  onChange={(e) =>
+                    setNiveauParObjectif((precedent) => {
+                      const nouveau = new Map(precedent);
+                      nouveau.set(id, e.target.value);
+                      return nouveau;
+                    })
+                  }
+                  className="mt-1.5 w-full rounded-doux border border-trait bg-white px-2.5 py-1.5 text-xs text-encre focus:border-mousse focus:outline-none"
                 >
-                  ×
-                </button>
+                  {niveaux.map((n) => (
+                    <option key={n.id} value={n.id}>
+                      {n.libelle}
+                    </option>
+                  ))}
+                </select>
               </li>
             ))}
           </ul>
-
-          <div className="mb-4">
-            <label className="mb-1.5 block text-sm font-medium text-encre">
-              Niveau d&rsquo;autonomie observé
-            </label>
-            <select
-              value={niveauAutonomieId}
-              onChange={(e) => setNiveauAutonomieId(e.target.value)}
-              className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
-            >
-              {niveaux.map((n) => (
-                <option key={n.id} value={n.id}>
-                  {n.libelle}
-                </option>
-              ))}
-            </select>
-          </div>
 
           <div className="mb-4">
             <label className="mb-1.5 block text-sm font-medium text-encre">

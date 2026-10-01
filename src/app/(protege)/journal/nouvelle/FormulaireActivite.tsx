@@ -80,18 +80,36 @@ export function FormulaireActivite({
   const inputPhotoRef = useRef<HTMLInputElement>(null);
   const erreurRef = useRef<HTMLDivElement>(null);
 
+  // Parcours par defaut si un seul enfant existe dans le foyer -- celui
+  // dont l'annee couvre la date du jour, comme dans le selecteur
+  // d'enfant ci-dessous, pour que la presequence corresponde a ce qui
+  // sera reellement affiche.
+  const enfantsDistincts = new Set(parcours.map((p) => p.enfantId));
+  const parcoursParDefaut =
+    enfantsDistincts.size === 1
+      ? parcours.reduce<OptionParcours | undefined>((retenu, p) => {
+          const aujourdhui = new Date().toISOString().slice(0, 10);
+          const correspondAujourdhui =
+            p.dateDebutAnnee &&
+            p.dateFinAnnee &&
+            aujourdhui >= p.dateDebutAnnee &&
+            aujourdhui <= p.dateFinAnnee;
+          if (!retenu || correspondAujourdhui) return p;
+          return retenu;
+        }, undefined)
+      : undefined;
+
   const [donnees, setDonnees] = useState<DonneesBrouillonActivite>(() => {
     if (prerempli?.titre) {
       return {
         ...DONNEES_VIDES,
         titre: prerempli.titre,
         description: prerempli.description,
-        parcoursId:
-          prerempli.parcoursId || (parcours.length === 1 && parcours[0] ? parcours[0].id : ""),
+        parcoursId: prerempli.parcoursId || parcoursParDefaut?.id || "",
       };
     }
-    return parcours.length === 1 && parcours[0]
-      ? { ...DONNEES_VIDES, parcoursId: parcours[0].id }
+    return parcoursParDefaut
+      ? { ...DONNEES_VIDES, parcoursId: parcoursParDefaut.id }
       : DONNEES_VIDES;
   });
   const [suggestionsChoisies, setSuggestionsChoisies] = useState<Map<string, string>>(() =>
@@ -116,6 +134,7 @@ export function FormulaireActivite({
   >([]);
   const [chargementSuggestions, setChargementSuggestions] = useState(false);
   const [niveauCompetencesId, setNiveauCompetencesId] = useState(autonomies[0]?.id ?? "");
+  const [niveauParCompetence, setNiveauParCompetence] = useState<Map<string, string>>(new Map());
   const delaiSuggestionsRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [suggestionsIA, setSuggestionsIA] = useState<
@@ -228,6 +247,12 @@ export function FormulaireActivite({
       const nouveau = new Map(precedent);
       if (nouveau.has(id)) nouveau.delete(id);
       else nouveau.set(id, libelle);
+      return nouveau;
+    });
+    setNiveauParCompetence((precedent) => {
+      if (!precedent.has(id)) return precedent;
+      const nouveau = new Map(precedent);
+      nouveau.delete(id);
       return nouveau;
     });
   }
@@ -429,8 +454,10 @@ export function FormulaireActivite({
         try {
           await creerObservations({
             activiteId: resultat.id,
-            elementProgrammeIds: Array.from(suggestionsChoisies.keys()),
-            niveauAutonomieId: niveauCompetencesId || autonomies[0]?.id || "",
+            elements: Array.from(suggestionsChoisies.keys()).map((id) => ({
+              id,
+              niveauAutonomieId: niveauParCompetence.get(id) || niveauCompetencesId || autonomies[0]?.id || "",
+            })),
             justification: "",
             commentairePedagogique: "",
           });
@@ -831,9 +858,9 @@ export function FormulaireActivite({
               {suggestionsChoisies.size > 1 ? "ont" : ""} enregistrée
               {suggestionsChoisies.size > 1 ? "s" : ""} avec cette activité :
             </p>
-            <ul className="mb-3 space-y-1">
+            <ul className="mb-3 space-y-2">
               {Array.from(suggestionsChoisies.entries()).map(([id, libelle]) => (
-                <li key={id}>
+                <li key={id} className="rounded-doux border border-trait bg-white p-2.5">
                   <label className="flex items-start gap-2 text-sm text-encre">
                     <input
                       type="checkbox"
@@ -843,30 +870,30 @@ export function FormulaireActivite({
                     />
                     <span>{libelle}</span>
                   </label>
+                  <select
+                    value={niveauParCompetence.get(id) ?? niveauCompetencesId}
+                    onChange={(e) =>
+                      setNiveauParCompetence((precedent) => {
+                        const nouveau = new Map(precedent);
+                        nouveau.set(id, e.target.value);
+                        return nouveau;
+                      })
+                    }
+                    className="mt-1.5 ml-6 w-[calc(100%-1.5rem)] rounded-doux border border-trait bg-white px-2.5 py-1.5 text-xs text-encre focus:border-mousse focus:outline-none"
+                  >
+                    {autonomies.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.libelle}
+                      </option>
+                    ))}
+                  </select>
                 </li>
               ))}
             </ul>
-            <label
-              htmlFor="niveau-competences"
-              className="mb-1 block text-xs font-medium text-encre"
-            >
-              Niveau d&rsquo;autonomie pour ces compétences précises
-            </label>
-            <select
-              id="niveau-competences"
-              value={niveauCompetencesId}
-              onChange={(e) => setNiveauCompetencesId(e.target.value)}
-              className="w-full rounded-doux border border-trait bg-white px-3 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
-            >
-              {autonomies.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.libelle}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 text-xs text-ardoise">
-              Décrit comment l&rsquo;enfant a mobilisé ces compétences
-              précises.
+            <p className="text-xs text-ardoise">
+              Décrit comment l&rsquo;enfant a mobilisé chaque compétence
+              précisément — peut différer d&rsquo;une compétence à
+              l&rsquo;autre dans la même activité.
             </p>
           </div>
         )}

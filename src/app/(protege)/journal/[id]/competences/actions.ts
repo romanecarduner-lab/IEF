@@ -5,8 +5,7 @@ import { creerClientServeur } from "@/lib/supabase/server";
 
 export type DonneesObservationsLot = {
   activiteId: string;
-  elementProgrammeIds: string[];
-  niveauAutonomieId: string;
+  elements: { id: string; niveauAutonomieId: string }[];
   justification: string;
   commentairePedagogique: string;
 };
@@ -14,11 +13,11 @@ export type DonneesObservationsLot = {
 export async function creerObservations(
   donnees: DonneesObservationsLot
 ): Promise<{ erreur: string } | { nombreCreees: number }> {
-  if (donnees.elementProgrammeIds.length === 0) {
+  if (donnees.elements.length === 0) {
     return { erreur: "Sélectionnez au moins un objectif observé." };
   }
-  if (!donnees.niveauAutonomieId) {
-    return { erreur: "Le niveau d'autonomie est requis." };
+  if (donnees.elements.some((e) => !e.niveauAutonomieId)) {
+    return { erreur: "Le niveau d'autonomie est requis pour chaque compétence." };
   }
 
   const supabase = creerClientServeur();
@@ -30,10 +29,10 @@ export async function creerObservations(
     return { erreur: "Votre session a expiré. Merci de vous reconnecter." };
   }
 
-  const lignes = donnees.elementProgrammeIds.map((elementProgrammeId) => ({
+  const lignes = donnees.elements.map(({ id: elementProgrammeId, niveauAutonomieId }) => ({
     activite_id: donnees.activiteId,
     element_programme_id: elementProgrammeId,
-    niveau_autonomie_id: donnees.niveauAutonomieId,
+    niveau_autonomie_id: niveauAutonomieId,
     justification: donnees.justification || null,
     commentaire_pedagogique: donnees.commentairePedagogique || null,
     auteur_id: user.id,
