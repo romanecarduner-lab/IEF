@@ -186,44 +186,49 @@ export default async function PageProgression({
     }
   }
 
-  const lignes = await Promise.all(
-    (indicateurs ?? []).map(async (indic) => {
-      const elementId = indic.element_programme_id as string;
-      const [{ data: element }, { data: chemin }] = await Promise.all([
-        supabase
-          .from("elements_programme")
-          .select("libelle, parent_id")
-          .eq("id", elementId)
-          .maybeSingle(),
-        supabase.rpc("chemin_element_programme", { p_element_id: elementId }),
-      ]);
-
-      const nbObs = indic.nb_observations as number;
-      const nbDates = indic.nb_dates_distinctes as number;
-      const nbContextes = indic.nb_contextes_distincts as number;
-      const aRevoir = nbObs >= 3 && nbDates >= 2 && nbContextes >= 2;
-
-      const dejaValide = statutsParElement.has(elementId);
-      const meilleurNiveau = meilleurNiveauParElement.get(elementId);
-      const suggestion = meilleurNiveau
-        ? SUGGESTION_DEPUIS_AUTONOMIE[meilleurNiveau.code] ?? STATUT_PAR_DEFAUT
-        : STATUT_PAR_DEFAUT;
-
-      return {
-        elementId,
-        libelle: element?.libelle as string | undefined,
-        chemin: chemin as string | null,
-        nbObs,
-        nbDates,
-        nbContextes,
-        aRevoir,
-        dejaValide,
-        statutCode: statutsParElement.get(elementId) ?? suggestion,
-        syntheseIA: syntheseIAParElement.get(elementId) ?? null,
-        proposition: propositionParElement.get(elementId) ?? null,
-      };
-    })
+  const idsElements = (indicateurs ?? []).map((indic) => indic.element_programme_id as string);
+  const [{ data: elementsBruts }, { data: cheminsBruts }] = await Promise.all([
+    idsElements.length > 0
+      ? supabase.from("elements_programme").select("id, libelle").in("id", idsElements)
+      : Promise.resolve({ data: [] }),
+    idsElements.length > 0
+      ? supabase.from("v_chemin_complet_objectif").select("objectif_id, chemin").in("objectif_id", idsElements)
+      : Promise.resolve({ data: [] }),
+  ]);
+  const libelleParElement = new Map(
+    (elementsBruts ?? []).map((e) => [e.id as string, e.libelle as string])
   );
+  const cheminParElement = new Map(
+    (cheminsBruts ?? []).map((c) => [c.objectif_id as string, c.chemin as string])
+  );
+
+  const lignes = (indicateurs ?? []).map((indic) => {
+    const elementId = indic.element_programme_id as string;
+    const nbObs = indic.nb_observations as number;
+    const nbDates = indic.nb_dates_distinctes as number;
+    const nbContextes = indic.nb_contextes_distincts as number;
+    const aRevoir = nbObs >= 3 && nbDates >= 2 && nbContextes >= 2;
+
+    const dejaValide = statutsParElement.has(elementId);
+    const meilleurNiveau = meilleurNiveauParElement.get(elementId);
+    const suggestion = meilleurNiveau
+      ? SUGGESTION_DEPUIS_AUTONOMIE[meilleurNiveau.code] ?? STATUT_PAR_DEFAUT
+      : STATUT_PAR_DEFAUT;
+
+    return {
+      elementId,
+      libelle: libelleParElement.get(elementId),
+      chemin: cheminParElement.get(elementId) ?? null,
+      nbObs,
+      nbDates,
+      nbContextes,
+      aRevoir,
+      dejaValide,
+      statutCode: statutsParElement.get(elementId) ?? suggestion,
+      syntheseIA: syntheseIAParElement.get(elementId) ?? null,
+      proposition: propositionParElement.get(elementId) ?? null,
+    };
+  });
 
   lignes.sort((a, b) => (a.chemin ?? "").localeCompare(b.chemin ?? ""));
 

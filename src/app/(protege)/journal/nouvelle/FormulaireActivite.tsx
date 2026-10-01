@@ -17,6 +17,7 @@ import {
   type DonneesBrouillonActivite,
 } from "@/lib/brouillonLocal";
 import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaximal";
+import { RechercheCompetences } from "./RechercheCompetences";
 
 type Option = { id: string; libelle: string };
 type OptionParcours = Option & {
@@ -747,6 +748,19 @@ export function FormulaireActivite({
             Vous restez seule ou seul responsable du suivi pédagogique
             de votre enfant.
           </p>
+
+          {donnees.parcoursId ? (
+            <RechercheCompetences
+              cycleId={parcours.find((p) => p.id === donnees.parcoursId)?.cycleId ?? null}
+              selection={suggestionsChoisies}
+              onToggle={basculerSuggestion}
+            />
+          ) : (
+            <p className="mb-4 text-xs text-ardoise">
+              Choisissez d&rsquo;abord l&rsquo;enfant ci-dessus pour pouvoir
+              chercher une compétence.
+            </p>
+          )}
         </div>
 
         {chargementSuggestions && (
