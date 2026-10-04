@@ -49,7 +49,7 @@ async function appellerClaude(
   }
 }
 
-type ExempleActivite = {
+type ActiviteCandidate = {
   id: string;
   titre: string;
   date: string;
@@ -57,17 +57,19 @@ type ExempleActivite = {
 };
 
 /**
- * Prepare, en une fois, les formulations pedagogiques de toutes les
- * competences du cycle qui ont deja un statut valide (donc au moins une
- * observation) et n'ont pas encore de formulation, ou dont la
- * formulation n'a jamais ete modifiee a la main par le parent (pour ne
- * jamais ecraser un texte deja relu et corrige). Les competences non
- * encore abordees ne sont jamais envoyees a l'IA : rien n'est invente
- * pour elles.
+ * Prepare, en une fois, pour chaque sous-domaine ayant au moins une
+ * competence observee (statut cumulatif reel, pas seulement une
+ * observation brute non validee) : une synthese qui melange les
+ * competences observees de ce sous-domaine (ecrite au positif, en
+ * mentionnant "en cours d'acquisition" la ou c'est pertinent, sans
+ * jamais lister ce qui n'est pas fait), et 2 exemples d'activites
+ * illustratifs, chacun avec sa propre synthese pedagogique courte.
+ * Un sous-domaine sans aucune competence observee n'apparait pas du
+ * tout -- rien n'est invente pour lui.
  *
- * Regroupe les competences par domaine pour limiter le nombre d'appels
- * (un appel par domaine ayant des competences a preparer, plutot qu'un
- * appel par competence).
+ * Les exemples sont choisis en priorite parmi les activites de
+ * l'annee du dossier ; a defaut, parmi les autres annees du meme
+ * cycle.
  */
 export async function preparerFormulationsExport(
   dossierId: string
@@ -89,45 +91,49 @@ export async function preparerFormulationsExport(
   const cycleId = parcours?.cycle_id as string | undefined;
   if (!enfantId || !cycleId) return { erreur: "Parcours introuvable." };
 
-  const [{ data: tousLesObjectifs }, { data: statutsValides }, { data: formulationsExistantes }] =
+  const [{ data: statutsCumules }, { data: chemins }, { data: sousDomainesExistants }] =
     await Promise.all([
-      supabase
-        .from("v_objectif_domaine")
-        .select("objectif_id, libelle, domaine")
-        .eq("cycle_id", cycleId),
       supabase
         .from("v_synthese_cumulee_cycle")
         .select("element_programme_id, statut_code")
         .eq("enfant_id", enfantId)
         .eq("cycle_id", cycleId),
+      supabase.from("v_chemin_complet_objectif").select("objectif_id, chemin"),
       supabase
-        .from("dossiers_export_formulations")
-        .select("element_programme_id, modifie_par_parent")
+        .from("dossiers_export_sous_domaines")
+        .select("sous_domaine, modifie_par_parent")
         .eq("dossier_id", dossierId),
     ]);
 
-  const statutParObjectif = new Map(
-    (statutsValides ?? []).map((s) => [s.element_programme_id as string, s.statut_code as string])
-  );
-  const dejaModifieParParent = new Set(
-    (formulationsExistantes ?? [])
-      .filter((f) => f.modifie_par_parent)
-      .map((f) => f.element_programme_id as string)
+  const dejaModifiesParParent = new Set(
+    (sousDomainesExistants ?? [])
+      .filter((s) => s.modifie_par_parent)
+      .map((s) => s.sous_domaine as string)
   );
 
-  // Competences a preparer : ont un statut reel (donc au moins une
-  // observation) ET dont la formulation n'a pas deja ete modifiee a la
-  // main par le parent (on ne l'ecrase jamais).
-  const aPreparer = (tousLesObjectifs ?? []).filter((o) => {
-    const id = o.objectif_id as string;
-    const statut = statutParObjectif.get(id);
-    return statut && statut !== "non_encore_observe" && !dejaModifieParParent.has(id);
-  });
+  const cheminParObjectif = new Map(
+    (chemins ?? []).map((c) => [c.objectif_id as string, c.chemin as string])
+  );
 
-  if (aPreparer.length === 0) return { nbPreparees: 0 };
+  // Regroupe les competences deja observees (statut valide reel) par
+  // sous-domaine (2e segment du chemin complet).
+  const objectifsParSousDomaine = new Map<
+    string,
+    { domaine: string; objectifIds: string[] }
+  >();
+  for (const s of statutsCumules ?? []) {
+    if (s.statut_code === "non_encore_observe") continue;
+    const objectifId = s.element_programme_id as string;
+    const chemin = cheminParObjectif.get(objectifId);
+    if (!chemin) continue;
+    const segments = chemin.split(" > ");
+    const domaine = segments[0] ?? "";
+    const sousDomaine = segments[1] ?? segments[0] ?? "";
+    const entree = objectifsParSousDomaine.get(sousDomaine) ?? { domaine, objectifIds: [] };
+    entree.objectifIds.push(objectifId);
+    objectifsParSousDomaine.set(sousDomaine, entree);
+  }
 
-  // Parcours du meme enfant et du meme cycle (pour le repli si aucun
-  // exemple n'existe sur l'annee du dossier).
   const { data: parcoursMemeCycleBruts } = await supabase
     .from("parcours_scolaires")
     .select("id")
@@ -137,123 +143,135 @@ export async function preparerFormulationsExport(
 
   let nbPreparees = 0;
 
-  // Regroupe par domaine pour limiter le nombre d'appels IA.
-  const parDomaine = new Map<string, typeof aPreparer>();
-  for (const o of aPreparer) {
-    const liste = parDomaine.get(o.domaine as string) ?? [];
-    liste.push(o);
-    parDomaine.set(o.domaine as string, liste);
-  }
+  for (const [sousDomaine, { domaine, objectifIds }] of objectifsParSousDomaine) {
+    if (dejaModifiesParParent.has(sousDomaine)) continue;
 
-  for (const [, objectifsDomaine] of parDomaine) {
-    // Pour chaque competence du domaine, trouve jusqu'a 2 exemples :
-    // priorite aux activites de l'annee du dossier, repli sur les
-    // autres annees du meme cycle si aucune n'existe sur cette annee.
-    const donneesParObjectif = await Promise.all(
-      objectifsDomaine.map(async (o) => {
-        const objectifId = o.objectif_id as string;
+    const { data: activitesAnneeCourante } = await supabase
+      .from("observations_elements_programme")
+      .select("activites!inner(id, titre, date_activite, description, observations, parcours_id)")
+      .in("element_programme_id", objectifIds)
+      .eq("activites.parcours_id", dossier.parcours_id as string)
+      .order("activites(date_activite)", { ascending: false });
 
-        const { data: observationsAnneeCourante } = await supabase
-          .from("observations_elements_programme")
-          .select("activites!inner(id, titre, date_activite, description, observations, parcours_id)")
-          .eq("element_programme_id", objectifId)
-          .eq("activites.parcours_id", dossier.parcours_id as string)
-          .order("activites(date_activite)", { ascending: false })
-          .limit(2);
+    let activitesBrutes = activitesAnneeCourante ?? [];
+    if (activitesBrutes.length === 0 && idsParcoursMemeCycle.length > 0) {
+      const { data: activitesAutresAnnees } = await supabase
+        .from("observations_elements_programme")
+        .select(
+          "activites!inner(id, titre, date_activite, description, observations, parcours_id)"
+        )
+        .in("element_programme_id", objectifIds)
+        .in("activites.parcours_id", idsParcoursMemeCycle)
+        .order("activites(date_activite)", { ascending: false });
+      activitesBrutes = activitesAutresAnnees ?? [];
+    }
 
-        let activitesBrutes = observationsAnneeCourante ?? [];
-        if (activitesBrutes.length === 0 && idsParcoursMemeCycle.length > 0) {
-          const { data: observationsAutresAnnees } = await supabase
-            .from("observations_elements_programme")
-            .select(
-              "activites!inner(id, titre, date_activite, description, observations, parcours_id)"
-            )
-            .eq("element_programme_id", objectifId)
-            .in("activites.parcours_id", idsParcoursMemeCycle)
-            .order("activites(date_activite)", { ascending: false })
-            .limit(2);
-          activitesBrutes = observationsAutresAnnees ?? [];
-        }
+    const vues = new Set<string>();
+    const candidats: ActiviteCandidate[] = [];
+    for (const obs of activitesBrutes) {
+      const a = Array.isArray(obs.activites) ? obs.activites[0] : obs.activites;
+      if (!a || vues.has(a.id as string)) continue;
+      vues.add(a.id as string);
+      const texte = [a.description as string | null, a.observations as string | null]
+        .filter(Boolean)
+        .join(" — ");
+      candidats.push({
+        id: a.id as string,
+        titre: a.titre as string,
+        date: a.date_activite as string,
+        texte,
+      });
+    }
 
-        const exemples: ExempleActivite[] = activitesBrutes
-          .map((obs) => {
-            const a = Array.isArray(obs.activites) ? obs.activites[0] : obs.activites;
-            if (!a) return null;
-            const texte = [a.description as string | null, a.observations as string | null]
-              .filter(Boolean)
-              .join(" — ");
-            return {
-              id: a.id as string,
-              titre: a.titre as string,
-              date: a.date_activite as string,
-              texte,
-            };
-          })
-          .filter((e): e is ExempleActivite => Boolean(e));
+    if (candidats.length === 0) continue;
 
-        return { objectifId, libelle: o.libelle as string, exemples };
-      })
+    const { data: objectifsDetailles } = await supabase
+      .from("elements_programme")
+      .select("id, libelle")
+      .in("id", objectifIds);
+    const libelleParObjectif = new Map(
+      (objectifsDetailles ?? []).map((o) => [o.id as string, o.libelle as string])
+    );
+    const statutParObjectif = new Map(
+      (statutsCumules ?? []).map((s) => [s.element_programme_id as string, s.statut_code as string])
+    );
+    const { data: statutsLibelles } = await supabase
+      .from("statuts_progression")
+      .select("code, libelle");
+    const libelleParStatutCode = new Map(
+      (statutsLibelles ?? []).map((s) => [s.code as string, s.libelle as string])
     );
 
-    const avecExemples = donneesParObjectif.filter((d) => d.exemples.length > 0);
-    if (avecExemples.length === 0) continue;
+    const blocCompetences = objectifIds
+      .map((id) => {
+        const libelle = libelleParObjectif.get(id) ?? "";
+        const statut = libelleParStatutCode.get(statutParObjectif.get(id) ?? "") ?? "";
+        return `- ${libelle} (${statut})`;
+      })
+      .join("\n");
 
-    const blocCompetences = avecExemples
+    const exemplesRetenus = candidats.slice(0, 2);
+    const blocExemples = exemplesRetenus
       .map(
-        (d, i) =>
-          `${i + 1}. Compétence : "${d.libelle}"\n${d.exemples
-            .map((e) => `   - ${new Date(e.date).toLocaleDateString("fr-FR")} : ${e.titre}${e.texte ? ` — ${e.texte}` : ""}`)
-            .join("\n")}`
+        (e, i) =>
+          `${i + 1}. "${e.titre}" (${new Date(e.date).toLocaleDateString("fr-FR")})${e.texte ? ` — ${e.texte}` : ""}`
       )
-      .join("\n\n");
+      .join("\n");
 
-    const prompt = `Tu aides un parent qui pratique l'instruction en famille à rédiger, pour un dossier destiné au contrôle pédagogique académique, une courte formulation pédagogique pour chacune des compétences suivantes, à partir des activités déjà enregistrées.
+    const prompt = `Tu aides un parent qui pratique l'instruction en famille à préparer, pour un dossier destiné au contrôle pédagogique académique, le bilan d'un sous-domaine du programme officiel : "${sousDomaine}" (domaine : "${domaine}").
 
+Compétences de ce sous-domaine déjà observées, avec leur statut réel :
 ${blocCompetences}
 
-Pour CHAQUE compétence numérotée ci-dessus, rédige un texte de 2 à 4 phrases qui explique ce que les exemples fournis montrent de la compréhension et de la mobilisation de cette compétence par l'enfant.
+Deux activités retenues comme exemples pour ce sous-domaine :
+${blocExemples}
+
+Rédige trois textes distincts :
+1. "synthese" : un paragraphe de 4 à 6 phrases qui décrit, en mélangeant naturellement les compétences listées ci-dessus, ce que l'enfant sait faire dans ce sous-domaine. Reste factuel et nuancé : pour une compétence encore "en cours d'acquisition" ou "à travailler", dis-le avec ce vocabulaire plutôt que de laisser croire à une maîtrise complète. Ne mentionne JAMAIS les compétences qui ne sont pas dans la liste ci-dessus (celles non encore abordées) : ce paragraphe ne parle que de ce qui a été observé.
+2. "exemple1" : 2 à 3 phrases expliquant ce que la première activité montre de la compréhension de l'enfant.
+3. "exemple2" : 2 à 3 phrases expliquant ce que la seconde activité montre${exemplesRetenus.length < 2 ? " (laisse vide si une seule activité est listée ci-dessus)" : ""}.
 
 Règles impératives :
-- Base-toi uniquement sur les exemples fournis pour cette compétence précise : n'invente aucun fait, aucune date, aucun détail absent.
-- Ne déduis jamais qu'une compétence est acquise ou maîtrisée : décris ce que montrent les exemples, sans conclure sur un niveau de maîtrise (le statut réel est décidé séparément par le parent, ton texte doit rester compatible avec n'importe quel statut).
-- Ne cite jamais de date précise ni de décompte du nombre d'observations.
-- Réponds UNIQUEMENT avec un tableau JSON de cette forme exacte, sans rien d'autre autour :
-[{"numero": 1, "texte": "..."}, {"numero": 2, "texte": "..."}]`;
+- Base-toi uniquement sur les compétences et activités listées ci-dessus : n'invente aucun fait, aucune date, aucun détail absent.
+- Ne déduis jamais une maîtrise complète que le statut réel ne confirme pas.
+- Ne recopie jamais le texte du programme officiel mot pour mot : reformule avec tes propres mots.
+- Réponds UNIQUEMENT avec un objet JSON de cette forme exacte, sans rien d'autre autour :
+{"synthese": "...", "exemple1": "...", "exemple2": "..."}`;
 
-    const resultat = await appellerClaude(prompt, 400 * avecExemples.length + 300);
+    const resultat = await appellerClaude(prompt, 1200);
     if ("erreur" in resultat) {
-      console.error("Erreur lors de la preparation groupee (domaine)", resultat.erreur);
+      console.error("Erreur lors de la preparation groupee (sous-domaine)", sousDomaine, resultat.erreur);
       continue;
     }
 
-    let items: { numero: number; texte: string }[] = [];
+    let reponse: { synthese?: string; exemple1?: string; exemple2?: string } = {};
     try {
       const nettoye = resultat.texte
         .replace(/^```json\s*/i, "")
         .replace(/^```\s*/i, "")
         .replace(/```\s*$/i, "");
-      items = JSON.parse(nettoye);
+      reponse = JSON.parse(nettoye);
     } catch (e) {
-      console.error("Reponse IA non exploitable (preparation export)", e, resultat.texte);
+      console.error("Reponse IA non exploitable (preparation export)", sousDomaine, e, resultat.texte);
       continue;
     }
 
-    for (const item of items) {
-      const cible = avecExemples[item.numero - 1];
-      if (!cible) continue;
-      await supabase.from("dossiers_export_formulations").upsert(
-        {
-          dossier_id: dossierId,
-          element_programme_id: cible.objectifId,
-          texte: item.texte,
-          exemple_activite_ids: cible.exemples.map((e) => e.id),
-          genere_le: new Date().toISOString(),
-          modifie_par_parent: false,
-        },
-        { onConflict: "dossier_id,element_programme_id" }
-      );
-      nbPreparees++;
-    }
+    await supabase.from("dossiers_export_sous_domaines").upsert(
+      {
+        dossier_id: dossierId,
+        domaine,
+        sous_domaine: sousDomaine,
+        synthese: reponse.synthese ?? null,
+        exemple1_activite_id: exemplesRetenus[0]?.id ?? null,
+        exemple1_synthese: reponse.exemple1 ?? null,
+        exemple2_activite_id: exemplesRetenus[1]?.id ?? null,
+        exemple2_synthese: exemplesRetenus[1] ? reponse.exemple2 ?? null : null,
+        genere_le: new Date().toISOString(),
+        modifie_par_parent: false,
+      },
+      { onConflict: "dossier_id,sous_domaine" }
+    );
+    nbPreparees++;
   }
 
   revalidatePath(`/export/${dossierId}`);
@@ -261,29 +279,32 @@ Règles impératives :
 }
 
 /**
- * Enregistre le texte d'une formulation modifie a la main par le
- * parent -- marque modifie_par_parent pour que la preparation groupee
- * ne l'ecrase plus jamais ensuite.
+ * Enregistre un champ (synthese, exemple1_synthese ou exemple2_synthese)
+ * modifie a la main par le parent pour un sous-domaine -- marque
+ * modifie_par_parent pour que la preparation groupee ne l'ecrase plus
+ * jamais ensuite (meme ses deux autres champs, pour rester simple et
+ * previsible : une fois touche, un sous-domaine n'est plus regenere).
  */
-export async function enregistrerFormulation(
+export async function enregistrerSousDomaine(
   dossierId: string,
-  elementProgrammeId: string,
+  sousDomaine: string,
+  champ: "synthese" | "exemple1_synthese" | "exemple2_synthese",
   texte: string
 ): Promise<{ erreur: string } | { ok: true }> {
   const supabase = creerClientServeur();
 
-  const { error } = await supabase.from("dossiers_export_formulations").upsert(
+  const { error } = await supabase.from("dossiers_export_sous_domaines").upsert(
     {
       dossier_id: dossierId,
-      element_programme_id: elementProgrammeId,
-      texte,
+      sous_domaine: sousDomaine,
+      [champ]: texte,
       modifie_par_parent: true,
     },
-    { onConflict: "dossier_id,element_programme_id" }
+    { onConflict: "dossier_id,sous_domaine" }
   );
 
   if (error) {
-    console.error("Erreur lors de l'enregistrement de la formulation", error);
+    console.error("Erreur lors de l'enregistrement du sous-domaine", error);
     return { erreur: "Impossible d'enregistrer. Merci de réessayer." };
   }
 

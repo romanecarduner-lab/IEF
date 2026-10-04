@@ -126,56 +126,24 @@ function ajouterDiapositiveCouvertureDomaine(
   domaine: DomaineDocumentPedagogique
 ) {
   const slide = pptx.addSlide();
-  slide.background = { color: "FFFFFF" };
+  slide.background = { color: CREME };
   slide.addText(domaine.nom, {
-    x: 0.5,
-    y: 0.35,
-    w: 12.3,
-    h: 0.6,
-    fontSize: 20,
+    x: 0.6,
+    y: 2.8,
+    w: 12.1,
+    h: 1.2,
+    fontSize: 26,
     color: VERT_FORET,
-    bold: true,
+    italic: true,
+    align: "center",
     isTextBox: true,
   });
-
-  // Couverture complete du domaine, de facon compacte : chaque
-  // competence du programme avec son statut reel, sur deux colonnes si
-  // la liste est longue -- jamais de competence omise, meme sans
-  // observation.
-  const colonnes = domaine.competences.length > 12 ? 2 : 1;
-  const parColonne = Math.ceil(domaine.competences.length / colonnes);
-  const largeurColonne = colonnes === 2 ? 6.0 : 12.3;
-
-  for (let col = 0; col < colonnes; col++) {
-    const sousListe = domaine.competences.slice(col * parColonne, (col + 1) * parColonne);
-    const lignes = sousListe.map((c) => ({
-      text: [
-        { text: `${c.libelle}  `, options: { color: ENCRE, fontSize: 10 } },
-        {
-          text: c.statutLibelle,
-          options: { color: c.observee ? VERT_FORET : ARDOISE, fontSize: 9, italic: true },
-        },
-      ],
-    }));
-    slide.addText(
-      lignes.flatMap((l, i) => (i === 0 ? l.text : [{ text: "\n" }, ...l.text])),
-      {
-        x: 0.5 + col * (largeurColonne + 0.3),
-        y: 1.1,
-        w: largeurColonne,
-        h: 5.9,
-        valign: "top",
-        isTextBox: true,
-        margin: 0,
-      }
-    );
-  }
 }
 
-function ajouterDiapositiveCompetence(
+function ajouterDiapositiveSousDomaine(
   pptx: PptxGenJS,
   domaineNom: string,
-  competence: DomaineDocumentPedagogique["competences"][number]
+  sousDomaine: DomaineDocumentPedagogique["sousDomaines"][number]
 ) {
   const slide = pptx.addSlide();
   slide.background = { color: "FFFFFF" };
@@ -189,68 +157,67 @@ function ajouterDiapositiveCompetence(
     color: ARDOISE,
     isTextBox: true,
   });
-  slide.addText(competence.libelle, {
+  slide.addText(sousDomaine.nom, {
     x: 0.5,
     y: 0.65,
     w: 12.3,
-    h: 0.7,
+    h: 0.6,
     fontSize: 18,
     color: VERT_FORET,
     bold: true,
     isTextBox: true,
   });
-  if (competence.chemin) {
-    slide.addText(competence.chemin, {
+  if (sousDomaine.synthese) {
+    slide.addText(sousDomaine.synthese, {
       x: 0.5,
-      y: 1.3,
+      y: 1.35,
       w: 12.3,
-      h: 0.35,
-      fontSize: 10,
-      color: ARDOISE,
-      isTextBox: true,
-    });
-  }
-  slide.addText(competence.statutLibelle, {
-    x: 0.5,
-    y: 1.7,
-    w: 4,
-    h: 0.4,
-    fontSize: 12,
-    color: "FFFFFF",
-    fill: { color: VERT_FORET },
-    align: "center",
-    isTextBox: true,
-  });
-
-  if (competence.exemples.length > 0) {
-    const texteExemples = competence.exemples
-      .map((e) => `•  ${e.date} — ${e.titre}`)
-      .join("\n");
-    slide.addText(texteExemples, {
-      x: 0.5,
-      y: 2.5,
-      w: 12.3,
-      h: 1.3,
+      h: 1.8,
       fontSize: 11,
-      color: ARDOISE,
-      valign: "top",
-      isTextBox: true,
-    });
-  }
-
-  if (competence.formulation) {
-    slide.addText(competence.formulation, {
-      x: 0.5,
-      y: 4.0,
-      w: 12.3,
-      h: 2.8,
-      fontSize: 13,
       color: ENCRE,
       valign: "top",
       isTextBox: true,
       margin: 0,
     });
   }
+
+  const nbExemples = sousDomaine.exemples.length;
+  const largeurExemple = nbExemples === 2 ? 5.95 : 12.3;
+  sousDomaine.exemples.forEach((exemple, i) => {
+    const x = 0.5 + i * (largeurExemple + 0.3);
+    if (exemple.imageBase64) {
+      slide.addImage({
+        data: `image/jpeg;base64,${exemple.imageBase64}`,
+        x,
+        y: 3.4,
+        w: largeurExemple,
+        h: 2.4,
+        sizing: { type: "cover", w: largeurExemple, h: 2.4 },
+      });
+    }
+    slide.addText(`${exemple.titre}  ·  ${exemple.date}`, {
+      x,
+      y: 5.9,
+      w: largeurExemple,
+      h: 0.3,
+      fontSize: 9,
+      color: ARDOISE,
+      isTextBox: true,
+    });
+    if (exemple.synthese) {
+      slide.addText(exemple.synthese, {
+        x,
+        y: 6.2,
+        w: largeurExemple,
+        h: 1.2,
+        fontSize: 10,
+        color: ENCRE,
+        valign: "top",
+        isTextBox: true,
+        margin: 0,
+      });
+    }
+  });
 }
 
 export async function genererPptxDossierPedagogique({
@@ -271,10 +238,8 @@ export async function genererPptxDossierPedagogique({
 
   for (const domaine of domaines) {
     ajouterDiapositiveCouvertureDomaine(pptx, domaine);
-    for (const competence of domaine.competences) {
-      if (competence.observee) {
-        ajouterDiapositiveCompetence(pptx, domaine.nom, competence);
-      }
+    for (const sousDomaine of domaine.sousDomaines) {
+      ajouterDiapositiveSousDomaine(pptx, domaine.nom, sousDomaine);
     }
   }
 

@@ -451,9 +451,10 @@ export function FormulaireActivite({
         return;
       }
 
+      let avertissementEstimation: string | undefined;
       if (suggestionsChoisies.size > 0) {
         try {
-          await creerObservations({
+          const resultatObservations = await creerObservations({
             activiteId: resultat.id,
             elements: Array.from(suggestionsChoisies.keys()).map((id) => ({
               id,
@@ -462,6 +463,9 @@ export function FormulaireActivite({
             justification: "",
             commentairePedagogique: "",
           });
+          if ("avertissement" in resultatObservations && resultatObservations.avertissement) {
+            avertissementEstimation = resultatObservations.avertissement;
+          }
         } catch (erreurCompetences) {
           console.error(
             "Erreur lors de l'enregistrement des compétences suggérées",
@@ -514,6 +518,13 @@ export function FormulaireActivite({
             ", "
           )}. Vous pouvez réessayer depuis la fiche de l'activité, avec "Dupliquer pour un autre enfant".`
         );
+        erreurRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        router.refresh();
+        return;
+      }
+
+      if (avertissementEstimation) {
+        setErreur(avertissementEstimation);
         erreurRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
         router.refresh();
         return;

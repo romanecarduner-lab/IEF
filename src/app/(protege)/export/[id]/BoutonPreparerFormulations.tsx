@@ -5,13 +5,7 @@ import { useRouter } from "next/navigation";
 import { preparerFormulationsExport } from "./actionsFormulations";
 import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaximal";
 
-export function BoutonPreparerFormulations({
-  dossierId,
-  nbEnAttente,
-}: {
-  dossierId: string;
-  nbEnAttente: number;
-}) {
+export function BoutonPreparerFormulations({ dossierId }: { dossierId: string }) {
   const router = useRouter();
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -32,10 +26,10 @@ export function BoutonPreparerFormulations({
       }
       setMessage(
         resultat.nbPreparees > 0
-          ? `${resultat.nbPreparees} formulation${resultat.nbPreparees > 1 ? "s" : ""} préparée${
+          ? `${resultat.nbPreparees} sous-domaine${resultat.nbPreparees > 1 ? "s" : ""} préparé${
               resultat.nbPreparees > 1 ? "s" : ""
             } — à relire ci-dessous.`
-          : "Rien à préparer : toutes les compétences observées ont déjà une formulation."
+          : "Rien de nouveau à préparer pour l'instant."
       );
       router.refresh();
     } catch (erreurInattendue) {
@@ -48,16 +42,13 @@ export function BoutonPreparerFormulations({
   return (
     <div className="mb-6 rounded-doux border border-mousse/30 bg-mousse/5 p-4">
       <p className="mb-3 text-sm text-encre">
-        {nbEnAttente > 0
-          ? `${nbEnAttente} compétence${nbEnAttente > 1 ? "s" : ""} observée${
-              nbEnAttente > 1 ? "s" : ""
-            } n'${nbEnAttente > 1 ? "ont" : "a"} pas encore de formulation préparée.`
-          : "Toutes les compétences observées ont une formulation."}
+        Prépare, pour chaque sous-domaine ayant au moins une compétence
+        observée, une synthèse et deux exemples illustrés.
       </p>
       <button
         type="button"
         onClick={preparer}
-        disabled={enCours || nbEnAttente === 0}
+        disabled={enCours}
         className="rounded-doux bg-mousse-fonce px-4 py-2 text-sm font-medium text-white hover:bg-mousse disabled:cursor-not-allowed disabled:opacity-60"
       >
         {enCours ? "Préparation en cours… (peut prendre une minute)" : "Préparer les formulations"}

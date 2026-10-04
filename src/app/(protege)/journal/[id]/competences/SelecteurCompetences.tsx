@@ -167,6 +167,9 @@ export function SelecteurCompetences({
         return;
       }
 
+      if (resultat.avertissement) {
+        setErreur(resultat.avertissement);
+      }
       setSucces(`${resultat.nombreCreees} objectif(s) enregistré(s).`);
       setSelection(new Map());
       setJustification("");

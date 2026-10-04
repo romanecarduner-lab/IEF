@@ -253,115 +253,95 @@ export async function finaliserDossier(
       : parcours.cycles
     : null;
   const familleId = enfant?.famille_id as string | undefined;
-  const enfantId = parcours?.enfant_id as string | undefined;
-  const cycleId = parcours?.cycle_id as string | undefined;
 
-  if (!familleId || !enfantId || !cycleId) {
-    return { erreur: "Famille ou cycle introuvable pour ce dossier." };
+  if (!familleId) {
+    return { erreur: "Famille introuvable pour ce dossier." };
   }
 
-  // --- Couverture complete des competences du cycle, statut cumulatif
-  // reel -- meme logique de lecture que la page d'edition du dossier,
-  // pour garantir que le document genere correspond exactement a ce que
-  // le parent a relu.
-  const [
-    { data: tousLesObjectifs },
-    { data: statutsCumules },
-    { data: statutsProgression },
-    { data: chemins },
-    { data: formulations },
-  ] = await Promise.all([
-    supabase
-      .from("v_objectif_domaine")
-      .select("objectif_id, libelle, domaine")
-      .eq("cycle_id", cycleId)
-      .order("domaine"),
-    supabase
-      .from("v_synthese_cumulee_cycle")
-      .select("element_programme_id, statut_code")
-      .eq("enfant_id", enfantId)
-      .eq("cycle_id", cycleId),
-    supabase.from("statuts_progression").select("code, libelle").order("ordre"),
-    supabase.from("v_chemin_complet_objectif").select("objectif_id, chemin"),
-    supabase
-      .from("dossiers_export_formulations")
-      .select("element_programme_id, texte, exemple_activite_ids")
-      .eq("dossier_id", dossierId),
+  // --- Synthese par sous-domaine, deja preparee et relue sur la fiche
+  // du dossier -- le document final reprend exactement ce qui y est
+  // affiche, photos comprises.
+  const { data: sousDomainesBruts } = await supabase
+    .from("dossiers_export_sous_domaines")
+    .select(
+      "domaine, sous_domaine, synthese, exemple1_activite_id, exemple1_synthese, exemple2_activite_id, exemple2_synthese"
+    )
+    .eq("dossier_id", dossierId);
+
+  const idsExemples = Array.from(
+    new Set(
+      (sousDomainesBruts ?? [])
+        .flatMap((s) => [s.exemple1_activite_id, s.exemple2_activite_id])
+        .filter((id): id is string => Boolean(id))
+    )
+  );
+
+  const [{ data: activitesExemples }, { data: tracesExemples }] = await Promise.all([
+    idsExemples.length > 0
+      ? supabase.from("activites").select("id, titre, date_activite").in("id", idsExemples)
+      : Promise.resolve({ data: [] as { id: string; titre: string; date_activite: string }[] }),
+    idsExemples.length > 0
+      ? supabase
+          .from("traces")
+          .select("activite_id, chemin_stockage, types_trace!inner(code)")
+          .in("activite_id", idsExemples)
+          .eq("types_trace.code", "photo")
+          .order("date_trace", { ascending: true })
+      : Promise.resolve({ data: [] as { activite_id: string; chemin_stockage: string | null }[] }),
   ]);
 
-  const libellesStatuts = new Map(
-    (statutsProgression ?? []).map((s) => [s.code as string, s.libelle as string])
-  );
-  const statutParObjectif = new Map(
-    (statutsCumules ?? []).map((s) => [s.element_programme_id as string, s.statut_code as string])
-  );
-  const cheminParObjectif = new Map(
-    (chemins ?? []).map((c) => [c.objectif_id as string, c.chemin as string])
-  );
-  const formulationParObjectif = new Map(
-    (formulations ?? []).map((f) => [
-      f.element_programme_id as string,
-      { texte: (f.texte as string) ?? "", exempleIds: (f.exemple_activite_ids as string[]) ?? [] },
-    ])
-  );
+  const activiteParId = new Map((activitesExemples ?? []).map((a) => [a.id as string, a]));
 
-  const tousLesExempleIds = Array.from(
-    new Set((formulations ?? []).flatMap((f) => (f.exemple_activite_ids as string[]) ?? []))
-  );
-  const { data: exemplesActivitesBruts } =
-    tousLesExempleIds.length > 0
-      ? await supabase
-          .from("activites")
-          .select("id, titre, date_activite")
-          .in("id", tousLesExempleIds)
-      : { data: [] };
-  const exempleActiviteParId = new Map(
-    (exemplesActivitesBruts ?? []).map((a) => [a.id as string, a])
-  );
-
-  const objectifsParDomaineMap = new Map<string, typeof tousLesObjectifs>();
-  for (const o of tousLesObjectifs ?? []) {
-    const liste = objectifsParDomaineMap.get(o.domaine as string) ?? [];
-    liste.push(o);
-    objectifsParDomaineMap.set(o.domaine as string, liste);
-  }
-
-  const domaines: DomaineDocumentPedagogique[] = Array.from(
-    objectifsParDomaineMap.entries()
-  ).map(([nom, objectifs]) => {
-    const compteParLibelle = new Map<string, number>();
-    for (const o of objectifs ?? []) {
-      const l = o.libelle as string;
-      compteParLibelle.set(l, (compteParLibelle.get(l) ?? 0) + 1);
+  // Telechargement des photos en parallele, en base64 pour l'inclure
+  // directement dans le PDF et le PowerPoint.
+  const cheminParActivite = new Map<string, string>();
+  for (const t of tracesExemples ?? []) {
+    const activiteId = t.activite_id as string;
+    if (!cheminParActivite.has(activiteId) && t.chemin_stockage) {
+      cheminParActivite.set(activiteId, t.chemin_stockage as string);
     }
-    return {
-      nom,
-      competences: (objectifs ?? []).map((o) => {
-        const objectifId = o.objectif_id as string;
-        const statutCode = statutParObjectif.get(objectifId) ?? "non_encore_observe";
-        const observee = statutCode !== "non_encore_observe";
-        const formulation = formulationParObjectif.get(objectifId);
-        const dupliqueDansLeDomaine = (compteParLibelle.get(o.libelle as string) ?? 0) > 1;
-        return {
-          libelle: o.libelle as string,
-          chemin: dupliqueDansLeDomaine ? cheminParObjectif.get(objectifId) : undefined,
-          statutLibelle: libellesStatuts.get(statutCode) ?? "Non encore abordée",
-          observee,
-          exemples: (formulation?.exempleIds ?? [])
-            .map((id) => {
-              const a = exempleActiviteParId.get(id);
-              if (!a) return null;
-              return {
-                date: new Date(a.date_activite as string).toLocaleDateString("fr-FR"),
-                titre: a.titre as string,
-              };
-            })
-            .filter((e): e is ExempleDocument => Boolean(e)),
-          formulation: formulation?.texte || undefined,
-        };
-      }),
-    };
-  });
+  }
+  const photoBase64ParActivite = new Map<string, string>();
+  await Promise.all(
+    Array.from(cheminParActivite.entries()).map(async ([activiteId, chemin]) => {
+      const { data: fichier } = await supabase.storage
+        .from("traces-pedagogiques")
+        .download(chemin);
+      if (fichier) {
+        photoBase64ParActivite.set(activiteId, Buffer.from(await fichier.arrayBuffer()).toString("base64"));
+      }
+    })
+  );
+
+  const domainesParNom = new Map<string, DomaineDocumentPedagogique>();
+  for (const s of sousDomainesBruts ?? []) {
+    const nomDomaine = s.domaine as string;
+    const domaineDoc = domainesParNom.get(nomDomaine) ?? { nom: nomDomaine, sousDomaines: [] };
+
+    const exemples: ExempleDocument[] = [];
+    for (const [idChamp, syntheseChamp] of [
+      [s.exemple1_activite_id, s.exemple1_synthese],
+      [s.exemple2_activite_id, s.exemple2_synthese],
+    ] as const) {
+      if (!idChamp) continue;
+      const a = activiteParId.get(idChamp as string);
+      if (!a) continue;
+      exemples.push({
+        titre: a.titre as string,
+        date: new Date(a.date_activite as string).toLocaleDateString("fr-FR"),
+        synthese: (syntheseChamp as string) ?? "",
+        imageBase64: photoBase64ParActivite.get(idChamp as string),
+      });
+    }
+
+    domaineDoc.sousDomaines.push({
+      nom: s.sous_domaine as string,
+      synthese: (s.synthese as string) ?? "",
+      exemples,
+    });
+    domainesParNom.set(nomDomaine, domaineDoc);
+  }
+  const domaines = Array.from(domainesParNom.values());
 
   let pdfBuffer: Buffer;
   try {

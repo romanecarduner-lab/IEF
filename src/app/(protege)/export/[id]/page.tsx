@@ -170,99 +170,70 @@ export default async function PageDossierExport({
     );
   }
 
-  // --- Couverture complete des competences du cycle, statut cumulatif
-  // reel (voir v_synthese_cumulee_cycle) -- plus de selection curatee
-  // d'activites par domaine : chaque competence du programme apparait,
-  // avec son statut reel, meme si elle n'a jamais ete observee.
-  const enfantId = parcours?.enfant_id as string | undefined;
-  const cycleId = parcours?.cycle_id as string | undefined;
+  // --- Synthese par sous-domaine (ce qui a ete observe, melange et
+  // ecrit au positif), avec deux exemples illustres par sous-domaine --
+  // remplace la liste competence par competence dans ce document,
+  // laquelle reste disponible telle quelle sur la page Progression.
+  const { data: sousDomainesBruts } = await supabase
+    .from("dossiers_export_sous_domaines")
+    .select(
+      "domaine, sous_domaine, synthese, exemple1_activite_id, exemple1_synthese, exemple2_activite_id, exemple2_synthese"
+    )
+    .eq("dossier_id", params.id);
 
-  const [
-    { data: tousLesObjectifs },
-    { data: statutsCumules },
-    { data: statutsProgression },
-    { data: chemins },
-    { data: formulations },
-  ] = await Promise.all([
-    supabase
-      .from("v_objectif_domaine")
-      .select("objectif_id, libelle, domaine")
-      .eq("cycle_id", cycleId ?? "")
-      .order("domaine"),
-    supabase
-      .from("v_synthese_cumulee_cycle")
-      .select("element_programme_id, statut_code")
-      .eq("enfant_id", enfantId ?? "")
-      .eq("cycle_id", cycleId ?? ""),
-    supabase.from("statuts_progression").select("code, libelle").order("ordre"),
-    supabase.from("v_chemin_complet_objectif").select("objectif_id, chemin"),
-    supabase
-      .from("dossiers_export_formulations")
-      .select("element_programme_id, texte, exemple_activite_ids")
-      .eq("dossier_id", params.id),
+  const idsExemples = Array.from(
+    new Set(
+      (sousDomainesBruts ?? [])
+        .flatMap((s) => [s.exemple1_activite_id, s.exemple2_activite_id])
+        .filter((id): id is string => Boolean(id))
+    )
+  );
+
+  const [{ data: activitesExemples }, { data: tracesExemples }] = await Promise.all([
+    idsExemples.length > 0
+      ? supabase.from("activites").select("id, titre, date_activite").in("id", idsExemples)
+      : Promise.resolve({ data: [] }),
+    idsExemples.length > 0
+      ? supabase
+          .from("traces")
+          .select("activite_id, chemin_stockage, types_trace!inner(code)")
+          .in("activite_id", idsExemples)
+          .eq("types_trace.code", "photo")
+          .order("date_trace", { ascending: true })
+      : Promise.resolve({ data: [] }),
   ]);
 
-  const libellesStatuts = new Map(
-    (statutsProgression ?? []).map((s) => [s.code as string, s.libelle as string])
-  );
-  const statutParObjectif = new Map(
-    (statutsCumules ?? []).map((s) => [s.element_programme_id as string, s.statut_code as string])
-  );
-  const cheminParObjectif = new Map(
-    (chemins ?? []).map((c) => [c.objectif_id as string, c.chemin as string])
-  );
-  const formulationParObjectif = new Map(
-    (formulations ?? []).map((f) => [
-      f.element_programme_id as string,
-      { texte: (f.texte as string) ?? "", exempleIds: (f.exemple_activite_ids as string[]) ?? [] },
-    ])
-  );
-
-  // Details des activites utilisees comme exemples (titre, date, texte),
-  // recuperes en une seule requete groupee pour tous les exemples de
-  // toutes les competences a la fois.
-  const tousLesExempleIds = Array.from(
-    new Set((formulations ?? []).flatMap((f) => (f.exemple_activite_ids as string[]) ?? []))
-  );
-  const { data: exemplesActivitesBruts } =
-    tousLesExempleIds.length > 0
-      ? await supabase
-          .from("activites")
-          .select("id, titre, date_activite")
-          .in("id", tousLesExempleIds)
-      : { data: [] };
-  const exempleActiviteParId = new Map(
-    (exemplesActivitesBruts ?? []).map((a) => [a.id as string, a])
-  );
-
-  const objectifsParDomaine = new Map<string, typeof tousLesObjectifs>();
-  for (const o of tousLesObjectifs ?? []) {
-    const liste = objectifsParDomaine.get(o.domaine as string) ?? [];
-    liste.push(o);
-    objectifsParDomaine.set(o.domaine as string, liste);
+  const activiteParId = new Map((activitesExemples ?? []).map((a) => [a.id as string, a]));
+  const photoParActivite = new Map<string, string>();
+  for (const t of tracesExemples ?? []) {
+    const activiteId = t.activite_id as string;
+    if (photoParActivite.has(activiteId) || !t.chemin_stockage) continue;
+    const { data } = await supabase.storage
+      .from("traces-pedagogiques")
+      .createSignedUrl(t.chemin_stockage as string, DUREE_SIGNATURE_SECONDES);
+    if (data?.signedUrl) photoParActivite.set(activiteId, data.signedUrl);
   }
 
-  const totalObjectifs = (tousLesObjectifs ?? []).length;
-  const nbObserves = (tousLesObjectifs ?? []).filter((o) => {
-    const s = statutParObjectif.get(o.objectif_id as string);
-    return s && s !== "non_encore_observe";
-  }).length;
-  const nbEnAttenteFormulation = (tousLesObjectifs ?? []).filter((o) => {
-    const id = o.objectif_id as string;
-    const s = statutParObjectif.get(id);
-    return s && s !== "non_encore_observe" && !formulationParObjectif.get(id)?.texte;
-  }).length;
+  const sousDomainesParDomaine = new Map<string, typeof sousDomainesBruts>();
+  for (const s of sousDomainesBruts ?? []) {
+    const liste = sousDomainesParDomaine.get(s.domaine as string) ?? [];
+    liste.push(s);
+    sousDomainesParDomaine.set(s.domaine as string, liste);
+  }
 
   const resume = (
     <div className="mb-8 rounded-doux border border-argile/30 bg-argile/5 p-5">
-      <p className="mb-1 text-sm font-medium text-encre">
-        Couverture du programme
-      </p>
+      <p className="mb-1 text-sm font-medium text-encre">Contenu du dossier</p>
       <p className="text-sm text-encre">
-        {nbObserves} compétence{nbObserves > 1 ? "s" : ""} observée
-        {nbObserves > 1 ? "s" : ""} sur {totalObjectifs} au total pour ce
-        cycle. Statut cumulé sur toutes les années du cycle, comme sur la
-        page Progression.
+        {(sousDomainesBruts ?? []).length} sous-domaine
+        {(sousDomainesBruts ?? []).length > 1 ? "s" : ""} déjà renseigné
+        {(sousDomainesBruts ?? []).length > 1 ? "s" : ""}, à partir des compétences
+        validées, cumulées sur tout le cycle. La liste complète,
+        compétence par compétence, reste consultable sur{" "}
+        <Link href="/progression" className="underline underline-offset-2 hover:text-encre">
+          Progression
+        </Link>
+        .
       </p>
     </div>
   );
@@ -325,7 +296,7 @@ export default async function PageDossierExport({
     );
   }
 
-  // --- Dossier en brouillon : preparation et relecture des formulations ---
+  // --- Dossier en brouillon : preparation et relecture ---
   return (
     <div>
       {enTete}
@@ -336,21 +307,21 @@ export default async function PageDossierExport({
       {resume}
 
       <p className="mb-4 text-sm text-ardoise">
-        Chaque compétence du cycle apparaît ci-dessous avec son statut réel.
-        Préparez les formulations, relisez-les et corrigez-les si besoin,
-        puis finalisez le document.
+        Pour chaque sous-domaine déjà abordé, une synthèse à relire et
+        deux exemples illustrés. Les sous-domaines pas encore abordés
+        n&rsquo;apparaissent pas ici.
       </p>
 
-      <BoutonPreparerFormulations dossierId={params.id} nbEnAttente={nbEnAttenteFormulation} />
+      <BoutonPreparerFormulations dossierId={params.id} />
 
-      <div className="space-y-3">
-        {Array.from(objectifsParDomaine.entries()).map(([domaine, objectifs]) => {
-          const compteParLibelle = new Map<string, number>();
-          for (const o of objectifs ?? []) {
-            const l = o.libelle as string;
-            compteParLibelle.set(l, (compteParLibelle.get(l) ?? 0) + 1);
-          }
-          return (
+      {(sousDomainesBruts ?? []).length === 0 ? (
+        <p className="rounded-doux border border-dashed border-trait bg-white/50 p-8 text-center text-sm text-ardoise">
+          Aucun sous-domaine préparé pour l&rsquo;instant. Cliquez sur
+          &laquo; Préparer les formulations &raquo; ci-dessus pour commencer.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {Array.from(sousDomainesParDomaine.entries()).map(([domaine, sousDomaines]) => (
             <details
               key={domaine}
               className="rounded-doux border border-trait bg-white/80 shadow-doux"
@@ -359,78 +330,84 @@ export default async function PageDossierExport({
               <summary className="cursor-pointer list-none p-4 text-sm font-medium text-encre">
                 {domaine}
               </summary>
-              <ul className="space-y-4 border-t border-trait p-4 pt-3">
-                {(objectifs ?? []).map((o) => {
-                  const objectifId = o.objectif_id as string;
-                  const statutCode = statutParObjectif.get(objectifId) ?? "non_encore_observe";
-                  const statutLibelle =
-                    libellesStatuts.get(statutCode) ?? "Non encore abordée";
-                  const observee = statutCode !== "non_encore_observe";
-                  const formulation = formulationParObjectif.get(objectifId);
-                  const dupliqueDansLeDomaine = (compteParLibelle.get(o.libelle as string) ?? 0) > 1;
+              <div className="space-y-5 border-t border-trait p-4 pt-3">
+                {(sousDomaines ?? []).map((s) => {
+                  const exemples = [
+                    s.exemple1_activite_id
+                      ? {
+                          activite: activiteParId.get(s.exemple1_activite_id as string),
+                          photo: photoParActivite.get(s.exemple1_activite_id as string),
+                          synthese: (s.exemple1_synthese as string) ?? "",
+                          champ: "exemple1_synthese" as const,
+                        }
+                      : null,
+                    s.exemple2_activite_id
+                      ? {
+                          activite: activiteParId.get(s.exemple2_activite_id as string),
+                          photo: photoParActivite.get(s.exemple2_activite_id as string),
+                          synthese: (s.exemple2_synthese as string) ?? "",
+                          champ: "exemple2_synthese" as const,
+                        }
+                      : null,
+                  ].filter((e): e is NonNullable<typeof e> => Boolean(e));
 
                   return (
-                    <li key={objectifId} className="border-b border-trait pb-3 last:border-b-0 last:pb-0">
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div>
-                          <p className="text-sm text-encre">{o.libelle}</p>
-                          {dupliqueDansLeDomaine && cheminParObjectif.has(objectifId) && (
-                            <p className="text-xs text-ardoise">{cheminParObjectif.get(objectifId)}</p>
-                          )}
+                    <div key={s.sous_domaine as string}>
+                      <p className="mb-2 text-sm font-medium text-encre">
+                        {s.sous_domaine as string}
+                      </p>
+                      <EditeurFormulation
+                        dossierId={params.id}
+                        sousDomaine={s.sous_domaine as string}
+                        champ="synthese"
+                        texteInitial={(s.synthese as string) ?? ""}
+                        rows={4}
+                      />
+
+                      {exemples.length > 0 && (
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                          {exemples.map((e, i) => (
+                            <div
+                              key={i}
+                              className="rounded-doux border border-trait bg-white p-3"
+                            >
+                              {e.photo && (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={e.photo}
+                                  alt=""
+                                  className="mb-2 h-32 w-full rounded-doux object-cover"
+                                />
+                              )}
+                              <p className="text-xs font-medium text-encre">
+                                {e.activite?.titre as string | undefined}
+                              </p>
+                              <p className="mb-1 text-xs text-ardoise">
+                                {e.activite?.date_activite
+                                  ? new Date(e.activite.date_activite as string).toLocaleDateString(
+                                      "fr-FR"
+                                    )
+                                  : ""}
+                              </p>
+                              <EditeurFormulation
+                                dossierId={params.id}
+                                sousDomaine={s.sous_domaine as string}
+                                champ={e.champ}
+                                texteInitial={e.synthese}
+                                rows={3}
+                              />
+                            </div>
+                          ))}
                         </div>
-                        <span
-                          className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs ${
-                            observee
-                              ? "bg-mousse/15 text-mousse-fonce"
-                              : "bg-trait text-ardoise"
-                          }`}
-                        >
-                          {statutLibelle}
-                        </span>
-                      </div>
-
-                      {!observee && (
-                        <p className="mt-1 text-xs text-ardoise">
-                          Aucune activité n&rsquo;a encore porté sur cette compétence.
-                        </p>
                       )}
-
-                      {observee && formulation && formulation.exempleIds.length > 0 && (
-                        <ul className="mt-2 space-y-1">
-                          {formulation.exempleIds.map((id) => {
-                            const a = exempleActiviteParId.get(id);
-                            if (!a) return null;
-                            return (
-                              <li key={id} className="text-xs text-ardoise">
-                                {new Date(a.date_activite as string).toLocaleDateString("fr-FR")} —{" "}
-                                {a.titre as string}
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      )}
-
-                      {observee && formulation?.texte && (
-                        <EditeurFormulation
-                          dossierId={params.id}
-                          elementProgrammeId={objectifId}
-                          texteInitial={formulation.texte}
-                        />
-                      )}
-
-                      {observee && !formulation?.texte && (
-                        <p className="mt-1 text-xs text-ardoise">
-                          Formulation pas encore préparée.
-                        </p>
-                      )}
-                    </li>
+                    </div>
                   );
                 })}
-              </ul>
+              </div>
             </details>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
 
       <div className="mt-8">
         <BoutonFinaliser dossierId={params.id} />

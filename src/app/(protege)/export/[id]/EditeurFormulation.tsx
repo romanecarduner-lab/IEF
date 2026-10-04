@@ -1,17 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { enregistrerFormulation } from "./actionsFormulations";
+import { enregistrerSousDomaine } from "./actionsFormulations";
 import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaximal";
 
 export function EditeurFormulation({
   dossierId,
-  elementProgrammeId,
+  sousDomaine,
+  champ,
   texteInitial,
+  rows = 3,
 }: {
   dossierId: string;
-  elementProgrammeId: string;
+  sousDomaine: string;
+  champ: "synthese" | "exemple1_synthese" | "exemple2_synthese";
   texteInitial: string;
+  rows?: number;
 }) {
   const [texte, setTexte] = useState(texteInitial);
   const [enregistre, setEnregistre] = useState(true);
@@ -23,7 +27,7 @@ export function EditeurFormulation({
     setErreur(null);
     try {
       const resultat = await avecDelaiMaximal(
-        enregistrerFormulation(dossierId, elementProgrammeId, texte)
+        enregistrerSousDomaine(dossierId, sousDomaine, champ, texte)
       );
       if ("erreur" in resultat) {
         setErreur(resultat.erreur);
@@ -45,7 +49,7 @@ export function EditeurFormulation({
           setTexte(e.target.value);
           setEnregistre(false);
         }}
-        rows={3}
+        rows={rows}
         className="w-full rounded-doux border border-trait bg-white px-3 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
       />
       <div className="mt-1 flex items-center gap-2">
