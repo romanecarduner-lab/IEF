@@ -205,6 +205,56 @@ Deux corrections, après retour utilisatrice :
    introduite par un changement précédent, qui comptait les lignes de
    parcours plutôt que les enfants réels).
 
+## Validation automatique des compétences
+
+À la demande de l'utilisatrice, après avoir signalé l'écart dans
+l'export ("29 compétences vues" alors que beaucoup plus avaient des
+observations) : enregistrer une observation ne demande plus de clic
+séparé sur "Confirmer" pour compter officiellement. Le moteur de
+progression déterministe, qui existait déjà (`estimerProgressionAutomatique`)
+mais n'était déclenché que par un bouton dédié jamais appelé
+automatiquement, est maintenant invoqué directement depuis
+`creerObservations` dès qu'une compétence est reliée à une activité.
+Comportement déjà en place, inchangé : une première estimation
+s'applique directement ; une compétence déjà corrigée à la main par le
+parent n'est plus jamais écrasée automatiquement, le moteur propose
+alors un changement au lieu de l'imposer. Le parent peut toujours
+corriger un statut après coup depuis Progression.
+
+## Export pédagogique — refonte par sous-domaine (remplace la liste par compétence)
+
+Après réflexion partagée avec l'utilisatrice (voir échanges
+précédents, aucune modification faite avant son accord explicite sur
+l'option A) : le document d'export ne liste plus chaque compétence
+individuellement. Nouvelle structure, uniquement pour le document
+généré (la page Progression garde sa vue complète, compétence par
+compétence, inchangée) :
+
+- **Domaine > sous-domaine**, dérivé du 2e segment du chemin complet
+  de chaque compétence.
+- **Une synthèse par sous-domaine**, mélangeant les compétences
+  observées de ce sous-domaine (statut cumulatif réel), écrite au
+  positif — mentionne "en cours d'acquisition" ou "à travailler"
+  quand c'est le cas réel, mais ne liste jamais ce qui n'a pas été
+  abordé. Un sous-domaine sans aucune compétence observée n'apparaît
+  simplement pas dans le document.
+- **2 exemples d'activités par sous-domaine** (pas par compétence),
+  chacun avec sa photo et sa propre courte synthèse pédagogique —
+  priorité aux activités de l'année du dossier, repli sur une année
+  précédente du même cycle si besoin.
+
+Nouvelle table `dossiers_export_sous_domaines` (remplace l'usage de
+`dossiers_export_formulations`, qui reste en base mais n'est plus
+utilisée par ce document). La préparation groupée fonctionne sur le
+même principe qu'avant (un appel IA par sous-domaine ayant du contenu,
+pas par compétence ; un sous-domaine modifié à la main par le parent
+n'est plus jamais régénéré). PDF et PowerPoint réécrits pour cette
+structure.
+
+Piste notée pour plus tard, à la demande de l'utilisatrice : un
+éventuel second document d'export, centré uniquement sur la liste
+compétence par compétence — pas construit dans ce lot.
+
 ## Lenteur sur Progression — même défaut déjà corrigé ailleurs, repéré ici
 
 Signalé par l'utilisatrice : l'application devenait lente, surtout sur
