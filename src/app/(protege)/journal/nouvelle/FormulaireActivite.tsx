@@ -416,30 +416,51 @@ export function FormulaireActivite({
       await supprimerBrouillon().catch(() => {});
 
       const fichiers = Array.from(inputPhotoRef.current?.files ?? []);
-      let auMoinsUneErreurPhoto = false;
-      for (const fichier of fichiers) {
-        try {
-          const supabase = creerClientNavigateur();
-          const televersement = await televerserFichierTrace(
-            supabase,
-            familleId,
-            fichier,
-            setEtapeEnvoi
-          );
-          await creerTrace({
-            activiteId: resultat.id,
-            typeCode: estImage(fichier) ? "photo" : "document",
-            cheminStockage: televersement.cheminStockage,
-            miniatureCheminStockage: televersement.miniatureCheminStockage,
-            contenuTexte: null,
-            legende: "",
-            dateTrace: donnees.dateActivite,
-          });
-        } catch (erreurPhoto) {
-          console.error("Erreur lors de l'ajout d'une photo", erreurPhoto);
-          auMoinsUneErreurPhoto = true;
-        }
-      }
+      if (fichiers.length > 1) setEtapeEnvoi(`Envoi de ${fichiers.length} photos…`);
+      // Plusieurs photos sont envoyees en parallele, pas l'une apres
+      // l'autre : chaque photo est independante (son propre fichier,
+      // son propre identifiant), contrairement aux competences qui elles
+      // doivent rester sequentielles pour eviter tout conflit en base --
+      // ici, paralleliser est sans risque et nettement plus rapide.
+      const resultatsPhotos = await Promise.all(
+        fichiers.map(async (fichier) => {
+          try {
+            const supabase = creerClientNavigateur();
+            // Delai maximal plus genereux que le defaut (envoi de
+            // fichier, potentiellement plus long qu'un simple appel
+            // serveur), mais jamais illimite : sans ca, un reseau
+            // capricieux pouvait laisser le bouton bloque indefiniment
+            // sur "Envoi de l'image...", sans jamais echouer ni
+            // reussir -- poussant a renvoyer tout le formulaire et
+            // creer une activite en double.
+            const televersement = await avecDelaiMaximal(
+              televerserFichierTrace(
+                supabase,
+                familleId,
+                fichier,
+                fichiers.length === 1 ? setEtapeEnvoi : undefined
+              ),
+              60000
+            );
+            await avecDelaiMaximal(
+              creerTrace({
+                activiteId: resultat.id,
+                typeCode: estImage(fichier) ? "photo" : "document",
+                cheminStockage: televersement.cheminStockage,
+                miniatureCheminStockage: televersement.miniatureCheminStockage,
+                contenuTexte: null,
+                legende: "",
+                dateTrace: donnees.dateActivite,
+              })
+            );
+            return { ok: true as const };
+          } catch (erreurPhoto) {
+            console.error("Erreur lors de l'ajout d'une photo", erreurPhoto);
+            return { ok: false as const };
+          }
+        })
+      );
+      const auMoinsUneErreurPhoto = resultatsPhotos.some((r) => !r.ok);
       if (auMoinsUneErreurPhoto) {
         // L'activité est déjà enregistrée : on ne bloque jamais sur l'échec
         // d'une photo, on redirige vers la fiche pour permettre de réessayer.

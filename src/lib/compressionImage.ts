@@ -28,8 +28,12 @@ async function redimensionner(fichier: File, largeurMax: number, qualite: number
 }
 
 export async function preparerImage(fichier: File): Promise<{ image: Blob; miniature: Blob }> {
+  // 1400px/qualite 0.78 reste largement suffisant pour un carnet
+  // pedagogique consulte a l'ecran ou imprime en PDF -- nettement plus
+  // rapide a envoyer que la taille precedente (2000px/0.82), sans perte
+  // visible a cet usage.
   const [image, miniature] = await Promise.all([
-    redimensionner(fichier, 2000, 0.82),
+    redimensionner(fichier, 1400, 0.78),
     redimensionner(fichier, 400, 0.75),
   ]);
   return { image, miniature };

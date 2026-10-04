@@ -316,6 +316,43 @@ Vérifié par ailleurs que le bouton d'envoi du formulaire se désactive
 déjà bien pendant l'enregistrement (pas de double-clic possible côté
 client).
 
+## Envoi de photo accéléré, au-delà du simple délai maximal
+
+À la demande de l'utilisatrice, après le correctif précédent (délai
+maximal de 60 secondes) : deux changements pour que l'envoi soit
+réellement plus rapide, pas seulement protégé d'un blocage infini.
+
+- **Plusieurs photos s'envoient maintenant en parallèle**, plutôt
+  qu'une par une : chaque photo est indépendante (son propre fichier,
+  son propre identifiant), contrairement aux compétences qui doivent
+  rester séquentielles pour éviter tout conflit en base -- ici,
+  paralléliser est sans risque.
+- **Taille de compression réduite** : 1400px de large (plutôt que
+  2000px) à 78% de qualité, largement suffisant pour un carnet
+  pédagogique consulté à l'écran ou imprimé en PDF, et nettement plus
+  rapide à envoyer.
+
+## La vraie cause de fond — l'envoi de photo n'avait aucun délai maximal
+
+Après plusieurs allers-retours de diagnostic avec l'utilisatrice
+(vérification des données réelles en base, qui ont confirmé que
+l'enregistrement fonctionnait bien à chaque fois), la cause de fond
+est enfin apparue clairement : l'envoi de la photo restait bloqué sur
+"Envoi de l'image..." sans jamais échouer ni réussir visiblement. En
+cause : `televerserFichierTrace` et `creerTrace`, contrairement à tous
+les autres appels serveur du formulaire, n'étaient protégés par aucun
+délai maximal -- un réseau capricieux pouvait les laisser bloqués
+indéfiniment. L'utilisatrice, ne voyant aucune issue, renvoyait alors
+tout le formulaire, créant une activité en double à chaque tentative
+-- exactement l'origine des "conflits persistants" precedemment
+corriges en partie, mais dont la cause racine restait la.
+
+Corrigé : l'envoi de photo est maintenant protégé par un délai maximal
+de 60 secondes (plus généreux que les 15 secondes par défaut, pour
+laisser le temps à un envoi de fichier, mais jamais illimité). Passé
+ce délai, une erreur claire s'affiche enfin au lieu d'un bouton figé
+sans réponse.
+
 ## Vraie cause des "conflits persistants" — un avertissement bloquait la redirection par erreur
 
 La correction précédente (traitement séquentiel) n'était pas inutile
