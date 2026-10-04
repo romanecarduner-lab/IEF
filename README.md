@@ -205,6 +205,39 @@ Deux corrections, après retour utilisatrice :
    introduite par un changement précédent, qui comptait les lignes de
    parcours plutôt que les enfants réels).
 
+## Rattrapage des compétences déjà observées avant ce correctif
+
+La validation automatique ne s'applique qu'aux observations créées
+après sa mise en place — les compétences déjà observées avant (environ
+244 pour Nino, d'après le diagnostic précédent) ne se corrigent pas
+toutes seules. Nouveau bouton sur Progression, "Rattraper les
+compétences déjà observées" : repasse une fois sur tout ce qui a déjà
+une observation mais aucun statut, pour l'enfant et le cycle affichés,
+avec le même moteur et les mêmes garde-fous (rien n'est touché pour
+une compétence déjà validée). À utiliser une fois par enfant (et par
+cycle, si un enfant a changé de cycle).
+
+## Cause trouvée du blocage de la validation automatique
+
+Grâce au message d'erreur précis renvoyé par le correctif précédent :
+"La réponse de l'IA n'a pas pu être lue" — le moteur déterministe ne
+concluait pas seul pour les cas testés, passait la main à l'IA en
+renfort (comportement voulu, déjà en place), mais sa réponse ne
+pouvait pas être relue comme du JSON. Cause la plus probable : la
+limite de tokens demandée à l'IA (500) était trop juste pour une
+justification un peu longue, coupant la réponse en plein milieu.
+
+Corrigé à deux niveaux :
+- Les limites de tokens des trois appels IA concernés sont élargies
+  (estimation de progression, idées d'activités, préparation groupée
+  de l'export).
+- L'extraction du JSON dans la réponse est rendue robuste partout où
+  ce même motif fragile existait (quatre endroits au total) : au lieu
+  de supposer que toute la réponse n'est que du JSON, on extrait
+  maintenant le premier bloc `{...}` ou `[...]` complet qui s'y
+  trouve — resiste à un commentaire ajouté par le modèle avant ou
+  après, malgré la consigne de n'y répondre qu'avec le JSON seul.
+
 ## Validation automatique des compétences
 
 À la demande de l'utilisatrice, après avoir signalé l'écart dans
