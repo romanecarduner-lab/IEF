@@ -231,6 +231,16 @@ export default async function PageProgression({
 
   lignes.sort((a, b) => (a.chemin ?? "").localeCompare(b.chemin ?? ""));
 
+  // Regroupement par domaine (1er segment du chemin complet), pour un
+  // affichage range plutot qu'une seule longue liste.
+  const lignesParDomaine = new Map<string, typeof lignes>();
+  for (const l of lignes) {
+    const domaine = l.chemin?.split(" > ")[0] ?? "Autres";
+    const liste = lignesParDomaine.get(domaine) ?? [];
+    liste.push(l);
+    lignesParDomaine.set(domaine, liste);
+  }
+
   // Compétences jumelles : meme libelle exact, presentes plusieurs fois
   // dans le programme a des tranches d'age differentes -- pour proposer
   // de valider les deux d'un coup plutot que de le refaire a la main a
@@ -251,11 +261,23 @@ export default async function PageProgression({
         </h1>
         <AideContextuelle titre="La progression" variante="page">
           Cette page rassemble, par domaine du programme officiel, ce
-          qui a déjà été observé chez votre enfant — calculé à partir
-          des compétences reliées à vos activités dans le journal.
-          Les statuts et synthèses proposés restent modifiables à
-          tout moment : c&rsquo;est vous qui validez, jamais
-          l&rsquo;application à votre place.
+          qui a déjà été observé chez votre enfant, à partir des
+          compétences reliées à vos activités dans le journal.
+          <br />
+          <br />
+          <strong>Le statut de chaque compétence se met à jour tout
+          seul</strong> dès que vous enregistrez une observation : rien
+          à cliquer pour que ça compte. Vous pouvez à tout moment
+          changer vous-même le statut affiché dans le menu déroulant,
+          si vous n&rsquo;êtes pas d&rsquo;accord avec la proposition —
+          votre choix est alors définitif, l&rsquo;application ne
+          l&rsquo;écrasera plus jamais.
+          <br />
+          <br />
+          <strong>L&rsquo;étiquette &laquo; à réexaminer &raquo;</strong>{" "}
+          signale une compétence observée plusieurs fois depuis que son
+          statut a été fixé : c&rsquo;est une suggestion de relire la
+          situation, pas une obligation d&rsquo;agir.
         </AideContextuelle>
 
         {parcoursOptions.length > 0 && (
@@ -326,9 +348,13 @@ export default async function PageProgression({
             .
           </p>
 
-          {enfantIdActuel && cycleIdActuel && (
-            <BoutonRattrapageEstimations enfantId={enfantIdActuel} cycleId={cycleIdActuel} />
-          )}
+          {enfantIdActuel &&
+            cycleIdActuel &&
+            (indicateurs ?? []).some(
+              (ind) => !statutsParElement.has(ind.element_programme_id as string)
+            ) && (
+              <BoutonRattrapageEstimations enfantId={enfantIdActuel} cycleId={cycleIdActuel} />
+            )}
 
           {donneesGraphique.length > 0 && (
             <GraphiqueProgression donnees={donneesGraphique} />
@@ -341,55 +367,85 @@ export default async function PageProgression({
               les voir apparaître ici.
             </p>
           ) : (
-            <ul className="space-y-3">
-              {lignes.map((l) => (
-                <li
-                  key={l.elementId}
-                  className="rounded-doux border border-trait bg-white/80 p-4 shadow-doux"
+            <div className="space-y-3">
+              {Array.from(lignesParDomaine.entries()).map(([domaine, lignesDomaine]) => (
+                <details
+                  key={domaine}
+                  className="rounded-doux border border-trait bg-white/80 shadow-doux"
+                  open
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm text-encre">{l.libelle}</p>
-                      {l.chemin && <p className="text-xs text-ardoise">{l.chemin}</p>}
-                      <p className="mt-1 text-xs text-ardoise">
-                        {l.nbObs} observation{l.nbObs > 1 ? "s" : ""} ·{" "}
-                        {l.nbDates} date{l.nbDates > 1 ? "s" : ""} distincte
-                        {l.nbDates > 1 ? "s" : ""} · {l.nbContextes} contexte
-                        {l.nbContextes > 1 ? "s" : ""}
-                        {l.aRevoir && (
-                          <span className="ml-2 rounded-full bg-argile/20 px-2 py-0.5 text-argile">
-                            à réexaminer
-                          </span>
-                        )}
-                        {!l.dejaValide && (
-                          <span className="ml-2 rounded-full bg-trait px-2 py-0.5 text-ardoise">
-                            suggestion à confirmer
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    <SelecteurStatutProgression
-                      parcoursId={parcoursId}
-                      elementProgrammeId={l.elementId}
-                      statutActuelCode={l.statutCode}
-                      dejaValide={l.dejaValide}
-                      statuts={statuts ?? []}
-                      jumelles={(l.libelle ? lignesParLibelle.get(l.libelle) ?? [] : [])
-                        .filter((autre) => autre.elementId !== l.elementId)
-                        .map((autre) => ({ elementId: autre.elementId, chemin: autre.chemin }))}
-                    />
-                  </div>
-                  {l.proposition && (
-                    <CarteProposition
-                      parcoursId={parcoursId}
-                      elementProgrammeId={l.elementId}
-                      statutProposeLibelle={l.proposition.statutLibelle}
-                      justification={l.proposition.justification}
-                    />
-                  )}
-                </li>
+                  <summary className="cursor-pointer list-none p-4 text-sm font-medium text-encre">
+                    {domaine}{" "}
+                    <span className="font-normal text-ardoise">
+                      ({lignesDomaine.length})
+                    </span>
+                  </summary>
+                  <ul className="space-y-3 border-t border-trait p-4 pt-3">
+                    {lignesDomaine.map((l) => {
+                      const cheminSansDomaine = l.chemin
+                        ?.split(" > ")
+                        .slice(1)
+                        .join(" > ");
+                      return (
+                        <li
+                          key={l.elementId}
+                          className="rounded-doux border border-trait bg-white/80 p-4 shadow-doux"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm text-encre">{l.libelle}</p>
+                              {cheminSansDomaine && (
+                                <p className="text-xs text-ardoise">{cheminSansDomaine}</p>
+                              )}
+                              <p className="mt-1 text-xs text-ardoise">
+                                {l.nbObs} observation{l.nbObs > 1 ? "s" : ""} ·{" "}
+                                {l.nbDates} date{l.nbDates > 1 ? "s" : ""} distincte
+                                {l.nbDates > 1 ? "s" : ""} · {l.nbContextes} contexte
+                                {l.nbContextes > 1 ? "s" : ""}
+                                {l.aRevoir && (
+                                  <span
+                                    className="ml-2 cursor-help rounded-full bg-argile/20 px-2 py-0.5 text-argile"
+                                    title="Plusieurs observations enregistrées depuis que ce statut a été fixé : peut-être mérite-t-il d'être remonté. À vous de juger, rien d'automatique ni d'obligatoire."
+                                  >
+                                    à réexaminer
+                                  </span>
+                                )}
+                                {!l.dejaValide && (
+                                  <span
+                                    className="ml-2 cursor-help rounded-full bg-trait px-2 py-0.5 text-ardoise"
+                                    title="Aucun statut n'a encore pu être déterminé avec certitude pour cette compétence : choisissez vous-même celui qui convient dans le menu ci-dessous."
+                                  >
+                                    à choisir vous-même
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                            <SelecteurStatutProgression
+                              parcoursId={parcoursId}
+                              elementProgrammeId={l.elementId}
+                              statutActuelCode={l.statutCode}
+                              dejaValide={l.dejaValide}
+                              statuts={statuts ?? []}
+                              jumelles={(l.libelle ? lignesParLibelle.get(l.libelle) ?? [] : [])
+                                .filter((autre) => autre.elementId !== l.elementId)
+                                .map((autre) => ({ elementId: autre.elementId, chemin: autre.chemin }))}
+                            />
+                          </div>
+                          {l.proposition && (
+                            <CarteProposition
+                              parcoursId={parcoursId}
+                              elementProgrammeId={l.elementId}
+                              statutProposeLibelle={l.proposition.statutLibelle}
+                              justification={l.proposition.justification}
+                            />
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </details>
               ))}
-            </ul>
+            </div>
           )}
         </>
       )}

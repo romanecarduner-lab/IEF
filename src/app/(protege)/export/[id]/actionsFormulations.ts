@@ -91,6 +91,13 @@ export async function preparerFormulationsExport(
   const cycleId = parcours?.cycle_id as string | undefined;
   if (!enfantId || !cycleId) return { erreur: "Parcours introuvable." };
 
+  const { data: enfantBrut } = await supabase
+    .from("enfants")
+    .select("pronom")
+    .eq("id", enfantId)
+    .maybeSingle();
+  const pronomEnfant = (enfantBrut?.pronom as string | null) ?? null;
+
   const [{ data: statutsCumules }, { data: chemins }, { data: sousDomainesExistants }] =
     await Promise.all([
       supabase
@@ -219,6 +226,8 @@ export async function preparerFormulationsExport(
       .join("\n");
 
     const prompt = `Tu aides un parent qui pratique l'instruction en famille à préparer, pour un dossier destiné au contrôle pédagogique académique, le bilan d'un sous-domaine du programme officiel : "${sousDomaine}" (domaine : "${domaine}").
+
+${pronomEnfant ? `Si tu emploies un pronom pour désigner l'enfant, utilise exclusivement "${pronomEnfant}".` : "N'utilise aucun pronom genré (\"il\"/\"elle\") pour désigner l'enfant."}
 
 Compétences de ce sous-domaine déjà observées, avec leur statut réel :
 ${blocCompetences}

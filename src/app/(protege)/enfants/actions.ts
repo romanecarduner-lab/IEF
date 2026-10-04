@@ -12,6 +12,8 @@ export async function creerEnfant(
   const prenom = String(donnees.get("prenom") ?? "").trim();
   const dateNaissance = String(donnees.get("date-naissance") ?? "").trim();
   const remarques = String(donnees.get("remarques") ?? "").trim();
+  const pronomBrut = String(donnees.get("pronom") ?? "").trim();
+  const pronom = pronomBrut === "il" || pronomBrut === "elle" ? pronomBrut : null;
 
   if (!prenom) {
     return { erreur: "Le prénom est requis." };
@@ -42,6 +44,7 @@ export async function creerEnfant(
     prenom,
     date_naissance: dateNaissance || null,
     remarques: remarques || null,
+    pronom,
     cree_par: user.id,
   });
 
@@ -51,6 +54,30 @@ export async function creerEnfant(
 
   revalidatePath("/famille");
   redirect("/famille");
+}
+
+/**
+ * Modifie uniquement le pronom (il/elle) d'un enfant deja cree -- pour
+ * corriger une description generee par l'IA qui se serait trompee en
+ * le devinant a partir des photos, sans jamais demander le genre ni
+ * le sexe de l'enfant.
+ */
+export async function modifierPronomEnfant(
+  enfantId: string,
+  pronom: "il" | "elle" | ""
+): Promise<{ erreur: string } | { ok: true }> {
+  const supabase = creerClientServeur();
+  const { error } = await supabase
+    .from("enfants")
+    .update({ pronom: pronom || null })
+    .eq("id", enfantId);
+
+  if (error) {
+    return { erreur: "Impossible d'enregistrer. Merci de réessayer." };
+  }
+
+  revalidatePath("/famille");
+  return { ok: true };
 }
 
 export async function supprimerEnfant(id: string) {

@@ -39,6 +39,26 @@ export function FormulaireEnfant() {
         <Champ label="Prénom" id="prenom" type="text" required />
         <Champ label="Date de naissance (facultatif)" id="date-naissance" type="date" />
         <div className="mb-4">
+          <label htmlFor="pronom" className="mb-1.5 block text-sm font-medium text-encre">
+            Pronom à utiliser dans les textes générés (facultatif)
+          </label>
+          <select
+            id="pronom"
+            name="pronom"
+            defaultValue=""
+            className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
+          >
+            <option value="">Laisser l&rsquo;IA déterminer seule</option>
+            <option value="il">Il</option>
+            <option value="elle">Elle</option>
+          </select>
+          <p className="mt-1 text-xs text-ardoise">
+            Pour que les textes générés par l&rsquo;IA utilisent le bon
+            pronom, notamment à partir des photos — sans que
+            l&rsquo;application vous demande le genre de votre enfant.
+          </p>
+        </div>
+        <div className="mb-4">
           <label htmlFor="remarques" className="mb-1.5 block text-sm font-medium text-encre">
             Remarques (facultatif)
           </label>

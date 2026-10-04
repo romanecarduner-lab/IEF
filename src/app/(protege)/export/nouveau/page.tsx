@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { creerClientServeur } from "@/lib/supabase/server";
 import { FormulaireDossier } from "./FormulaireDossier";
+import { AideContextuelle } from "@/components/AideContextuelle";
 
 export default async function PageNouveauDossier() {
   const supabase = creerClientServeur();
@@ -26,9 +27,23 @@ export default async function PageNouveauDossier() {
       <Link href="/export" className="mb-6 inline-block text-sm text-ardoise hover:text-encre">
         ← Retour
       </Link>
-      <h1 className="mb-6 font-display text-2xl italic text-encre">
+      <h1 className="mb-2 font-display text-2xl italic text-encre">
         Nouveau dossier d&rsquo;export
+        <AideContextuelle titre="Nouveau dossier d'export" variante="page">
+          Deux types de document possibles : le dossier pédagogique
+          (toutes les compétences du cycle, organisées par domaine,
+          avec une synthèse à préparer) pour un contrôle académique, ou
+          le journal d&rsquo;une période (liste chronologique
+          d&rsquo;activités) pour un simple compte-rendu. Vous
+          choisissez l&rsquo;enfant et le type ci-dessous, puis vous
+          complétez le contenu sur la page suivante.
+        </AideContextuelle>
       </h1>
+      <p className="mb-6 text-sm text-ardoise">
+        Choisissez l&rsquo;enfant et le type de document, puis cliquez
+        sur créer — vous compléterez le contenu à l&rsquo;étape
+        suivante.
+      </p>
 
       {parcours.length === 0 ? (
         <p className="rounded-doux border border-dashed border-trait bg-white/50 p-8 text-center text-sm text-ardoise">

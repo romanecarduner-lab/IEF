@@ -6,6 +6,7 @@ import { BoutonFinaliser } from "./BoutonFinaliser";
 import { BoutonFinaliserJournal } from "./BoutonFinaliserJournal";
 import { BoutonPreparerFormulations } from "./BoutonPreparerFormulations";
 import { EditeurFormulation } from "./EditeurFormulation";
+import { AideContextuelle } from "@/components/AideContextuelle";
 
 const DUREE_SIGNATURE_SECONDES = 60 * 60;
 
@@ -40,14 +41,47 @@ export default async function PageDossierExport({
       : parcours.annees_scolaires
     : null;
 
+  const estJournalPeriode = dossier.type_dossier === "journal_periode";
+
   const enTete = (
     <div className="mb-6">
       <Link href="/export" className="mb-4 inline-block text-sm text-ardoise hover:text-encre">
         ← Retour aux dossiers
       </Link>
-      <h1 className="font-display text-2xl italic text-encre">{dossier.titre}</h1>
+      <h1 className="font-display text-2xl italic text-encre">
+        {dossier.titre}
+        <AideContextuelle
+          titre={estJournalPeriode ? "Le journal de période" : "Le dossier pédagogique"}
+          variante="page"
+        >
+          {estJournalPeriode ? (
+            <>
+              La liste chronologique des activités de cette période.
+              Cochez celles à inclure, puis cliquez sur &laquo; Finaliser &raquo; pour
+              générer le document final (PDF). Une fois finalisé, le
+              dossier est figé.
+            </>
+          ) : (
+            <>
+              Ce dossier couvre automatiquement toutes les compétences du
+              cycle, organisées par domaine puis sous-domaine, avec leur
+              statut réel. Cliquez sur &laquo; Préparer les formulations &raquo; pour
+              générer en une fois une synthèse et des exemples pour
+              chaque sous-domaine déjà abordé — relisez et corrigez-les
+              librement, puis cliquez sur &laquo; Finaliser &raquo; pour générer le
+              document (PDF et PowerPoint). Une fois finalisé, le
+              dossier est figé.
+            </>
+          )}
+        </AideContextuelle>
+      </h1>
       <p className="text-sm text-ardoise">
         {enfant?.prenom} · {annee?.libelle}
+      </p>
+      <p className="mt-2 text-sm text-ardoise">
+        {estJournalPeriode
+          ? "Cochez les activités de cette période à inclure dans le document, puis finalisez pour générer le PDF."
+          : "Préparez les formulations ci-dessous, relisez-les, puis finalisez pour générer le document."}
       </p>
     </div>
   );

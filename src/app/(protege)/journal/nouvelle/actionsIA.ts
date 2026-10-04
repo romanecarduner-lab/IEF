@@ -117,16 +117,19 @@ export async function genererDescriptionEtCompetencesIA(
   // la fonctionnalite.
   let cycleId: string | null = null;
   let mentionCycle = "";
+  let pronomEnfant: string | null = null;
   if (parcoursId) {
     const { data: parcours } = await supabase
       .from("parcours_scolaires")
-      .select("cycle_id, cycles(libelle)")
+      .select("cycle_id, cycles(libelle), enfants(pronom)")
       .eq("id", parcoursId)
       .maybeSingle();
     if (parcours) {
       cycleId = parcours.cycle_id as string;
       const cycle = Array.isArray(parcours.cycles) ? parcours.cycles[0] : parcours.cycles;
       if (cycle?.libelle) mentionCycle = ` (${cycle.libelle as string})`;
+      const enfant = Array.isArray(parcours.enfants) ? parcours.enfants[0] : parcours.enfants;
+      pronomEnfant = (enfant?.pronom as string | null) ?? null;
     }
   }
 
@@ -170,7 +173,11 @@ Fais deux choses en une seule réflexion, comme le ferait le parent lui-même :
     descriptionDeja
       ? " Appuie-toi sur ce que le parent a déjà écrit ci-dessus : tu peux reformuler, réorganiser et enrichir avec ce que montrent la ou les photo(s), mais sans perdre aucun fait qu'il a donné ni le contredire."
       : ""
-  } Utilise le prénom ${nomEnfant}, jamais "l'enfant". Ne décris JAMAIS l'apparence physique de ${nomEnfant} (couleur des cheveux, vêtements, traits du visage) : ce n'est pas pertinent pour un carnet pédagogique.
+  } Utilise le prénom ${nomEnfant}, jamais "l'enfant". Ne décris JAMAIS l'apparence physique de ${nomEnfant} (couleur des cheveux, vêtements, traits du visage) : ce n'est pas pertinent pour un carnet pédagogique. ${
+    pronomEnfant
+      ? `Si tu emploies un pronom pour ${nomEnfant}, utilise exclusivement "${pronomEnfant}" — ne le déduis jamais de ce que montrent les photos (apparence, coiffure, vêtements) : ce n'est pas un indicateur fiable.`
+      : `N'utilise aucun pronom genré ("il"/"elle") pour ${nomEnfant} : répète son prénom à chaque fois. Ne déduis surtout pas un pronom à partir de ce que montrent les photos (apparence, coiffure, vêtements) : ce n'est pas un indicateur fiable.`
+  }
 
 2. Identifie, parmi la liste numérotée ci-dessus, les objectifs clairement mobilisés par cette activité (au maximum 5, du plus au moins pertinent).
 
@@ -280,19 +287,24 @@ export async function proposerFormulationPedagogique(
   }
 
   let mentionCycle = "";
+  let pronomEnfant: string | null = null;
   if (idParcoursReel) {
     const { data: parcours } = await supabase
       .from("parcours_scolaires")
-      .select("cycles(libelle)")
+      .select("cycles(libelle), enfants(pronom)")
       .eq("id", idParcoursReel)
       .maybeSingle();
     const cycle = Array.isArray(parcours?.cycles) ? parcours.cycles[0] : parcours?.cycles;
     if (cycle?.libelle) mentionCycle = ` (${cycle.libelle as string})`;
+    const enfant = Array.isArray(parcours?.enfants) ? parcours.enfants[0] : parcours?.enfants;
+    pronomEnfant = (enfant?.pronom as string | null) ?? null;
   }
 
   const listeCompetences = competencesRetenues.map((c) => `- ${c}`).join("\n");
 
   const prompt = `Tu aides un parent qui pratique l'instruction en famille${mentionCycle} à rédiger une observation pédagogique pour son carnet de suivi.
+
+${pronomEnfant ? `Si tu emploies un pronom pour désigner l'enfant, utilise exclusivement "${pronomEnfant}".` : ""}
 
 Ce que le parent a déjà écrit :
 Titre : "${titre.trim()}"

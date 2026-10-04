@@ -205,6 +205,41 @@ Deux corrections, après retour utilisatrice :
    introduite par un changement précédent, qui comptait les lignes de
    parcours plutôt que les enfants réels).
 
+## Pronom de l'enfant pour les textes générés par l'IA
+
+À la demande de l'utilisatrice, après avoir remarqué des "elle" générés
+par erreur pour son fils (l'IA devinant à tort depuis l'apparence sur
+les photos) : nouveau champ **pronom** sur la fiche d'un enfant ("il" /
+"elle" / laisser l'IA déterminer), sans jamais demander son genre ou
+son sexe. Disponible à la création (`FormulaireEnfant.tsx`) et pour un
+enfant déjà créé (nouveau sélecteur sur la page Famille,
+`SelecteurPronomEnfant.tsx` + action `modifierPronomEnfant`).
+
+Les trois prompts IA qui rédigent un texte sur l'enfant (description +
+compétences depuis les photos, formulation pédagogique, synthèse
+groupée de l'export) reçoivent maintenant une consigne explicite :
+utiliser exclusivement le pronom renseigné, ou n'en utiliser aucun
+(répéter le prénom) si rien n'est précisé — **ne jamais le déduire des
+photos** (coiffure, vêtements, apparence).
+
+## Page export — explications ajoutées (il n'y avait rien)
+
+Signalé par l'utilisatrice : la fiche d'un dossier (`/export/[id]`)
+n'avait aucune explication de ce qu'elle propose ni comment s'en
+servir. Ajouté : une aide contextuelle ("?") et un texte toujours
+visible, différents selon le type de dossier (pédagogique vs journal
+de période). Même ajout sur la page de création d'un nouveau dossier
+(`/export/nouveau`), qui n'en avait pas non plus.
+
+## Progression — regroupement par domaine
+
+À la demande de l'utilisatrice, pour un affichage plus rangé : la
+liste des compétences sur Progression est désormais regroupée par
+domaine (sections repliables, comme sur l'export et "Ce qui reste à
+voir"), plutôt qu'une seule longue liste triée. Le chemin affiché sous
+chaque compétence n'inclut plus le nom du domaine, déjà donné par le
+titre de la section.
+
 ## Ménage sur Progression — deux boutons retirés, après réflexion partagée
 
 Signalé par l'utilisatrice, qui ne comprenait plus l'utilité de deux

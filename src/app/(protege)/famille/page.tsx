@@ -1,5 +1,6 @@
 import { creerClientServeur } from "@/lib/supabase/server";
 import { supprimerEnfant } from "../enfants/actions";
+import { SelecteurPronomEnfant } from "./SelecteurPronomEnfant";
 import { supprimerAnneeScolaire } from "../annees-scolaires/actions";
 import { supprimerParcours } from "../parcours/actions";
 import { FormulaireNouvelleAnnee } from "../annees-scolaires/FormulaireNouvelleAnnee";
@@ -20,7 +21,7 @@ export default async function PageFamille() {
   ] = await Promise.all([
     supabase
       .from("enfants")
-      .select("id, prenom, date_naissance, remarques")
+      .select("id, prenom, date_naissance, remarques, pronom")
       .order("created_at", { ascending: true }),
     supabase
       .from("annees_scolaires")
@@ -79,6 +80,7 @@ export default async function PageFamille() {
                     {enfant.remarques && (
                       <p className="mt-1 text-sm text-ardoise">{enfant.remarques}</p>
                     )}
+                    <SelecteurPronomEnfant enfantId={enfant.id} pronomActuel={enfant.pronom} />
                   </div>
                   <form action={supprimerEnfant.bind(null, enfant.id)}>
                     <button
