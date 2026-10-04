@@ -8,6 +8,11 @@ import { BoutonPreparerFormulations } from "./BoutonPreparerFormulations";
 import { EditeurFormulation } from "./EditeurFormulation";
 import { AideContextuelle } from "@/components/AideContextuelle";
 
+// Duree maximale d'execution des actions serveur declenchees depuis cette page
+// (preparation groupee, rattrapage) : par defaut trop courte pour plusieurs
+// appels de redaction successifs.
+export const maxDuration = 60;
+
 const DUREE_SIGNATURE_SECONDES = 60 * 60;
 
 export default async function PageDossierExport({

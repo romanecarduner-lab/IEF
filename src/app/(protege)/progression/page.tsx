@@ -6,9 +6,15 @@ import { SelecteurStatutProgression } from "./SelecteurStatutProgression";
 import { GraphiqueProgression, type DonneesDomaine } from "./GraphiqueProgression";
 import { VueATravailler } from "./VueATravailler";
 import { BoutonRattrapageEstimations } from "./BoutonRattrapageEstimations";
+import { NavigationDomaines } from "./NavigationDomaines";
 import { VueHistorique } from "./VueHistorique";
 import { SUGGESTION_DEPUIS_AUTONOMIE } from "@/lib/moteurProgression";
 import { CarteProposition } from "./CarteProposition";
+
+// Duree maximale d'execution des actions serveur declenchees depuis cette page
+// (preparation groupee, rattrapage) : par defaut trop courte pour plusieurs
+// appels de redaction successifs.
+export const maxDuration = 60;
 
 const STATUT_PAR_DEFAUT = "non_encore_observe";
 
@@ -367,11 +373,20 @@ export default async function PageProgression({
               les voir apparaître ici.
             </p>
           ) : (
+            <>
+            <NavigationDomaines
+              domaines={Array.from(lignesParDomaine.entries()).map(([nom, liste], i) => ({
+                id: `domaine-${i}`,
+                nom,
+                nb: liste.length,
+              }))}
+            />
             <div className="space-y-3">
-              {Array.from(lignesParDomaine.entries()).map(([domaine, lignesDomaine]) => (
+              {Array.from(lignesParDomaine.entries()).map(([domaine, lignesDomaine], indexDomaine) => (
                 <details
                   key={domaine}
-                  className="rounded-doux border border-trait bg-white/80 shadow-doux"
+                  id={`domaine-${indexDomaine}`}
+                  className="scroll-mt-14 rounded-doux border border-trait bg-white/80 shadow-doux"
                   open
                 >
                   <summary className="cursor-pointer list-none p-4 text-sm font-medium text-encre">
@@ -446,6 +461,7 @@ export default async function PageProgression({
                 </details>
               ))}
             </div>
+            </>
           )}
         </>
       )}

@@ -316,6 +316,25 @@ Vérifié par ailleurs que le bouton d'envoi du formulaire se désactive
 déjà bien pendant l'enregistrement (pas de double-clic possible côté
 client).
 
+## Migrations manquantes en base, préparation de l'export en lots, navigation par domaine
+
+- **Deux migrations n'avaient jamais été exécutées** chez l'utilisatrice
+  (constat par requête de vérification) : la vue `v_chemin_complet_objectif`
+  (0056) et la table `dossiers_export_sous_domaines` (0058). Conséquences :
+  tout tombait dans "Autres (287)" sur Progression, et l'export par
+  sous-domaine ne pouvait rien afficher. La préparation de l'export signale
+  désormais explicitement l'absence de la vue au lieu de ne rien produire.
+- **Préparation de l'export découpée en lots** : "La demande prend trop de
+  temps" venait d'un seul appel traitant tous les sous-domaines (un appel de
+  rédaction chacun). Elle traite maintenant 3 sous-domaines à la fois (en
+  parallèle au sein du lot, ils sont indépendants), le client enchaîne les
+  lots avec une progression visible. Requêtes communes sorties de la boucle.
+  Durée maximale des actions serveur portée à 60 s sur les pages concernées
+  (`maxDuration`).
+- **Progression : barre "Aller à" par domaine**, collée en haut pendant le
+  défilement, une seule ligne déplaçable sur mobile, ouvre le domaine s'il
+  était replié.
+
 ## Envoi de photo accéléré, au-delà du simple délai maximal
 
 À la demande de l'utilisatrice, après le correctif précédent (délai
