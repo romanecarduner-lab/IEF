@@ -205,6 +205,19 @@ Deux corrections, après retour utilisatrice :
    introduite par un changement précédent, qui comptait les lignes de
    parcours plutôt que les enfants réels).
 
+## Rattrapage découpé en petits lots — l'appel unique expirait
+
+Signalé par l'utilisatrice : le bouton de rattrapage mettait trop de
+temps et finissait par échouer ("La demande prend trop de temps").
+Cause : un seul appel traitant jusqu'à ~244 compétences
+séquentiellement, parfois avec un appel IA chacune, dépassait la durée
+maximale d'une fonction serveur. Corrigé en découpant en lots de 20
+(parallélisés par groupes de 6), le client enchaînant automatiquement
+les lots les uns après les autres avec une progression affichée en
+direct à chaque étape plutôt qu'une seule longue attente silencieuse.
+Sans danger de relancer en cours de route : chaque lot déjà traité est
+sauté au passage suivant.
+
 ## Rattrapage des compétences déjà observées avant ce correctif
 
 La validation automatique ne s'applique qu'aux observations créées
