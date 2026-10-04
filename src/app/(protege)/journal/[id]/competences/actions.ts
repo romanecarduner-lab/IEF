@@ -68,19 +68,22 @@ export async function creerObservations(
 
   let avertissementEstimation: string | undefined;
   if (activite?.parcours_id) {
-    const resultats = await Promise.all(
-      donnees.elements.map(async ({ id: elementProgrammeId }) => {
-        try {
-          return await estimerProgressionAutomatique(
-            activite.parcours_id as string,
-            elementProgrammeId
-          );
-        } catch (e) {
-          console.error("Erreur (exception) lors de l'estimation automatique", elementProgrammeId, e);
-          return { erreur: e instanceof Error ? e.message : "Erreur inattendue." };
-        }
-      })
-    );
+    // Une a la fois, pas en parallele : meme si chaque competence est
+    // differente, des ecritures simultanees en base peuvent entrer en
+    // conflit entre elles (contention, verrous). Un enchainement
+    // sequentiel l'elimine completement, au prix d'un leger delai
+    // supplementaire negligeable pour quelques competences.
+    const resultats: ({ erreur: string } | Awaited<ReturnType<typeof estimerProgressionAutomatique>>)[] = [];
+    for (const { id: elementProgrammeId } of donnees.elements) {
+      try {
+        resultats.push(
+          await estimerProgressionAutomatique(activite.parcours_id as string, elementProgrammeId)
+        );
+      } catch (e) {
+        console.error("Erreur (exception) lors de l'estimation automatique", elementProgrammeId, e);
+        resultats.push({ erreur: e instanceof Error ? e.message : "Erreur inattendue." });
+      }
+    }
     const echecs = resultats.filter(
       (r): r is { erreur: string } => "erreur" in r
     );

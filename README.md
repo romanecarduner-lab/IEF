@@ -297,6 +297,25 @@ avec le même moteur et les mêmes garde-fous (rien n'est touché pour
 une compétence déjà validée). À utiliser une fois par enfant (et par
 cycle, si un enfant a changé de cycle).
 
+## Conflits de validation automatique — appels en parallèle corrigés en séquentiel
+
+Signalé par l'utilisatrice : "Conflit persistant lors de l'enregistrement
+de l'estimation" pour plusieurs compétences d'une même activité.
+Cause : `creerObservations` lançait l'estimation automatique de toutes
+les compétences d'un coup, en parallèle (`Promise.all`) -- des
+écritures simultanées en base peuvent entrer en conflit entre elles
+même pour des compétences différentes. Corrigé en traitant les
+compétences une par une (séquentiellement) plutôt qu'en même temps,
+aussi bien à la création d'une activité que dans le bouton de
+rattrapage (qui traitait des lots de 6 en parallèle) -- la taille des
+lots de rattrapage est réduite de 20 à 8 pour compenser le traitement
+désormais séquentiel et rester sous la durée maximale d'une fonction
+serveur.
+
+Egalement : message d'erreur générique "Impossible d'enregistrer cette
+activité" rendu plus precis (detail de l'erreur reelle entre
+parentheses) pour faciliter tout futur diagnostic.
+
 ## "Parcourir par domaine" ne montrait rien pour certaines matières
 
 Signalé par l'utilisatrice, après l'import exhaustif des langues
