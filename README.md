@@ -205,6 +205,30 @@ Deux corrections, après retour utilisatrice :
    introduite par un changement précédent, qui comptait les lignes de
    parcours plutôt que les enfants réels).
 
+## Ménage sur Progression — deux boutons retirés, après réflexion partagée
+
+Signalé par l'utilisatrice, qui ne comprenait plus l'utilité de deux
+boutons présents sur chaque compétence :
+
+- **"🔍 Tester le moteur d'estimation (étape 3)"** : un outil de test
+  resté visible par erreur depuis le développement du moteur
+  déterministe (référence explicite à l'étape 3 du chantier d'origine),
+  exposant du jargon interne ("niveauConfiance", etc.) sans aucune
+  utilité pour une utilisatrice. Retiré, composant supprimé
+  (`BoutonEstimationAutomatique.tsx`).
+- **"✨ Générer une synthèse pédagogique"** (par compétence) : après
+  discussion (voir échange précédent, aucune modification faite avant
+  accord explicite), ce bouton faisait doublon avec la nouvelle
+  synthèse par sous-domaine de l'export, sans que rien dans
+  l'application ne le réutilise en aval. Retiré, composant supprimé
+  (`BoutonSyntheseIA.tsx`). Une courte note ajoutée en haut de
+  Progression oriente vers Export pour une vue rédigée et regroupée.
+
+Principe retenu pour la suite : Progression reste la vue de suivi
+personnel, toujours à jour, sans rien à générer ; l'export reste le
+seul endroit où une synthèse rédigée, groupée, est préparée — pour ne
+pas recréer deux chemins différents vers un même besoin.
+
 ## Rattrapage découpé en petits lots — l'appel unique expirait
 
 Signalé par l'utilisatrice : le bouton de rattrapage mettait trop de

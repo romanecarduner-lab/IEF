@@ -4,12 +4,10 @@ import { SelecteurParcours } from "./SelecteurParcours";
 import { AideContextuelle } from "@/components/AideContextuelle";
 import { SelecteurStatutProgression } from "./SelecteurStatutProgression";
 import { GraphiqueProgression, type DonneesDomaine } from "./GraphiqueProgression";
-import { BoutonSyntheseIA } from "./BoutonSyntheseIA";
 import { VueATravailler } from "./VueATravailler";
 import { BoutonRattrapageEstimations } from "./BoutonRattrapageEstimations";
 import { VueHistorique } from "./VueHistorique";
 import { SUGGESTION_DEPUIS_AUTONOMIE } from "@/lib/moteurProgression";
-import { BoutonEstimationAutomatique } from "./BoutonEstimationAutomatique";
 import { CarteProposition } from "./CarteProposition";
 
 const STATUT_PAR_DEFAUT = "non_encore_observe";
@@ -319,6 +317,15 @@ export default async function PageProgression({
             de validation propre à cette période.
           </p>
 
+          <p className="mb-4 text-xs text-ardoise">
+            Pour une vue regroupée et rédigée par sous-domaine (plutôt
+            que compétence par compétence), rendez-vous dans{" "}
+            <Link href="/export" className="underline underline-offset-2 hover:text-encre">
+              Export
+            </Link>
+            .
+          </p>
+
           {enfantIdActuel && cycleIdActuel && (
             <BoutonRattrapageEstimations enfantId={enfantIdActuel} cycleId={cycleIdActuel} />
           )}
@@ -380,15 +387,6 @@ export default async function PageProgression({
                       justification={l.proposition.justification}
                     />
                   )}
-                  <BoutonSyntheseIA
-                    parcoursId={parcoursId}
-                    elementProgrammeId={l.elementId}
-                    syntheseExistante={l.syntheseIA}
-                  />
-                  <BoutonEstimationAutomatique
-                    parcoursId={parcoursId}
-                    elementProgrammeId={l.elementId}
-                  />
                 </li>
               ))}
             </ul>
