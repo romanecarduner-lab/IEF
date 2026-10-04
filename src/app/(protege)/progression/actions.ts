@@ -590,10 +590,25 @@ async function estimerProgressionAutomatiqueInterne(
  * (une competence deja validee a la main n'est jamais touchee,
  * puisqu'elle a deja une synthese).
  */
+const TAILLE_LOT_RATTRAPAGE = 20;
+const PARALLELISME_RATTRAPAGE = 6;
+
+/**
+ * Traite au plus un lot de TAILLE_LOT_RATTRAPAGE paires a la fois
+ * (en parallelisant par groupes de PARALLELISME_RATTRAPAGE), plutot
+ * que tout le volume en un seul appel -- un gros volume (des
+ * centaines de competences, avec parfois un appel IA chacune) risque
+ * sinon de depasser la duree maximale d'une fonction serveur. Le
+ * client rappelle cette action plusieurs fois de suite jusqu'a ce que
+ * resteAFaire soit faux, avec une progression visible a chaque lot.
+ */
 export async function rattraperEstimationsManquantes(
   enfantId: string,
   cycleId: string
-): Promise<{ erreur: string } | { nbTraitees: number; nbEstimees: number; nbNonConcluantes: number }> {
+): Promise<
+  | { erreur: string }
+  | { nbTraitees: number; nbEstimees: number; nbNonConcluantes: number; resteAFaire: boolean; totalRestant: number }
+> {
   const supabase = creerClientServeur();
 
   const { data: parcoursBruts } = await supabase
@@ -628,24 +643,39 @@ export async function rattraperEstimationsManquantes(
     (synthesesExistantes ?? []).map((s) => `${s.parcours_id}-${s.element_programme_id}`)
   );
 
-  const aFaire = Array.from(pairesAEstimer.entries()).filter(([cle]) => !dejaTraitees.has(cle));
+  const aFaire = Array.from(pairesAEstimer.values()).filter(
+    ({ parcoursId, elementId }) => !dejaTraitees.has(`${parcoursId}-${elementId}`)
+  );
+
+  const lot = aFaire.slice(0, TAILLE_LOT_RATTRAPAGE);
 
   let nbEstimees = 0;
   let nbNonConcluantes = 0;
-  for (const [, { parcoursId, elementId }] of aFaire) {
-    try {
-      const resultat = await estimerProgressionAutomatique(parcoursId, elementId);
+  for (let i = 0; i < lot.length; i += PARALLELISME_RATTRAPAGE) {
+    const sousLot = lot.slice(i, i + PARALLELISME_RATTRAPAGE);
+    const resultats = await Promise.all(
+      sousLot.map(({ parcoursId, elementId }) =>
+        estimerProgressionAutomatique(parcoursId, elementId).catch((e) => {
+          console.error("Erreur lors du rattrapage", parcoursId, elementId, e);
+          return { erreur: "Erreur inattendue." } as const;
+        })
+      )
+    );
+    for (const resultat of resultats) {
       if ("concluant" in resultat && resultat.concluant) nbEstimees++;
       else nbNonConcluantes++;
-    } catch (e) {
-      console.error("Erreur lors du rattrapage", parcoursId, elementId, e);
-      nbNonConcluantes++;
     }
   }
 
   revalidatePath("/progression");
   revalidatePath("/tableau-de-bord");
-  return { nbTraitees: aFaire.length, nbEstimees, nbNonConcluantes };
+  return {
+    nbTraitees: lot.length,
+    nbEstimees,
+    nbNonConcluantes,
+    resteAFaire: aFaire.length > lot.length,
+    totalRestant: aFaire.length - lot.length,
+  };
 }
 
 export async function appliquerPropositionProgression(
