@@ -316,6 +316,28 @@ Vérifié par ailleurs que le bouton d'envoi du formulaire se désactive
 déjà bien pendant l'enregistrement (pas de double-clic possible côté
 client).
 
+## Vraie cause des "conflits persistants" — un avertissement bloquait la redirection par erreur
+
+La correction précédente (traitement séquentiel) n'était pas inutile
+mais ne touchait pas la vraie cause. En creusant avec l'utilisatrice
+jusqu'à un message "duplicate key value violates unique constraint
+activites_pkey", la cause réelle est apparue : quand l'estimation
+automatique d'une compétence échouait, le formulaire de création
+**bloquait la redirection** et affichait le message comme une erreur
+à corriger -- alors que l'activité et ses observations étaient déjà
+bien enregistrées a ce stade. Naturellement incitée à renvoyer le
+formulaire, chaque nouvelle tentative créait une **activité en
+double**, et ces doublons se disputaient ensuite les mêmes
+compétences entre eux, d'où le conflit qui revenait sans cesse à
+chaque nouvel essai.
+
+Corrigé : un avertissement d'estimation ne bloque plus jamais la
+redirection. L'utilisatrice arrive directement sur la fiche de
+l'activité (bien enregistrée), avec une note non alarmante l'informant
+que le statut automatique d'une compétence n'a pas pu être déterminé
+et peut être choisi à la main depuis Progression -- jamais une
+invitation a recommencer la saisie.
+
 ## Conflits de validation automatique — appels en parallèle corrigés en séquentiel
 
 Signalé par l'utilisatrice : "Conflit persistant lors de l'enregistrement

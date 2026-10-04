@@ -9,7 +9,13 @@ import { BoutonDupliquerActivite } from "./BoutonDupliquerActivite";
 
 const DUREE_SIGNATURE_SECONDES = 60 * 60; // 1 heure, cf. Corrections-Schema-et-Lot1.md, section 11
 
-export default async function PageActivite({ params }: { params: { id: string } }) {
+export default async function PageActivite({
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams: { avertissement_estimation?: string };
+}) {
   const supabase = creerClientServeur();
 
   const { data: activite } = await supabase
@@ -146,6 +152,19 @@ export default async function PageActivite({ params }: { params: { id: string } 
         <Link href="/journal" className="mb-6 inline-block text-sm text-ardoise hover:text-encre">
           ← Retour au journal
         </Link>
+
+        {searchParams.avertissement_estimation && (
+          <p className="mb-3 rounded-doux bg-argile/10 px-3 py-2 text-xs text-argile">
+            L&rsquo;activité et ses compétences sont bien enregistrées. Le
+            statut automatique de l&rsquo;une d&rsquo;elles n&rsquo;a pas
+            pu être déterminé pour l&rsquo;instant : vous pouvez le
+            choisir vous-même depuis{" "}
+            <Link href="/progression" className="underline underline-offset-2 hover:text-encre">
+              Progression
+            </Link>
+            .
+          </p>
+        )}
 
         <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
           <h1 className="font-display text-2xl italic text-encre">{activite.titre}</h1>

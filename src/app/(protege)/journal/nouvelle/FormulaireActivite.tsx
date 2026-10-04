@@ -523,17 +523,23 @@ export function FormulaireActivite({
         return;
       }
 
+      // Un avertissement d'estimation (statut automatique pas confirme
+      // pour une ou plusieurs competences) ne doit JAMAIS empecher la
+      // redirection : l'activite et ses observations sont deja bien
+      // enregistrees a ce stade. Bloquer ici inviterait a renvoyer tout
+      // le formulaire, ce qui cree une activite en double plutot que de
+      // corriger quoi que ce soit (le vrai souci se regle depuis
+      // Progression, pas en recreant l'activite).
       if (avertissementEstimation) {
-        setErreur(avertissementEstimation);
-        erreurRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-        router.refresh();
-        return;
+        console.error("Avertissement estimation automatique (non bloquant) :", avertissementEstimation);
       }
 
       if (idsActivitesCreees.length > 1) {
         router.push(`/journal/nouvelle/recapitulatif?ids=${idsActivitesCreees.join(",")}`);
       } else {
-        router.push(fichiers.length > 0 || suggestionsChoisies.size > 0 ? `/journal/${resultat.id}` : "/journal");
+        router.push(
+          `/journal/${resultat.id}${avertissementEstimation ? "?avertissement_estimation=1" : ""}`
+        );
       }
       router.refresh();
     } catch (erreurInattendue) {
