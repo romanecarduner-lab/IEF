@@ -205,7 +205,15 @@ Deux corrections, après retour utilisatrice :
    introduite par un changement précédent, qui comptait les lignes de
    parcours plutôt que les enfants réels).
 
-## Pronom de l'enfant pour les textes générés par l'IA
+## Correction — "IA" réintroduit par erreur dans les nouveaux textes
+
+Signalé par l'utilisatrice : le nouveau champ pronom (ajouté dans ce
+même lot) employait le mot "IA" à quatre endroits, contrairement à sa
+préférence déjà établie. Corrigé : "Laisser le logiciel déterminer
+seul" plutôt que "Laisser l'IA déterminer seule", et les textes d'aide
+parlent de "textes générés automatiquement" plutôt que "par l'IA".
+
+## Pronom de l'enfant pour les textes générés automatiquement
 
 À la demande de l'utilisatrice, après avoir remarqué des "elle" générés
 par erreur pour son fils (l'IA devinant à tort depuis l'apparence sur

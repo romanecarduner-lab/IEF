@@ -48,13 +48,13 @@ export function FormulaireEnfant() {
             defaultValue=""
             className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
           >
-            <option value="">Laisser l&rsquo;IA déterminer seule</option>
+            <option value="">Laisser le logiciel déterminer seul</option>
             <option value="il">Il</option>
             <option value="elle">Elle</option>
           </select>
           <p className="mt-1 text-xs text-ardoise">
-            Pour que les textes générés par l&rsquo;IA utilisent le bon
-            pronom, notamment à partir des photos — sans que
+            Pour que les textes générés automatiquement utilisent le
+            bon pronom, notamment à partir des photos — sans que
             l&rsquo;application vous demande le genre de votre enfant.
           </p>
         </div>
