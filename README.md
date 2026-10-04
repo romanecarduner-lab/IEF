@@ -297,6 +297,31 @@ avec le même moteur et les mêmes garde-fous (rien n'est touché pour
 une compétence déjà validée). À utiliser une fois par enfant (et par
 cycle, si un enfant a changé de cycle).
 
+## "Parcourir par domaine" ne montrait rien pour certaines matières
+
+Signalé par l'utilisatrice, après l'import exhaustif des langues
+vivantes : "Parcourir par domaine" n'affichait rien du tout, ni pour
+les langues vivantes, ni pour l'éducation à la vie affective. Données
+vérifiées intactes (138 et 9 objectifs bien présents en base) : ce
+n'était pas un problème de contenu, mais de navigation.
+
+Cause : la navigation supposait une profondeur fixe en 4 niveaux
+(domaine > sous-domaine > compétence > tranche d'âge), hérité du
+fonctionnement de la plupart des matières. Les langues vivantes (5
+niveaux : domaine > activité langagière > année > thème > objectif) et
+l'éducation à la vie affective (structure plus plate, sans
+"compétence" ni "tranche d'âge") n'y correspondaient pas : le dernier
+menu déroulant attendu n'existait jamais, donc rien ne s'affichait.
+
+Corrigé en profondeur dans les deux endroits concernés (le formulaire
+de création d'activité et la page "Compétences observées") : la
+navigation affiche maintenant autant de menus déroulants que la
+matière choisie en a réellement, et bascule sur la liste des objectifs
+dès que le dernier niveau sélectionné n'a plus d'enfant de structure —
+en réutilisant la fonction déjà existante (`lister_objectifs_sous_element`),
+déjà capable de chercher les objectifs à n'importe quelle profondeur,
+mais jusqu'ici appelée uniquement au niveau "tranche d'âge".
+
 ## Cause trouvée du blocage de la validation automatique
 
 Grâce au message d'erreur précis renvoyé par le correctif précédent :

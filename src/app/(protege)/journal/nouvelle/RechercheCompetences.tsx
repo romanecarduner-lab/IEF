@@ -11,15 +11,11 @@ function SelectNiveau({
   label,
   valeur,
   options,
-  disabled,
-  placeholder,
   onChange,
 }: {
   label: string;
   valeur: string;
   options: { id: string; libelle: string }[];
-  disabled?: boolean;
-  placeholder?: string;
   onChange: (v: string) => void;
 }) {
   return (
@@ -27,11 +23,10 @@ function SelectNiveau({
       <label className="mb-1.5 block text-xs font-medium text-encre">{label}</label>
       <select
         value={valeur}
-        disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-doux border border-trait bg-white px-2.5 py-2 text-sm text-encre focus:border-mousse focus:outline-none disabled:bg-lin disabled:text-ardoise"
+        className="w-full rounded-doux border border-trait bg-white px-2.5 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
       >
-        <option value="">{placeholder ?? "Sélectionner…"}</option>
+        <option value="">Sélectionner…</option>
         {options.map((o) => (
           <option key={o.id} value={o.id}>
             {o.libelle}
@@ -47,9 +42,17 @@ function SelectNiveau({
  * une compétence, directement a la creation d'une activite -- meme
  * mecanisme que celui deja disponible sur la page "Competences
  * observees" d'une activite deja enregistree, mais sans attendre d'avoir
- * valide l'activite pour y acceder. L'arborescence du programme est
- * chargee a la demande (le cycle n'est connu qu'une fois l'enfant
- * choisi), pas au chargement de la page.
+ * valide l'activite pour y acceder.
+ *
+ * La navigation par domaine s'adapte a la profondeur reelle de chaque
+ * matiere (certaines, comme les langues vivantes ou la vie affective,
+ * n'ont pas de niveau "competence" ni "repere_annuel", ou en ont
+ * plusieurs de plus) : des que le noeud choisi n'a plus d'enfant de
+ * structure (domaine/sous-domaine/competence/repere_annuel), on
+ * recupere directement, via la fonction qui sait deja chercher a
+ * n'importe quelle profondeur, les objectifs en-dessous -- plutot que
+ * de supposer une profondeur fixe en 4 niveaux qui laisserait certaines
+ * matieres sans aucun objectif affichable.
  */
 export function RechercheCompetences({
   cycleId,
@@ -105,31 +108,48 @@ export function RechercheCompetences({
       .finally(() => setChargementArbre(false));
   }, [arbreOuvert, cycleId]);
 
-  const [domaineId, setDomaineId] = useState("");
-  const [sousDomaineId, setSousDomaineId] = useState("");
-  const [competenceId, setCompetenceId] = useState("");
-  const [repereAnnuelId, setRepereAnnuelId] = useState("");
+  // Chemin des noeuds de structure selectionnes successivement, depuis
+  // le domaine -- longueur variable selon la profondeur reelle de la
+  // matiere choisie.
+  const [chemin, setChemin] = useState<string[]>([]);
   const [objectifs, setObjectifs] = useState<Objectif[]>([]);
   const [chargementObjectifs, setChargementObjectifs] = useState(false);
 
-  const domaines = useMemo(() => arbre.filter((n) => n.type === "domaine"), [arbre]);
-  const sousDomaines = useMemo(
-    () => arbre.filter((n) => n.type === "sous_domaine" && n.parentId === domaineId),
-    [arbre, domaineId]
-  );
-  const competences = useMemo(
-    () => arbre.filter((n) => n.type === "competence" && n.parentId === sousDomaineId),
-    [arbre, sousDomaineId]
-  );
-  const aUneCompetenceIntermediaire = competences.length > 0;
-  const parentPourTranchesAge = aUneCompetenceIntermediaire ? competenceId : sousDomaineId;
-  const reperesAnnuels = useMemo(
-    () => arbre.filter((n) => n.type === "repere_annuel" && n.parentId === parentPourTranchesAge),
-    [arbre, parentPourTranchesAge]
-  );
+  const enfantsParParent = useMemo(() => {
+    const carte = new Map<string | null, NoeudArbreProgramme[]>();
+    for (const n of arbre) {
+      const liste = carte.get(n.parentId) ?? [];
+      liste.push(n);
+      carte.set(n.parentId, liste);
+    }
+    return carte;
+  }, [arbre]);
+
+  const domaines = enfantsParParent.get(null) ?? [];
+
+  const niveaux = useMemo(() => {
+    const resultat: { parentId: string | null; options: NoeudArbreProgramme[] }[] = [];
+    let parentCourant: string | null = null;
+    for (let i = 0; i <= chemin.length; i++) {
+      const options = enfantsParParent.get(parentCourant) ?? [];
+      if (options.length === 0) break;
+      resultat.push({ parentId: parentCourant, options });
+      const idChoisi = chemin[i];
+      if (!idChoisi) break;
+      parentCourant = idChoisi;
+    }
+    return resultat;
+  }, [enfantsParParent, chemin]);
+
+  const dernierNoeudChoisi: string | null = chemin[chemin.length - 1] ?? null;
+  // Des que le dernier noeud choisi n'a plus d'enfant de structure dans
+  // l'arbre (quel que soit son propre type), on considere qu'on est
+  // arrive au bout et on va chercher les objectifs en-dessous.
+  const auBoutDeLaStructure =
+    dernierNoeudChoisi !== null && (enfantsParParent.get(dernierNoeudChoisi) ?? []).length === 0;
 
   useEffect(() => {
-    if (!repereAnnuelId) {
+    if (!auBoutDeLaStructure || !dernierNoeudChoisi) {
       setObjectifs([]);
       return;
     }
@@ -139,7 +159,7 @@ export function RechercheCompetences({
     async function chargerObjectifs() {
       try {
         const { data } = await supabase.rpc("lister_objectifs_sous_element", {
-          p_element_id: repereAnnuelId,
+          p_element_id: dernierNoeudChoisi,
         });
         setObjectifs(
           (data ?? []).map((o: { id: string; libelle: string; groupe: string | null }) => ({
@@ -154,7 +174,7 @@ export function RechercheCompetences({
     }
 
     chargerObjectifs();
-  }, [repereAnnuelId]);
+  }, [auBoutDeLaStructure, dernierNoeudChoisi]);
 
   const groupes = useMemo(() => {
     const parGroupe = new Map<string | null, Objectif[]>();
@@ -165,6 +185,12 @@ export function RechercheCompetences({
     }
     return Array.from(parGroupe.entries());
   }, [objectifs]);
+
+  function choisirNiveau(profondeur: number, valeur: string) {
+    const nouveauChemin = chemin.slice(0, profondeur);
+    if (valeur) nouveauChemin.push(valeur);
+    setChemin(nouveauChemin);
+  }
 
   if (!cycleId) return null;
 
@@ -210,60 +236,29 @@ export function RechercheCompetences({
 
         {chargementArbre && <p className="mt-2 text-sm text-ardoise">Chargement du programme…</p>}
 
-        {!chargementArbre && arbre.length > 0 && (
+        {!chargementArbre && domaines.length === 0 && arbreOuvert && (
+          <p className="mt-2 text-sm text-ardoise">Aucun programme disponible pour ce cycle.</p>
+        )}
+
+        {!chargementArbre && domaines.length > 0 && (
           <>
             <div className="mb-3 mt-3 grid gap-3 sm:grid-cols-2">
-              <SelectNiveau
-                label="Domaine"
-                valeur={domaineId}
-                options={domaines}
-                onChange={(v) => {
-                  setDomaineId(v);
-                  setSousDomaineId("");
-                  setCompetenceId("");
-                  setRepereAnnuelId("");
-                }}
-              />
-              <SelectNiveau
-                label="Sous-domaine"
-                valeur={sousDomaineId}
-                options={sousDomaines}
-                disabled={!domaineId}
-                onChange={(v) => {
-                  setSousDomaineId(v);
-                  setCompetenceId("");
-                  setRepereAnnuelId("");
-                }}
-              />
-              <SelectNiveau
-                label="Compétence"
-                valeur={competenceId}
-                options={competences}
-                disabled={!sousDomaineId || !aUneCompetenceIntermediaire}
-                placeholder={
-                  sousDomaineId && !aUneCompetenceIntermediaire
-                    ? "Non applicable ici"
-                    : "Sélectionner…"
-                }
-                onChange={(v) => {
-                  setCompetenceId(v);
-                  setRepereAnnuelId("");
-                }}
-              />
-              <SelectNiveau
-                label="Tranche d'âge"
-                valeur={repereAnnuelId}
-                options={reperesAnnuels}
-                disabled={!parentPourTranchesAge}
-                onChange={setRepereAnnuelId}
-              />
+              {niveaux.map((niveau, i) => (
+                <SelectNiveau
+                  key={niveau.parentId ?? "racine"}
+                  label={i === 0 ? "Domaine" : `Niveau ${i + 1}`}
+                  valeur={chemin[i] ?? ""}
+                  options={niveau.options}
+                  onChange={(v) => choisirNiveau(i, v)}
+                />
+              ))}
             </div>
 
             {chargementObjectifs && (
               <p className="mb-3 text-sm text-ardoise">Chargement des objectifs…</p>
             )}
 
-            {!chargementObjectifs && repereAnnuelId && objectifs.length === 0 && (
+            {!chargementObjectifs && auBoutDeLaStructure && objectifs.length === 0 && (
               <p className="mb-3 text-sm text-ardoise">Aucun objectif trouvé pour cette sélection.</p>
             )}
 
