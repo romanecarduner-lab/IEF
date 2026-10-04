@@ -213,7 +213,11 @@ export async function estimerProgressionAutomatique(
   return estimerProgressionAutomatiqueInterne(parcoursId, elementProgrammeId, 0);
 }
 
-const NOMBRE_MAX_TENTATIVES = 2;
+const NOMBRE_MAX_TENTATIVES = 4;
+
+function attendre(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function estimerProgressionAutomatiqueInterne(
   parcoursId: string,
@@ -393,6 +397,10 @@ async function estimerProgressionAutomatiqueInterne(
             "Conflit persistant lors de l'enregistrement de l'estimation, même après plusieurs tentatives. Merci de réessayer plus tard.",
         };
       }
+      // Laisse le temps a l'ecriture concurrente de se valider avant de
+      // relire : sans ce delai, la relecture peut encore ne pas la voir
+      // (meme si elle a reussi) et echouer de nouveau pour rien.
+      await attendre(150 * (tentative + 1));
       return estimerProgressionAutomatiqueInterne(parcoursId, elementProgrammeId, tentative + 1);
     }
 

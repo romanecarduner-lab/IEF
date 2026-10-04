@@ -297,6 +297,25 @@ avec le même moteur et les mêmes garde-fous (rien n'est touché pour
 une compétence déjà validée). À utiliser une fois par enfant (et par
 cycle, si un enfant a changé de cycle).
 
+## "Conflit persistant" malgré des données correctes — délai ajouté avant nouvel essai
+
+Suite au passage en séquentiel (voir plus bas), le message persistait
+encore pour 5 compétences d'une activité de Nino. Diagnostic confirmé
+avec l'utilisatrice : **les données étaient en réalité toutes
+correctes** (les 7 compétences de cette activité avaient bien leur
+statut enregistré, origine automatique). Le message d'erreur était
+donc un faux positif : une première tentative avait dû croiser une
+écriture concurrente (contrainte d'unicité), mais le nouvel essai
+relisait immédiatement, sans laisser le temps à cette écriture
+concurrente de se terminer et devenir visible -- échouant alors une
+seconde fois pour rien, jusqu'à épuiser les tentatives.
+
+Corrigé : un court délai (150 ms, croissant à chaque tentative) avant
+de relire et réessayer, et le nombre de tentatives passe de 2 à 4.
+Vérifié par ailleurs que le bouton d'envoi du formulaire se désactive
+déjà bien pendant l'enregistrement (pas de double-clic possible côté
+client).
+
 ## Conflits de validation automatique — appels en parallèle corrigés en séquentiel
 
 Signalé par l'utilisatrice : "Conflit persistant lors de l'enregistrement
