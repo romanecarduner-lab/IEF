@@ -238,7 +238,7 @@ Règles impératives :
 - Réponds UNIQUEMENT avec un objet JSON de cette forme exacte, sans rien d'autre autour :
 {"synthese": "...", "exemple1": "...", "exemple2": "..."}`;
 
-    const resultat = await appellerClaude(prompt, 1200);
+    const resultat = await appellerClaude(prompt, 1600);
     if ("erreur" in resultat) {
       console.error("Erreur lors de la preparation groupee (sous-domaine)", sousDomaine, resultat.erreur);
       continue;
@@ -246,11 +246,9 @@ Règles impératives :
 
     let reponse: { synthese?: string; exemple1?: string; exemple2?: string } = {};
     try {
-      const nettoye = resultat.texte
-        .replace(/^```json\s*/i, "")
-        .replace(/^```\s*/i, "")
-        .replace(/```\s*$/i, "");
-      reponse = JSON.parse(nettoye);
+      const correspondance = resultat.texte.match(/\{[\s\S]*\}/);
+      if (!correspondance) throw new Error("Aucun objet JSON trouve dans la reponse.");
+      reponse = JSON.parse(correspondance[0]);
     } catch (e) {
       console.error("Reponse IA non exploitable (preparation export)", sousDomaine, e, resultat.texte);
       continue;

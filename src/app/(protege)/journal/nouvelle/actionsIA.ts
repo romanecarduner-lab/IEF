@@ -76,11 +76,11 @@ async function appellerClaude(
 }
 
 function nettoyerJSON(texte: string): string {
-  return texte
-    .trim()
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/```\s*$/i, "");
+  // Extrait le premier bloc JSON complet (objet) plutot que de supposer
+  // que le texte entier n'est que du JSON : plus robuste si le modele
+  // ajoute un commentaire avant/apres malgre la consigne.
+  const correspondance = texte.match(/\{[\s\S]*\}/);
+  return correspondance ? correspondance[0] : texte.trim();
 }
 
 /**

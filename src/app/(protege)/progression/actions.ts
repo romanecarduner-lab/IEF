@@ -579,6 +579,75 @@ async function estimerProgressionAutomatiqueInterne(
  * une validation manuelle (le moteur ne le modifiera plus jamais sans
  * repasser par une nouvelle proposition explicite).
  */
+/**
+ * Rattrapage ponctuel : jusqu'a la mise en place du declenchement
+ * automatique, de nombreuses observations avaient ete enregistrees
+ * sans jamais passer par le moteur de progression (ni bouton manuel,
+ * ni declenchement automatique a l'epoque). Repasse une fois sur
+ * toutes les competences deja observees pour l'enfant et le cycle
+ * donnes mais n'ayant encore aucune synthese, et tente de les
+ * estimer -- exactement le meme moteur, avec les memes garde-fous
+ * (une competence deja validee a la main n'est jamais touchee,
+ * puisqu'elle a deja une synthese).
+ */
+export async function rattraperEstimationsManquantes(
+  enfantId: string,
+  cycleId: string
+): Promise<{ erreur: string } | { nbTraitees: number; nbEstimees: number; nbNonConcluantes: number }> {
+  const supabase = creerClientServeur();
+
+  const { data: parcoursBruts } = await supabase
+    .from("parcours_scolaires")
+    .select("id")
+    .eq("enfant_id", enfantId)
+    .eq("cycle_id", cycleId);
+  const idsParcours = (parcoursBruts ?? []).map((p) => p.id as string);
+  if (idsParcours.length === 0) return { erreur: "Aucun parcours trouvé." };
+
+  const { data: observationsBrutes } = await supabase
+    .from("observations_elements_programme")
+    .select("element_programme_id, activites!inner(parcours_id)")
+    .in("activites.parcours_id", idsParcours);
+
+  // Paires (parcours, competence) distinctes ayant au moins une
+  // observation.
+  const pairesAEstimer = new Map<string, { parcoursId: string; elementId: string }>();
+  for (const o of observationsBrutes ?? []) {
+    const a = Array.isArray(o.activites) ? o.activites[0] : o.activites;
+    const parcoursId = a?.parcours_id as string | undefined;
+    const elementId = o.element_programme_id as string;
+    if (!parcoursId) continue;
+    pairesAEstimer.set(`${parcoursId}-${elementId}`, { parcoursId, elementId });
+  }
+
+  const { data: synthesesExistantes } = await supabase
+    .from("syntheses_progression")
+    .select("parcours_id, element_programme_id")
+    .in("parcours_id", idsParcours);
+  const dejaTraitees = new Set(
+    (synthesesExistantes ?? []).map((s) => `${s.parcours_id}-${s.element_programme_id}`)
+  );
+
+  const aFaire = Array.from(pairesAEstimer.entries()).filter(([cle]) => !dejaTraitees.has(cle));
+
+  let nbEstimees = 0;
+  let nbNonConcluantes = 0;
+  for (const [, { parcoursId, elementId }] of aFaire) {
+    try {
+      const resultat = await estimerProgressionAutomatique(parcoursId, elementId);
+      if ("concluant" in resultat && resultat.concluant) nbEstimees++;
+      else nbNonConcluantes++;
+    } catch (e) {
+      console.error("Erreur lors du rattrapage", parcoursId, elementId, e);
+      nbNonConcluantes++;
+    }
+  }
+
+  revalidatePath("/progression");
+  revalidatePath("/tableau-de-bord");
+  return { nbTraitees: aFaire.length, nbEstimees, nbNonConcluantes };
+}
+
 export async function appliquerPropositionProgression(
   parcoursId: string,
   elementProgrammeId: string,

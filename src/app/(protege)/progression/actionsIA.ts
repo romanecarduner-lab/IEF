@@ -349,17 +349,18 @@ Règles impératives :
 - Réponds UNIQUEMENT avec un objet JSON de cette forme exacte, sans rien d'autre autour :
 {"statutCode": "<un des codes ci-dessus, ou null>", "justification": "..."}`;
 
-  const resultat = await appellerClaude(prompt, 500);
+  const resultat = await appellerClaude(prompt, 1000);
   if ("erreur" in resultat) return resultat;
 
+  // Extrait le premier bloc JSON complet de la reponse, plutot que de
+  // supposer que le texte entier n'est que du JSON : plus robuste si le
+  // modele ajoute un commentaire avant/apres malgre la consigne, ou si
+  // les barrieres de code ne sont pas exactement celles attendues.
   let donnees: unknown;
   try {
-    const nettoye = resultat.texte
-      .trim()
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/```\s*$/i, "");
-    donnees = JSON.parse(nettoye);
+    const correspondance = resultat.texte.match(/\{[\s\S]*\}/);
+    if (!correspondance) throw new Error("Aucun objet JSON trouve dans la reponse.");
+    donnees = JSON.parse(correspondance[0]);
   } catch {
     console.error("Réponse IA (estimation progression) non interprétable :", resultat.texte);
     return { erreur: "La réponse de l'IA n'a pas pu être lue. Merci de réessayer." };
@@ -436,17 +437,14 @@ Règles impératives :
 - Réponds UNIQUEMENT avec un tableau JSON de cette forme exacte, sans rien d'autre autour :
 [{"titre": "...", "description": "..."}, {"titre": "...", "description": "..."}, {"titre": "...", "description": "..."}]`;
 
-  const resultat = await appellerClaude(prompt, 700);
+  const resultat = await appellerClaude(prompt, 1000);
   if ("erreur" in resultat) return resultat;
 
   let donnees: unknown;
   try {
-    const nettoye = resultat.texte
-      .trim()
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/```\s*$/i, "");
-    donnees = JSON.parse(nettoye);
+    const correspondance = resultat.texte.match(/\[[\s\S]*\]/);
+    if (!correspondance) throw new Error("Aucun tableau JSON trouve dans la reponse.");
+    donnees = JSON.parse(correspondance[0]);
   } catch {
     console.error("Réponse IA (idées d'activités) non interprétable :", resultat.texte);
     return { erreur: "La réponse de l'IA n'a pas pu être lue. Merci de réessayer." };

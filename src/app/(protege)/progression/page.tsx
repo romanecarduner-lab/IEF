@@ -6,6 +6,7 @@ import { SelecteurStatutProgression } from "./SelecteurStatutProgression";
 import { GraphiqueProgression, type DonneesDomaine } from "./GraphiqueProgression";
 import { BoutonSyntheseIA } from "./BoutonSyntheseIA";
 import { VueATravailler } from "./VueATravailler";
+import { BoutonRattrapageEstimations } from "./BoutonRattrapageEstimations";
 import { VueHistorique } from "./VueHistorique";
 import { SUGGESTION_DEPUIS_AUTONOMIE } from "@/lib/moteurProgression";
 import { BoutonEstimationAutomatique } from "./BoutonEstimationAutomatique";
@@ -317,6 +318,10 @@ export default async function PageProgression({
             période précise, ou une éventuelle proposition en attente
             de validation propre à cette période.
           </p>
+
+          {enfantIdActuel && cycleIdActuel && (
+            <BoutonRattrapageEstimations enfantId={enfantIdActuel} cycleId={cycleIdActuel} />
+          )}
 
           {donneesGraphique.length > 0 && (
             <GraphiqueProgression donnees={donneesGraphique} />
