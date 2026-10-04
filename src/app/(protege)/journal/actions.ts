@@ -158,7 +158,10 @@ export async function creerActivite(
   });
 
   if (error) {
-    return { erreur: "Impossible d'enregistrer cette activité. Merci de réessayer." };
+    console.error("Erreur lors de l'insertion de l'activite", error);
+    return {
+      erreur: `Impossible d'enregistrer cette activité (${error.message || error.code || "erreur inconnue"}). Merci de réessayer.`,
+    };
   }
 
   revalidatePath("/journal");
