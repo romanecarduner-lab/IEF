@@ -145,78 +145,99 @@ function ajouterDiapositiveSousDomaine(
   domaineNom: string,
   sousDomaine: DomaineDocumentPedagogique["sousDomaines"][number]
 ) {
-  const slide = pptx.addSlide();
-  slide.background = { color: "FFFFFF" };
-
-  slide.addText(domaineNom, {
-    x: 0.5,
-    y: 0.3,
-    w: 12.3,
-    h: 0.35,
-    fontSize: 11,
-    color: ARDOISE,
-    isTextBox: true,
-  });
-  slide.addText(sousDomaine.nom, {
-    x: 0.5,
-    y: 0.65,
-    w: 12.3,
-    h: 0.6,
-    fontSize: 18,
-    color: VERT_FORET,
-    bold: true,
-    isTextBox: true,
-  });
-  if (sousDomaine.synthese) {
-    slide.addText(sousDomaine.synthese, {
-      x: 0.5,
-      y: 1.35,
-      w: 12.3,
-      h: 1.8,
-      fontSize: 11,
-      color: ENCRE,
-      valign: "top",
-      isTextBox: true,
-      margin: 0,
-    });
+  // Une diapositive porte la synthese et deux exemples au plus ; au-dela,
+  // des diapositives de suite reprennent les exemples suivants (deux par
+  // deux), sans repeter la synthese.
+  const groupes: (typeof sousDomaine.exemples)[] = [];
+  for (let i = 0; i < sousDomaine.exemples.length; i += 2) {
+    groupes.push(sousDomaine.exemples.slice(i, i + 2));
   }
+  if (groupes.length === 0) groupes.push([]);
 
-  const nbExemples = sousDomaine.exemples.length;
-  const largeurExemple = nbExemples === 2 ? 5.95 : 12.3;
-  sousDomaine.exemples.forEach((exemple, i) => {
-    const x = 0.5 + i * (largeurExemple + 0.3);
-    if (exemple.imageBase64) {
-      slide.addImage({
-        data: `image/jpeg;base64,${exemple.imageBase64}`,
-        x,
-        y: 3.4,
-        w: largeurExemple,
-        h: 2.4,
-        sizing: { type: "cover", w: largeurExemple, h: 2.4 },
-      });
-    }
-    slide.addText(`${exemple.titre}  ·  ${exemple.date}`, {
-      x,
-      y: 5.9,
-      w: largeurExemple,
-      h: 0.3,
-      fontSize: 9,
+  groupes.forEach((groupe, indexGroupe) => {
+    const slide = pptx.addSlide();
+    slide.background = { color: "FFFFFF" };
+
+    slide.addText(domaineNom, {
+      x: 0.5,
+      y: 0.3,
+      w: 12.3,
+      h: 0.35,
+      fontSize: 11,
       color: ARDOISE,
       isTextBox: true,
     });
-    if (exemple.synthese) {
-      slide.addText(exemple.synthese, {
-        x,
-        y: 6.2,
-        w: largeurExemple,
-        h: 1.2,
-        fontSize: 10,
+    slide.addText(indexGroupe === 0 ? sousDomaine.nom : `${sousDomaine.nom} (suite)`, {
+      x: 0.5,
+      y: 0.65,
+      w: 12.3,
+      h: 0.6,
+      fontSize: 18,
+      color: VERT_FORET,
+      bold: true,
+      isTextBox: true,
+    });
+    if (indexGroupe === 0 && sousDomaine.synthese) {
+      slide.addText(sousDomaine.synthese, {
+        x: 0.5,
+        y: 1.35,
+        w: 12.3,
+        h: 1.8,
+        fontSize: 11,
         color: ENCRE,
         valign: "top",
         isTextBox: true,
         margin: 0,
       });
     }
+
+    const largeurExemple = groupe.length === 2 ? 5.95 : 12.3;
+    const yImages = indexGroupe === 0 ? 3.4 : 1.5;
+    const hauteurImages = indexGroupe === 0 ? 2.4 : 3.6;
+    groupe.forEach((exemple, i) => {
+      const x = 0.5 + i * (largeurExemple + 0.3);
+      const nb = exemple.imagesBase64.length;
+      if (nb > 0) {
+        // Photos cote a cote dans la largeur de l'exemple (3 au plus par
+        // rangee, les suivantes sont ignorees faute de place).
+        const photos = exemple.imagesBase64.slice(0, 3);
+        const ecart = 0.08;
+        const largeurPhoto = (largeurExemple - ecart * (photos.length - 1)) / photos.length;
+        photos.forEach((img, k) => {
+          slide.addImage({
+            data: `image/jpeg;base64,${img}`,
+            x: x + k * (largeurPhoto + ecart),
+            y: yImages,
+            w: largeurPhoto,
+            h: hauteurImages,
+            sizing: { type: "cover", w: largeurPhoto, h: hauteurImages },
+          });
+        });
+      }
+      const yTexte = yImages + hauteurImages + 0.1;
+      slide.addText(`${exemple.titre}  ·  ${exemple.date}`, {
+        x,
+        y: yTexte,
+        w: largeurExemple,
+        h: 0.3,
+        fontSize: 9,
+        color: ARDOISE,
+        isTextBox: true,
+      });
+      if (exemple.synthese) {
+        slide.addText(exemple.synthese, {
+          x,
+          y: yTexte + 0.3,
+          w: largeurExemple,
+          h: 1.2,
+          fontSize: 10,
+          color: ENCRE,
+          valign: "top",
+          isTextBox: true,
+          margin: 0,
+        });
+      }
+    });
   });
 }
 

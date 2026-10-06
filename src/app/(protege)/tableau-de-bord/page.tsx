@@ -162,7 +162,34 @@ export default async function PageTableauDeBord({
   // volontaire : la selection est gratuite et immediate (pas d'IA),
   // l'idee concrete reste a un clic. Tirage aleatoire a chaque
   // chargement (enfant, domaine, ET competence dans le domaine).
-  type Candidat = { id: string; libelle: string; domaine: string; enfantPrenom: string; parcoursId: string };
+  type Candidat = {
+    id: string;
+    libelle: string;
+    domaine: string;
+    enfantPrenom: string;
+    parcoursId: string;
+    // Renseigne quand la competence appartient a un sous-domaine dans
+    // lequel RIEN n'a encore ete observe (pas seulement cette competence).
+    sousDomaineVierge?: string;
+  };
+
+  // Chemins complets (domaine > sous-domaine > ... > objectif) par petits
+  // groupes d'identifiants : evite une liste trop longue dans une seule
+  // requete, et contourne la limite de lignes d'une requete non filtree.
+  async function chargerChemins(ids: string[]): Promise<Map<string, string>> {
+    const morceaux: string[][] = [];
+    for (let i = 0; i < ids.length; i += 150) morceaux.push(ids.slice(i, i + 150));
+    const reponses = await Promise.all(
+      morceaux.map((m) =>
+        supabase.from("v_chemin_complet_objectif").select("objectif_id, chemin").in("objectif_id", m)
+      )
+    );
+    const carte = new Map<string, string>();
+    for (const r of reponses) {
+      for (const c of r.data ?? []) carte.set(c.objectif_id as string, c.chemin as string);
+    }
+    return carte;
+  }
   // Un seul parcours traite par (enfant, cycle) : sinon, un enfant ayant
   // deux annees du meme cycle verrait ses suggestions calculees deux
   // fois (une par annee), pour le meme resultat en double.
@@ -194,7 +221,28 @@ export default async function PageTableauDeBord({
         (observations ?? []).map((o) => o.element_programme_id as string)
       );
 
+      // Sous-domaine d'une competence = 2e segment de son chemin complet
+      // (on ignore les structures a deux niveaux seulement, ou ce
+      // "sous-domaine" serait la competence elle-meme).
+      const chemins = await chargerChemins(
+        (tousLesObjectifs ?? []).map((o) => o.objectif_id as string)
+      );
+      const cleSousDomaine = (id: string): string | null => {
+        const segments = chemins.get(id)?.split(" > ");
+        if (!segments || segments.length < 3) return null;
+        return `${segments[0]} > ${segments[1]}`;
+      };
+      const sousDomainesTouches = new Set<string>();
+      for (const id of idsAbordes) {
+        const cle = cleSousDomaine(id);
+        if (cle) sousDomainesTouches.add(cle);
+      }
+
       const nonAbordesParDomaine = new Map<string, { id: string; libelle: string }[]>();
+      const viergesParSousDomaine = new Map<
+        string,
+        { id: string; libelle: string; domaine: string; sousDomaine: string }[]
+      >();
       for (const o of tousLesObjectifs ?? []) {
         const id = o.objectif_id as string;
         if (idsAbordes.has(id)) continue;
@@ -202,13 +250,25 @@ export default async function PageTableauDeBord({
         const liste = nonAbordesParDomaine.get(domaine) ?? [];
         liste.push({ id, libelle: o.libelle as string });
         nonAbordesParDomaine.set(domaine, liste);
+
+        const cle = cleSousDomaine(id);
+        if (cle && !sousDomainesTouches.has(cle)) {
+          const listeVierge = viergesParSousDomaine.get(cle) ?? [];
+          listeVierge.push({
+            id,
+            libelle: o.libelle as string,
+            domaine,
+            sousDomaine: cle.split(" > ")[1] ?? cle,
+          });
+          viergesParSousDomaine.set(cle, listeVierge);
+        }
       }
 
-      const candidats: Candidat[] = [];
+      const normaux: Candidat[] = [];
       for (const [domaine, objectifs] of nonAbordesParDomaine) {
         const choisi = objectifs[Math.floor(Math.random() * objectifs.length)];
         if (!choisi) continue;
-        candidats.push({
+        normaux.push({
           id: choisi.id,
           libelle: choisi.libelle,
           domaine,
@@ -216,11 +276,37 @@ export default async function PageTableauDeBord({
           parcoursId: p.id,
         });
       }
-      return candidats;
+
+      const vierges: Candidat[] = [];
+      for (const objectifs of viergesParSousDomaine.values()) {
+        const choisi = objectifs[Math.floor(Math.random() * objectifs.length)];
+        if (!choisi) continue;
+        vierges.push({
+          id: choisi.id,
+          libelle: choisi.libelle,
+          domaine: choisi.domaine,
+          enfantPrenom: p.enfant,
+          parcoursId: p.id,
+          sousDomaineVierge: choisi.sousDomaine,
+        });
+      }
+      return { normaux, vierges };
     })
   );
 
-  const suggestionsCompetences = melanger(candidatsParEnfant.flat()).slice(0, 3);
+  // Trois suggestions : toujours des competences pas encore abordees,
+  // dont UNE choisie, quand c'est possible, dans un sous-domaine ou rien
+  // n'a encore ete observe du tout. L'ordre est melange pour que celle-ci
+  // ne soit pas toujours en premiere position.
+  const tousNormaux = candidatsParEnfant.flatMap((c) => c.normaux);
+  const tousVierges = candidatsParEnfant.flatMap((c) => c.vierges);
+  const viergeChoisie = melanger(tousVierges)[0];
+  const suggestionsCompetences = viergeChoisie
+    ? melanger([
+        viergeChoisie,
+        ...melanger(tousNormaux.filter((c) => c.id !== viergeChoisie.id)).slice(0, 2),
+      ])
+    : melanger(tousNormaux).slice(0, 3);
 
   // Chemin complet (tranche d'age comprise) recupere seulement pour les
   // quelques suggestions finalement retenues -- requete bornee, pas un
@@ -494,6 +580,12 @@ export default async function PageTableauDeBord({
                         {plusieursEnfants && ` · ${s.enfantPrenom}`}
                       </p>
                       <p className="mb-1 text-sm text-encre">{s.libelle}</p>
+                      {s.sousDomaineVierge && (
+                        <p className="mb-1 text-xs text-mousse-fonce">
+                          Rien n&rsquo;a encore été abordé dans ce sous-domaine
+                          ({s.sousDomaineVierge})
+                        </p>
+                      )}
                       {dupliqueParmiLesSuggestions && cheminParObjectifId.has(s.id) && (
                         <p className="mb-1 text-xs text-ardoise">
                           {cheminParObjectifId.get(s.id)}

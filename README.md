@@ -316,6 +316,57 @@ Vérifié par ailleurs que le bouton d'envoi du formulaire se désactive
 déjà bien pendant l'enregistrement (pas de double-clic possible côté
 client).
 
+## Enregistrement d'une activité : l'estimation ne fait plus attendre
+
+Signalé : avec plusieurs photos, le bouton restait sur "Envoi des 4 photos"
+alors que l'activité était déjà dans le Journal. Cause : après la création
+(l'indicateur "synchronisé" s'affiche aussitôt) et l'envoi des photos, le
+formulaire attendait encore l'estimation automatique de CHAQUE compétence,
+une par une (devenue séquentielle depuis la correction des conflits, donc
+plus lente, avec parfois une rédaction par compétence), et ne redirigeait
+qu'à la fin.
+
+Corrigé : `creerObservations` n'estime plus rien. L'activité, les photos et
+les compétences s'enregistrent, puis la redirection est immédiate. L'estimation
+part en arrière-plan via `POST /api/estimation-activite` (appel `keepalive`
+non attendu, durée maximale 60 s, compétences traitées une à une), déclenchée
+par le formulaire de création et par la page "Compétences observées". Les
+statuts apparaissent donc quelques instants après, sur Progression ; ce qui
+n'aurait pas pu être estimé reste à choisir à la main (étiquette "à choisir
+vous-même") ou rattrapable par le bouton de rattrapage. L'étape en cours est
+aussi affichée ("Enregistrement des compétences…") et cet enregistrement a
+un délai maximal de 30 s. L'ancien message d'avertissement d'estimation, sans
+objet, est retiré.
+
+## Export : exemples au choix (activités et photos), sans répétition, et suggestion d'un sous-domaine vide
+
+- **Choix des exemples** : sous chaque sous-domaine, "Choisir les exemples et
+  les photos" ouvre une bande défilante d'activités candidates (celles reliées
+  aux compétences observées du sous-domaine, toutes années du cycle). On coche
+  celles à retenir ; cocher une activité rédige un court texte pour cet
+  exemple (modifiable). On touche ensuite les photos à montrer, plusieurs par
+  activité possibles. Tout changement fige le sous-domaine : la préparation
+  groupée ne le regénère plus.
+- **Pas de répétition** : la répartition se fait avant toute rédaction
+  (`repartirExemples`), de façon déterministe : les sous-domaines ayant le moins
+  de candidates choisissent d'abord ; ordre de préférence, activité pas encore
+  utilisée avec photo, pas encore utilisée sans photo, puis seulement s'il n'y a
+  pas assez de choix, une activité déjà utilisée. Les favorites passent avant
+  les autres, puis l'année du dossier, puis la plus récente. Au moins 2 exemples
+  par sous-domaine quand c'est possible. Les activités déjà retenues à la main
+  dans d'autres sous-domaines comptent comme utilisées.
+- **Stockage** : nouvelle colonne `exemples` (jsonb) sur
+  `dossiers_export_sous_domaines` (migration 0062) : liste libre de
+  `{activite_id, synthese, trace_ids}` à la place des deux champs fixes.
+- **PDF et PowerPoint** : exemples par rangées de deux, plusieurs photos par
+  exemple ; PowerPoint : deux exemples par diapositive, diapositives de suite
+  au-delà.
+- **Tableau de bord, "Idées pour continuer"** : trois suggestions, toujours
+  des compétences pas encore abordées, dont une choisie quand c'est possible
+  dans un sous-domaine où rien n'a encore été observé (mention affichée).
+- La préparation signale désormais clairement une migration manquante (vue des
+  chemins, colonne des exemples) au lieu de ne rien produire.
+
 ## Migrations manquantes en base, préparation de l'export en lots, navigation par domaine
 
 - **Deux migrations n'avaient jamais été exécutées** chez l'utilisatrice

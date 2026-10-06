@@ -18,6 +18,7 @@ import {
 } from "@/lib/brouillonLocal";
 import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaximal";
 import { RechercheCompetences } from "./RechercheCompetences";
+import { declencherEstimationArrierePlan } from "@/lib/estimationArrierePlan";
 
 type Option = { id: string; libelle: string };
 type OptionParcours = Option & {
@@ -472,29 +473,31 @@ export function FormulaireActivite({
         return;
       }
 
-      let avertissementEstimation: string | undefined;
       if (suggestionsChoisies.size > 0) {
+        setEtapeEnvoi("Enregistrement des compétences…");
         try {
-          const resultatObservations = await creerObservations({
-            activiteId: resultat.id,
-            elements: Array.from(suggestionsChoisies.keys()).map((id) => ({
-              id,
-              niveauAutonomieId: niveauParCompetence.get(id) || niveauCompetencesId || autonomies[0]?.id || "",
-            })),
-            justification: "",
-            commentairePedagogique: "",
-          });
-          if ("avertissement" in resultatObservations && resultatObservations.avertissement) {
-            avertissementEstimation = resultatObservations.avertissement;
-          }
+          await avecDelaiMaximal(
+            creerObservations({
+              activiteId: resultat.id,
+              elements: Array.from(suggestionsChoisies.keys()).map((id) => ({
+                id,
+                niveauAutonomieId: niveauParCompetence.get(id) || niveauCompetencesId || autonomies[0]?.id || "",
+              })),
+              justification: "",
+              commentairePedagogique: "",
+            }),
+            30000
+          );
+          // Statuts automatiques calcules en arriere-plan : on ne fait pas
+          // attendre, l'activite est deja enregistree.
+          declencherEstimationArrierePlan(resultat.id);
         } catch (erreurCompetences) {
           console.error(
             "Erreur lors de l'enregistrement des compétences suggérées",
             erreurCompetences
           );
-          // Non bloquant : l'activité (et la photo éventuelle) restent
-          // enregistrées ; les compétences pourront être ajoutées depuis la
-          // fiche de l'activité.
+          // Non bloquant : l'activité (et les photos) restent enregistrées ;
+          // les compétences pourront être ajoutées depuis la fiche.
         }
       }
 
@@ -544,23 +547,10 @@ export function FormulaireActivite({
         return;
       }
 
-      // Un avertissement d'estimation (statut automatique pas confirme
-      // pour une ou plusieurs competences) ne doit JAMAIS empecher la
-      // redirection : l'activite et ses observations sont deja bien
-      // enregistrees a ce stade. Bloquer ici inviterait a renvoyer tout
-      // le formulaire, ce qui cree une activite en double plutot que de
-      // corriger quoi que ce soit (le vrai souci se regle depuis
-      // Progression, pas en recreant l'activite).
-      if (avertissementEstimation) {
-        console.error("Avertissement estimation automatique (non bloquant) :", avertissementEstimation);
-      }
-
       if (idsActivitesCreees.length > 1) {
         router.push(`/journal/nouvelle/recapitulatif?ids=${idsActivitesCreees.join(",")}`);
       } else {
-        router.push(
-          `/journal/${resultat.id}${avertissementEstimation ? "?avertissement_estimation=1" : ""}`
-        );
+        router.push(`/journal/${resultat.id}`);
       }
       router.refresh();
     } catch (erreurInattendue) {

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { creerClientServeur } from "@/lib/supabase/server";
+import { lireExemples, morceaux } from "@/lib/exemplesExport";
 import {
   DocumentDossierPedagogique,
   type DomaineDocumentPedagogique,
@@ -263,79 +264,72 @@ export async function finaliserDossier(
   // affiche, photos comprises.
   const { data: sousDomainesBruts } = await supabase
     .from("dossiers_export_sous_domaines")
-    .select(
-      "domaine, sous_domaine, synthese, exemple1_activite_id, exemple1_synthese, exemple2_activite_id, exemple2_synthese"
-    )
-    .eq("dossier_id", dossierId);
+    .select("domaine, sous_domaine, synthese, exemples")
+    .eq("dossier_id", dossierId)
+    .order("domaine")
+    .order("sous_domaine");
 
-  const idsExemples = Array.from(
-    new Set(
-      (sousDomainesBruts ?? [])
-        .flatMap((s) => [s.exemple1_activite_id, s.exemple2_activite_id])
-        .filter((id): id is string => Boolean(id))
-    )
+  const exemplesParSousDomaine = new Map(
+    (sousDomainesBruts ?? []).map((s) => [s.sous_domaine as string, lireExemples(s)])
+  );
+  const idsActivites = Array.from(
+    new Set(Array.from(exemplesParSousDomaine.values()).flatMap((l) => l.map((e) => e.activite_id)))
+  );
+  const idsPhotos = Array.from(
+    new Set(Array.from(exemplesParSousDomaine.values()).flatMap((l) => l.flatMap((e) => e.trace_ids)))
   );
 
-  const [{ data: activitesExemples }, { data: tracesExemples }] = await Promise.all([
-    idsExemples.length > 0
-      ? supabase.from("activites").select("id, titre, date_activite").in("id", idsExemples)
+  const [{ data: activitesExemples }, { data: photosRetenues }] = await Promise.all([
+    idsActivites.length > 0
+      ? supabase.from("activites").select("id, titre, date_activite").in("id", idsActivites)
       : Promise.resolve({ data: [] as { id: string; titre: string; date_activite: string }[] }),
-    idsExemples.length > 0
-      ? supabase
-          .from("traces")
-          .select("activite_id, chemin_stockage, types_trace!inner(code)")
-          .in("activite_id", idsExemples)
-          .eq("types_trace.code", "photo")
-          .order("date_trace", { ascending: true })
-      : Promise.resolve({ data: [] as { activite_id: string; chemin_stockage: string | null }[] }),
+    idsPhotos.length > 0
+      ? supabase.from("traces").select("id, chemin_stockage").in("id", idsPhotos)
+      : Promise.resolve({ data: [] as { id: string; chemin_stockage: string | null }[] }),
   ]);
 
   const activiteParId = new Map((activitesExemples ?? []).map((a) => [a.id as string, a]));
 
-  // Telechargement des photos en parallele, en base64 pour l'inclure
+  // Telechargement des photos retenues, par petits groupes (pour ne pas
+  // saturer la memoire ni le reseau), en base64 pour les inclure
   // directement dans le PDF et le PowerPoint.
-  const cheminParActivite = new Map<string, string>();
-  for (const t of tracesExemples ?? []) {
-    const activiteId = t.activite_id as string;
-    if (!cheminParActivite.has(activiteId) && t.chemin_stockage) {
-      cheminParActivite.set(activiteId, t.chemin_stockage as string);
-    }
+  const base64ParPhoto = new Map<string, string>();
+  for (const groupe of morceaux(photosRetenues ?? [], 6)) {
+    await Promise.all(
+      groupe.map(async (t) => {
+        if (!t.chemin_stockage) return;
+        const { data: fichier } = await supabase.storage
+          .from("traces-pedagogiques")
+          .download(t.chemin_stockage as string);
+        if (fichier) {
+          base64ParPhoto.set(t.id as string, Buffer.from(await fichier.arrayBuffer()).toString("base64"));
+        }
+      })
+    );
   }
-  const photoBase64ParActivite = new Map<string, string>();
-  await Promise.all(
-    Array.from(cheminParActivite.entries()).map(async ([activiteId, chemin]) => {
-      const { data: fichier } = await supabase.storage
-        .from("traces-pedagogiques")
-        .download(chemin);
-      if (fichier) {
-        photoBase64ParActivite.set(activiteId, Buffer.from(await fichier.arrayBuffer()).toString("base64"));
-      }
-    })
-  );
 
   const domainesParNom = new Map<string, DomaineDocumentPedagogique>();
   for (const s of sousDomainesBruts ?? []) {
     const nomDomaine = s.domaine as string;
+    const nomSousDomaine = s.sous_domaine as string;
     const domaineDoc = domainesParNom.get(nomDomaine) ?? { nom: nomDomaine, sousDomaines: [] };
 
     const exemples: ExempleDocument[] = [];
-    for (const [idChamp, syntheseChamp] of [
-      [s.exemple1_activite_id, s.exemple1_synthese],
-      [s.exemple2_activite_id, s.exemple2_synthese],
-    ] as const) {
-      if (!idChamp) continue;
-      const a = activiteParId.get(idChamp as string);
+    for (const e of exemplesParSousDomaine.get(nomSousDomaine) ?? []) {
+      const a = activiteParId.get(e.activite_id);
       if (!a) continue;
       exemples.push({
         titre: a.titre as string,
         date: new Date(a.date_activite as string).toLocaleDateString("fr-FR"),
-        synthese: (syntheseChamp as string) ?? "",
-        imageBase64: photoBase64ParActivite.get(idChamp as string),
+        synthese: e.synthese ?? "",
+        imagesBase64: e.trace_ids
+          .map((id) => base64ParPhoto.get(id))
+          .filter((b): b is string => Boolean(b)),
       });
     }
 
     domaineDoc.sousDomaines.push({
-      nom: s.sous_domaine as string,
+      nom: nomSousDomaine,
       synthese: (s.synthese as string) ?? "",
       exemples,
     });

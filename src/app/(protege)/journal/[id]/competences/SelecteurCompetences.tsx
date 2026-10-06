@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { declencherEstimationArrierePlan } from "@/lib/estimationArrierePlan";
 import { creerObservations } from "./actions";
 import { creerClientNavigateur } from "@/lib/supabase/client";
 import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaximal";
@@ -191,9 +192,8 @@ export function SelecteurCompetences({
         return;
       }
 
-      if (resultat.avertissement) {
-        setErreur(resultat.avertissement);
-      }
+      // Statuts automatiques calcules en arriere-plan, sans faire attendre.
+      declencherEstimationArrierePlan(activiteId);
       setSucces(`${resultat.nombreCreees} objectif(s) enregistré(s).`);
       setSelection(new Map());
       setJustification("");

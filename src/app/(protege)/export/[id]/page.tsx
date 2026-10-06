@@ -7,6 +7,8 @@ import { BoutonFinaliserJournal } from "./BoutonFinaliserJournal";
 import { BoutonPreparerFormulations } from "./BoutonPreparerFormulations";
 import { EditeurFormulation } from "./EditeurFormulation";
 import { AideContextuelle } from "@/components/AideContextuelle";
+import { SelecteurExemples } from "./SelecteurExemples";
+import { lireExemples, morceaux } from "@/lib/exemplesExport";
 
 // Duree maximale d'execution des actions serveur declenchees depuis cette page
 // (preparation groupee, rattrapage) : par defaut trop courte pour plusieurs
@@ -215,43 +217,56 @@ export default async function PageDossierExport({
   // laquelle reste disponible telle quelle sur la page Progression.
   const { data: sousDomainesBruts } = await supabase
     .from("dossiers_export_sous_domaines")
-    .select(
-      "domaine, sous_domaine, synthese, exemple1_activite_id, exemple1_synthese, exemple2_activite_id, exemple2_synthese"
-    )
-    .eq("dossier_id", params.id);
+    .select("domaine, sous_domaine, synthese, exemples")
+    .eq("dossier_id", params.id)
+    .order("domaine")
+    .order("sous_domaine");
 
-  const idsExemples = Array.from(
-    new Set(
-      (sousDomainesBruts ?? [])
-        .flatMap((s) => [s.exemple1_activite_id, s.exemple2_activite_id])
-        .filter((id): id is string => Boolean(id))
-    )
+  const exemplesParSousDomaine = new Map(
+    (sousDomainesBruts ?? []).map((s) => [s.sous_domaine as string, lireExemples(s)])
+  );
+  const idsActivitesExemples = Array.from(
+    new Set(Array.from(exemplesParSousDomaine.values()).flatMap((l) => l.map((e) => e.activite_id)))
+  );
+  const idsPhotosRetenues = Array.from(
+    new Set(Array.from(exemplesParSousDomaine.values()).flatMap((l) => l.flatMap((e) => e.trace_ids)))
   );
 
-  const [{ data: activitesExemples }, { data: tracesExemples }] = await Promise.all([
-    idsExemples.length > 0
-      ? supabase.from("activites").select("id, titre, date_activite").in("id", idsExemples)
+  const [{ data: activitesExemples }, { data: photosRetenues }] = await Promise.all([
+    idsActivitesExemples.length > 0
+      ? supabase.from("activites").select("id, titre, date_activite").in("id", idsActivitesExemples)
       : Promise.resolve({ data: [] }),
-    idsExemples.length > 0
+    idsPhotosRetenues.length > 0
       ? supabase
           .from("traces")
-          .select("activite_id, chemin_stockage, types_trace!inner(code)")
-          .in("activite_id", idsExemples)
-          .eq("types_trace.code", "photo")
-          .order("date_trace", { ascending: true })
+          .select("id, chemin_stockage, miniature_chemin_stockage")
+          .in("id", idsPhotosRetenues)
       : Promise.resolve({ data: [] }),
   ]);
 
   const activiteParId = new Map((activitesExemples ?? []).map((a) => [a.id as string, a]));
-  const photoParActivite = new Map<string, string>();
-  for (const t of tracesExemples ?? []) {
-    const activiteId = t.activite_id as string;
-    if (photoParActivite.has(activiteId) || !t.chemin_stockage) continue;
+
+  // Liens temporaires des photos retenues, en une seule requete groupee.
+  const cheminParPhoto = new Map(
+    (photosRetenues ?? []).flatMap((t) => {
+      const chemin = (t.miniature_chemin_stockage ?? t.chemin_stockage) as string | null;
+      return chemin ? [[t.id as string, chemin] as const] : [];
+    })
+  );
+  const urlParChemin = new Map<string, string>();
+  const cheminsUniques = Array.from(new Set(cheminParPhoto.values()));
+  for (const groupe of morceaux(cheminsUniques, 80)) {
     const { data } = await supabase.storage
       .from("traces-pedagogiques")
-      .createSignedUrl(t.chemin_stockage as string, DUREE_SIGNATURE_SECONDES);
-    if (data?.signedUrl) photoParActivite.set(activiteId, data.signedUrl);
+      .createSignedUrls(groupe, DUREE_SIGNATURE_SECONDES);
+    for (const e of data ?? []) {
+      if (e.path && e.signedUrl) urlParChemin.set(e.path, e.signedUrl);
+    }
   }
+  const urlPhoto = (traceId: string): string | undefined => {
+    const chemin = cheminParPhoto.get(traceId);
+    return chemin ? urlParChemin.get(chemin) : undefined;
+  };
 
   const sousDomainesParDomaine = new Map<string, typeof sousDomainesBruts>();
   for (const s of sousDomainesBruts ?? []) {
@@ -371,74 +386,70 @@ export default async function PageDossierExport({
               </summary>
               <div className="space-y-5 border-t border-trait p-4 pt-3">
                 {(sousDomaines ?? []).map((s) => {
-                  const exemples = [
-                    s.exemple1_activite_id
-                      ? {
-                          activite: activiteParId.get(s.exemple1_activite_id as string),
-                          photo: photoParActivite.get(s.exemple1_activite_id as string),
-                          synthese: (s.exemple1_synthese as string) ?? "",
-                          champ: "exemple1_synthese" as const,
-                        }
-                      : null,
-                    s.exemple2_activite_id
-                      ? {
-                          activite: activiteParId.get(s.exemple2_activite_id as string),
-                          photo: photoParActivite.get(s.exemple2_activite_id as string),
-                          synthese: (s.exemple2_synthese as string) ?? "",
-                          champ: "exemple2_synthese" as const,
-                        }
-                      : null,
-                  ].filter((e): e is NonNullable<typeof e> => Boolean(e));
+                  const nomSousDomaine = s.sous_domaine as string;
+                  const exemples = exemplesParSousDomaine.get(nomSousDomaine) ?? [];
 
                   return (
-                    <div key={s.sous_domaine as string}>
-                      <p className="mb-2 text-sm font-medium text-encre">
-                        {s.sous_domaine as string}
-                      </p>
+                    <div key={nomSousDomaine}>
+                      <p className="mb-2 text-sm font-medium text-encre">{nomSousDomaine}</p>
                       <EditeurFormulation
                         dossierId={params.id}
-                        sousDomaine={s.sous_domaine as string}
-                        champ="synthese"
+                        sousDomaine={nomSousDomaine}
                         texteInitial={(s.synthese as string) ?? ""}
                         rows={4}
                       />
 
                       {exemples.length > 0 && (
                         <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                          {exemples.map((e, i) => (
-                            <div
-                              key={i}
-                              className="rounded-doux border border-trait bg-white p-3"
-                            >
-                              {e.photo && (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={e.photo}
-                                  alt=""
-                                  className="mb-2 h-32 w-full rounded-doux object-cover"
+                          {exemples.map((e) => {
+                            const activite = activiteParId.get(e.activite_id);
+                            const photos = e.trace_ids.map(urlPhoto).filter((u): u is string => Boolean(u));
+                            return (
+                              <div
+                                key={e.activite_id}
+                                className="rounded-doux border border-trait bg-white p-3"
+                              >
+                                {photos.length > 0 && (
+                                  <div
+                                    className={`mb-2 grid gap-1 ${
+                                      photos.length === 1 ? "grid-cols-1" : "grid-cols-2"
+                                    }`}
+                                  >
+                                    {photos.map((url, i) => (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img
+                                        key={i}
+                                        src={url}
+                                        alt=""
+                                        className={`w-full rounded-doux object-cover ${
+                                          photos.length === 1 ? "h-32" : "h-20"
+                                        }`}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                                <p className="text-xs font-medium text-encre">
+                                  {activite?.titre as string | undefined}
+                                </p>
+                                <p className="mb-1 text-xs text-ardoise">
+                                  {activite?.date_activite
+                                    ? new Date(activite.date_activite as string).toLocaleDateString("fr-FR")
+                                    : ""}
+                                </p>
+                                <EditeurFormulation
+                                  dossierId={params.id}
+                                  sousDomaine={nomSousDomaine}
+                                  activiteId={e.activite_id}
+                                  texteInitial={e.synthese ?? ""}
+                                  rows={3}
                                 />
-                              )}
-                              <p className="text-xs font-medium text-encre">
-                                {e.activite?.titre as string | undefined}
-                              </p>
-                              <p className="mb-1 text-xs text-ardoise">
-                                {e.activite?.date_activite
-                                  ? new Date(e.activite.date_activite as string).toLocaleDateString(
-                                      "fr-FR"
-                                    )
-                                  : ""}
-                              </p>
-                              <EditeurFormulation
-                                dossierId={params.id}
-                                sousDomaine={s.sous_domaine as string}
-                                champ={e.champ}
-                                texteInitial={e.synthese}
-                                rows={3}
-                              />
-                            </div>
-                          ))}
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
+
+                      <SelecteurExemples dossierId={params.id} sousDomaine={nomSousDomaine} />
                     </div>
                   );
                 })}

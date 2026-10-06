@@ -2,18 +2,23 @@
 
 import { useState } from "react";
 import { enregistrerSousDomaine } from "./actionsFormulations";
+import { enregistrerSyntheseExemple } from "./actionsExemples";
 import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaximal";
 
+/**
+ * Zone de texte modifiable : la synthese d'un sous-domaine (sans
+ * activiteId) ou le texte d'un exemple precis (avec activiteId).
+ */
 export function EditeurFormulation({
   dossierId,
   sousDomaine,
-  champ,
+  activiteId,
   texteInitial,
   rows = 3,
 }: {
   dossierId: string;
   sousDomaine: string;
-  champ: "synthese" | "exemple1_synthese" | "exemple2_synthese";
+  activiteId?: string;
   texteInitial: string;
   rows?: number;
 }) {
@@ -27,7 +32,9 @@ export function EditeurFormulation({
     setErreur(null);
     try {
       const resultat = await avecDelaiMaximal(
-        enregistrerSousDomaine(dossierId, sousDomaine, champ, texte)
+        activiteId
+          ? enregistrerSyntheseExemple(dossierId, sousDomaine, activiteId, texte)
+          : enregistrerSousDomaine(dossierId, sousDomaine, texte)
       );
       if ("erreur" in resultat) {
         setErreur(resultat.erreur);
