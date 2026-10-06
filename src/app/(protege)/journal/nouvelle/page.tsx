@@ -3,6 +3,10 @@ import { creerClientServeur } from "@/lib/supabase/server";
 import { FormulaireActivite } from "./FormulaireActivite";
 import { AideContextuelle } from "@/components/AideContextuelle";
 
+// Les redactions automatiques lancees depuis cette page (description, observation)
+// peuvent depasser la duree par defaut d'une fonction serveur.
+export const maxDuration = 60;
+
 export default async function PageNouvelleActivite({
   searchParams,
 }: {

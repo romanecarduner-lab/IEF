@@ -325,7 +325,7 @@ export function FormulaireActivite({
           Array.from(suggestionsChoisies.values()),
           donnees.parcoursId
         ),
-        20000
+        55000
       );
       if ("erreur" in resultat) {
         setErreurFormulation(resultat.erreur);

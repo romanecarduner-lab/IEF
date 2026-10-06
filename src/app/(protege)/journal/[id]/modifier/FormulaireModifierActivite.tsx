@@ -45,7 +45,7 @@ export function FormulaireModifierActivite({
           undefined,
           activiteId
         ),
-        20000
+        55000
       );
       if ("erreur" in resultat) {
         setErreurFormulation(resultat.erreur);

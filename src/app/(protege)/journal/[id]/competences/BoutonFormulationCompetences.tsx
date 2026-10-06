@@ -51,7 +51,7 @@ export function BoutonFormulationCompetences({
           undefined,
           activiteId
         ),
-        30000
+        55000
       );
       if ("erreur" in resultat) {
         setErreur(resultat.erreur);

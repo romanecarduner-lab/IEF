@@ -271,7 +271,7 @@ export async function proposerFormulationPedagogique(
   }
   if (competencesRetenues.length === 0) {
     return {
-      erreur: "Sélectionnez d'abord au moins une compétence (mots-clés ou IA).",
+      erreur: "Sélectionnez d'abord au moins une compétence (mots-clés ou suggestions).",
     };
   }
 
@@ -319,13 +319,21 @@ Règles impératives :
 - Si la description mentionne plusieurs éléments ou étapes distincts, développe et interprète pédagogiquement CHACUN d'eux avec une attention comparable : ne consacre pas l'essentiel du paragraphe au premier élément en réduisant les autres à une simple mention en fin de phrase.
 - Si la description ne donne pas assez d'éléments pour développer longuement le lien avec une compétence, préfère un paragraphe plus court et fidèle plutôt que de compléter par des détails non vérifiés.
 - Ne recopie jamais le texte du programme officiel mot pour mot : reformule entièrement avec tes propres mots.
-- N'ajoute ni introduction, ni titre, ni commentaire : réponds uniquement avec le paragraphe.`;
+- N'utilise pas de tirets longs (— ou –) : préfère des virgules, des deux-points ou des phrases courtes.
+- N'ajoute ni introduction, ni titre, ni commentaire : réponds uniquement avec le paragraphe.${
+    competencesRetenues.length > 8
+      ? "\n- La liste de compétences est longue : regroupe-les par grands thèmes (par exemple le geste, le langage, le raisonnement, l'autonomie) au lieu de les citer une à une, sans en laisser de côté un thème entier."
+      : ""
+  }`;
 
-  let resultat = await appellerClaude(prompt, 700);
+  // Marge genereuse des le premier appel : avec beaucoup de competences, une
+  // limite trop juste donnait un texte vide, donc un second appel complet,
+  // ce qui doublait l'attente et depassait le delai autorise.
+  let resultat = await appellerClaude(prompt, 1800);
   if ("erreur" in resultat) return resultat;
 
   if (resultat.tronque || !resultat.texte.trim()) {
-    const nouvelleTentative = await appellerClaude(prompt, 1400);
+    const nouvelleTentative = await appellerClaude(prompt, 3200);
     if (!("erreur" in nouvelleTentative)) {
       resultat = nouvelleTentative;
     }
@@ -339,9 +347,9 @@ Règles impératives :
       "brut" in resultat ? resultat.brut : null
     );
     return {
-      erreur: `L'IA n'a pas produit de texte après deux tentatives (motif d'arrêt : ${
+      erreur: `Le texte n'a pas pu être rédigé après deux tentatives (motif d'arrêt : ${
         "stopReason" in resultat ? resultat.stopReason ?? "inconnu" : "inconnu"
-      }). Réessayez ; si ça persiste, dites-le pour qu'on regarde le détail technique.`,
+      }). Réessayez avec moins de compétences cochées, ou rédigez l'observation vous-même.`,
     };
   }
 

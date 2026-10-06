@@ -5,6 +5,10 @@ import { SelecteurCompetences } from "./SelecteurCompetences";
 import { supprimerObservation } from "./actions";
 import { BoutonFormulationCompetences } from "./BoutonFormulationCompetences";
 
+// Les redactions automatiques lancees depuis cette page (description, observation)
+// peuvent depasser la duree par defaut d'une fonction serveur.
+export const maxDuration = 60;
+
 const TYPES_ARBRE = ["domaine", "sous_domaine", "competence", "repere_annuel"];
 
 export default async function PageCompetencesActivite({

@@ -3,6 +3,10 @@ import { notFound } from "next/navigation";
 import { creerClientServeur } from "@/lib/supabase/server";
 import { FormulaireModifierActivite } from "./FormulaireModifierActivite";
 
+// Les redactions automatiques lancees depuis cette page (description, observation)
+// peuvent depasser la duree par defaut d'une fonction serveur.
+export const maxDuration = 60;
+
 export default async function PageModifierActivite({
   params,
 }: {

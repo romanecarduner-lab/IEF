@@ -316,6 +316,19 @@ Vérifié par ailleurs que le bouton d'envoi du formulaire se désactive
 déjà bien pendant l'enregistrement (pas de double-clic possible côté
 client).
 
+## Rédaction d'observation avec beaucoup de compétences cochées : "trop de temps"
+
+Cause : avec une longue liste de compétences, la rédaction dépassait la limite
+de réponse du premier appel (700), donnait un texte vide, déclenchant un second
+appel complet : l'attente doublait et dépassait les 20 s autorisées côté écran
+(et la durée par défaut d'une fonction serveur, sans `maxDuration` sur ces
+pages). Corrigé : une marge généreuse dès le premier appel (1800, puis 3200 en
+secours), une consigne de regrouper par grands thèmes quand plus de 8
+compétences sont cochées, délai côté écran porté à 55 s sur les trois endroits
+qui rédigent une observation, `maxDuration = 60` sur les pages concernées. Les
+messages visibles ne parlent plus d'"IA", et la consigne d'éviter les tirets
+longs est ajoutée au texte rédigé.
+
 ## Enregistrement d'une activité : l'estimation ne fait plus attendre
 
 Signalé : avec plusieurs photos, le bouton restait sur "Envoi des 4 photos"
