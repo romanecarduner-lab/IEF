@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { declencherEstimationArrierePlan } from "@/lib/estimationArrierePlan";
 import { creerObservations } from "./actions";
+import { trouverJumelles } from "../../jumellesActions";
 import { creerClientNavigateur } from "@/lib/supabase/client";
 import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaximal";
 import { MessageStatut } from "@/components/Formulaire";
@@ -140,16 +141,44 @@ export function SelecteurCompetences({
   }, [auBoutDeLaStructure, dernierNoeudChoisi]);
 
   function basculerObjectif(id: string, libelle: string) {
-    setSelection((precedent) => {
-      const nouveau = new Map(precedent);
-      if (nouveau.has(id)) nouveau.delete(id);
-      else nouveau.set(id, libelle);
-      return nouveau;
-    });
+    if (selection.has(id)) {
+      setSelection((precedent) => {
+        const nouveau = new Map(precedent);
+        for (const [autreId, autreLibelle] of precedent) {
+          if (autreLibelle === libelle) nouveau.delete(autreId);
+        }
+        return nouveau;
+      });
+      setNiveauParObjectif((precedent) => {
+        const nouveau = new Map(precedent);
+        for (const autreId of Array.from(nouveau.keys())) {
+          if (autreId === id || selection.get(autreId) === libelle) nouveau.delete(autreId);
+        }
+        return nouveau;
+      });
+      return;
+    }
+    setSelection((precedent) => new Map(precedent).set(id, libelle));
+    if (!cycleId) return;
+    trouverJumelles(cycleId, libelle)
+      .then((jumelles) => {
+        if (jumelles.length === 0) return;
+        setSelection((precedent) => {
+          if (!precedent.has(id)) return precedent;
+          const nouveau = new Map(precedent);
+          for (const j of jumelles) nouveau.set(j.id, j.libelle);
+          return nouveau;
+        });
+      })
+      .catch(() => {});
+  }
+
+  function changerNiveauObjectif(libelle: string, niveauId: string) {
     setNiveauParObjectif((precedent) => {
-      if (!precedent.has(id)) return precedent;
       const nouveau = new Map(precedent);
-      nouveau.delete(id);
+      for (const [autreId, autreLibelle] of selection) {
+        if (autreLibelle === libelle) nouveau.set(autreId, niveauId);
+      }
       return nouveau;
     });
   }
@@ -340,10 +369,12 @@ export function SelecteurCompetences({
       {selection.size > 0 && (
         <form onSubmit={gererEnvoi} className="mt-4 border-t border-trait pt-4">
           <p className="mb-2 text-sm font-medium text-encre">
-            Objectifs sélectionnés ({selection.size})
+            Objectifs sélectionnés ({new Set(selection.values()).size})
           </p>
           <ul className="mb-4 space-y-2">
-            {Array.from(selection.entries()).map(([id, libelle]) => (
+            {Array.from(selection.entries())
+              .filter(([, libelle], i, tout) => tout.findIndex(([, l]) => l === libelle) === i)
+              .map(([id, libelle]) => (
               <li
                 key={id}
                 className="rounded-doux bg-lin px-2.5 py-2 text-sm text-encre"
@@ -361,13 +392,7 @@ export function SelecteurCompetences({
                 </div>
                 <select
                   value={niveauParObjectif.get(id) ?? niveauAutonomieId}
-                  onChange={(e) =>
-                    setNiveauParObjectif((precedent) => {
-                      const nouveau = new Map(precedent);
-                      nouveau.set(id, e.target.value);
-                      return nouveau;
-                    })
-                  }
+                  onChange={(e) => changerNiveauObjectif(libelle, e.target.value)}
                   className="mt-1.5 w-full rounded-doux border border-trait bg-white px-2.5 py-1.5 text-xs text-encre focus:border-mousse focus:outline-none"
                 >
                   {niveaux.map((n) => (

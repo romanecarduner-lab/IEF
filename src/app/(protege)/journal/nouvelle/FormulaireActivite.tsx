@@ -18,6 +18,7 @@ import {
 } from "@/lib/brouillonLocal";
 import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaximal";
 import { RechercheCompetences } from "./RechercheCompetences";
+import { trouverJumelles } from "../jumellesActions";
 import { declencherEstimationArrierePlan } from "@/lib/estimationArrierePlan";
 
 type Option = { id: string; libelle: string };
@@ -245,16 +246,48 @@ export function FormulaireActivite({
   }, [donnees.titre, donnees.parcoursId, parcours]);
 
   function basculerSuggestion(id: string, libelle: string) {
-    setSuggestionsChoisies((precedent) => {
-      const nouveau = new Map(precedent);
-      if (nouveau.has(id)) nouveau.delete(id);
-      else nouveau.set(id, libelle);
-      return nouveau;
-    });
+    const cycleId = parcours.find((p) => p.id === donnees.parcoursId)?.cycleId ?? null;
+    const dejaChoisie = suggestionsChoisies.has(id);
+    if (dejaChoisie) {
+      // Decocher une competence decoche toutes celles de meme libelle.
+      setSuggestionsChoisies((precedent) => {
+        const nouveau = new Map(precedent);
+        for (const [autreId, autreLibelle] of precedent) {
+          if (autreLibelle === libelle) nouveau.delete(autreId);
+        }
+        return nouveau;
+      });
+      setNiveauParCompetence((precedent) => {
+        const nouveau = new Map(precedent);
+        for (const autreId of Array.from(nouveau.keys())) {
+          if (autreId === id || suggestionsChoisies.get(autreId) === libelle) nouveau.delete(autreId);
+        }
+        return nouveau;
+      });
+      return;
+    }
+    setSuggestionsChoisies((precedent) => new Map(precedent).set(id, libelle));
+    if (!cycleId) return;
+    trouverJumelles(cycleId, libelle)
+      .then((jumelles) => {
+        if (jumelles.length === 0) return;
+        setSuggestionsChoisies((precedent) => {
+          // Si l'utilisatrice a decoche entre-temps, on n'ajoute rien.
+          if (!precedent.has(id)) return precedent;
+          const nouveau = new Map(precedent);
+          for (const j of jumelles) nouveau.set(j.id, j.libelle);
+          return nouveau;
+        });
+      })
+      .catch(() => {});
+  }
+
+  function changerNiveauCompetence(libelle: string, niveauId: string) {
     setNiveauParCompetence((precedent) => {
-      if (!precedent.has(id)) return precedent;
       const nouveau = new Map(precedent);
-      nouveau.delete(id);
+      for (const [autreId, autreLibelle] of suggestionsChoisies) {
+        if (autreLibelle === libelle) nouveau.set(autreId, niveauId);
+      }
       return nouveau;
     });
   }
@@ -901,7 +934,9 @@ export function FormulaireActivite({
               {suggestionsChoisies.size > 1 ? "s" : ""} avec cette activité :
             </p>
             <ul className="mb-3 space-y-2">
-              {Array.from(suggestionsChoisies.entries()).map(([id, libelle]) => (
+              {Array.from(suggestionsChoisies.entries())
+                .filter(([, libelle], i, tout) => tout.findIndex(([, l]) => l === libelle) === i)
+                .map(([id, libelle]) => (
                 <li key={id} className="rounded-doux border border-trait bg-white p-2.5">
                   <label className="flex items-start gap-2 text-sm text-encre">
                     <input
@@ -914,13 +949,7 @@ export function FormulaireActivite({
                   </label>
                   <select
                     value={niveauParCompetence.get(id) ?? niveauCompetencesId}
-                    onChange={(e) =>
-                      setNiveauParCompetence((precedent) => {
-                        const nouveau = new Map(precedent);
-                        nouveau.set(id, e.target.value);
-                        return nouveau;
-                      })
-                    }
+                    onChange={(e) => changerNiveauCompetence(libelle, e.target.value)}
                     className="mt-1.5 ml-6 w-[calc(100%-1.5rem)] rounded-doux border border-trait bg-white px-2.5 py-1.5 text-xs text-encre focus:border-mousse focus:outline-none"
                   >
                     {autonomies.map((a) => (

@@ -374,6 +374,19 @@ objet, est retiré.
 - **PDF et PowerPoint** : exemples par rangées de deux, plusieurs photos par
   exemple ; PowerPoint : deux exemples par diapositive, diapositives de suite
   au-delà.
+
+### Compétences jumelles et recherche par mot (migration 0063)
+
+- **Jumelles** : une compétence reprise à l'identique à 3, 4 ou 5 ans (libellé
+  strictement identique dans le cycle) se coche en bloc, à la création d'une
+  activité comme sur la page « Compétences observées ». Décocher en retire
+  tout le groupe. Le niveau d'autonomie choisi s'applique au groupe, et chaque
+  jumelle est enregistrée (et validée automatiquement) pour l'activité.
+  Action serveur `trouverJumelles` (`journal/jumellesActions.ts`).
+- **Recherche** : les compétences qui contiennent le mot tapé passent en
+  premier (puis celles qui en contiennent le plus, puis l'ordre alphabétique),
+  dès 2 lettres, avec une attente réduite à 0,15 s. À exécuter :
+  `supabase/migrations/0063_recherche_mot_en_premier.sql`.
 - **Tableau de bord, "Idées pour continuer"** : trois suggestions, toujours
   des compétences pas encore abordées, dont une choisie quand c'est possible
   dans un sous-domaine où rien n'a encore été observé (mention affichée).

@@ -75,6 +75,7 @@ export function RechercheCompetences({
       setResultatsRecherche([]);
       return;
     }
+    let annule = false;
     delaiRechercheRef.current = setTimeout(async () => {
       setRechercheEnCours(true);
       try {
@@ -83,11 +84,15 @@ export function RechercheCompetences({
           p_recherche: termeRecherche.trim(),
           p_cycle_id: cycleId,
         });
-        setResultatsRecherche(data ?? []);
+        if (!annule) setResultatsRecherche(data ?? []);
       } finally {
-        setRechercheEnCours(false);
+        if (!annule) setRechercheEnCours(false);
       }
-    }, 400);
+    }, 150);
+    return () => {
+      annule = true;
+      if (delaiRechercheRef.current) clearTimeout(delaiRechercheRef.current);
+    };
   }, [termeRecherche, cycleId]);
 
   // --- Navigation par domaine (chargee a la demande pour le cycle actuel) ---
