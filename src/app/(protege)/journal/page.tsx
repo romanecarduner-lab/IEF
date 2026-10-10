@@ -229,6 +229,12 @@ export default async function PageJournal({
                   >
                     {a.titre}
                   </Link>
+                  <Link
+                    href={`/journal/nouvelle?refaire=${a.id}`}
+                    className="ml-3 text-xs font-medium text-mousse-fonce underline underline-offset-2 hover:text-mousse"
+                  >
+                    Refaire
+                  </Link>
                   <p className="text-sm text-ardoise">
                     {a.enfant} · {a.annee} ·{" "}
                     {new Date(a.date).toLocaleDateString("fr-FR")}

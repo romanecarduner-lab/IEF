@@ -64,11 +64,20 @@ export function FormulaireActivite({
   autonomies,
   familleId,
   prerempli,
+  refaire,
 }: {
   parcours: OptionParcours[];
   contextes: Option[];
   autonomies: Option[];
   familleId: string;
+  refaire?: {
+    titre: string;
+    description: string;
+    contexteId: string;
+    lieu: string;
+    parcoursId: string;
+    competences: { id: string; libelle: string; niveauId: string }[];
+  } | null;
   prerempli?: {
     titre: string;
     description: string;
@@ -103,6 +112,16 @@ export function FormulaireActivite({
       : undefined;
 
   const [donnees, setDonnees] = useState<DonneesBrouillonActivite>(() => {
+    if (refaire) {
+      return {
+        ...DONNEES_VIDES,
+        titre: refaire.titre,
+        description: refaire.description,
+        contexteId: refaire.contexteId,
+        lieu: refaire.lieu,
+        parcoursId: refaire.parcoursId,
+      };
+    }
     if (prerempli?.titre) {
       return {
         ...DONNEES_VIDES,
@@ -116,7 +135,9 @@ export function FormulaireActivite({
       : DONNEES_VIDES;
   });
   const [suggestionsChoisies, setSuggestionsChoisies] = useState<Map<string, string>>(() =>
-    prerempli?.objectifId && prerempli.objectifLibelle
+    refaire
+      ? new Map(refaire.competences.map((c) => [c.id, c.libelle] as [string, string]))
+      : prerempli?.objectifId && prerempli.objectifLibelle
       ? new Map([[prerempli.objectifId, prerempli.objectifLibelle]])
       : new Map()
   );
@@ -137,7 +158,15 @@ export function FormulaireActivite({
   >([]);
   const [chargementSuggestions, setChargementSuggestions] = useState(false);
   const [niveauCompetencesId, setNiveauCompetencesId] = useState(autonomies[0]?.id ?? "");
-  const [niveauParCompetence, setNiveauParCompetence] = useState<Map<string, string>>(new Map());
+  const [niveauParCompetence, setNiveauParCompetence] = useState<Map<string, string>>(() =>
+    refaire
+      ? new Map(
+          refaire.competences
+            .filter((c) => c.niveauId)
+            .map((c) => [c.id, c.niveauId] as [string, string])
+        )
+      : new Map()
+  );
   const delaiSuggestionsRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [suggestionsIA, setSuggestionsIA] = useState<

@@ -375,6 +375,16 @@ objet, est retiré.
   exemple ; PowerPoint : deux exemples par diapositive, diapositives de suite
   au-delà.
 
+### Refaire une activité
+
+Bouton « Refaire cette activité » (page d'une activité) et lien « Refaire »
+(liste du Journal) : ouvre le formulaire d'ajout prérempli à partir d'une
+activité existante (`/journal/nouvelle?refaire=<id>`) : titre, description,
+contexte, lieu, compétences cochées et niveaux d'autonomie. La date est celle
+du jour et le parcours est celui de l'année en cours pour le même enfant. Les
+photos, observations du jour et paroles de l'enfant ne sont pas reprises. Rien
+n'est enregistré avant la validation du formulaire. Aucune migration.
+
 ### Compétences jumelles et recherche par mot (migration 0063)
 
 - **Jumelles** : une compétence reprise à l'identique à 3, 4 ou 5 ans (libellé

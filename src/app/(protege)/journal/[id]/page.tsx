@@ -157,6 +157,12 @@ export default async function PageActivite({ params }: { params: { id: string } 
               />
             )}
             <Link
+              href={`/journal/nouvelle?refaire=${params.id}`}
+              className="text-sm font-medium text-mousse-fonce underline underline-offset-2 hover:text-mousse"
+            >
+              Refaire cette activité
+            </Link>
+            <Link
               href={`/journal/${params.id}/modifier`}
               className="text-sm font-medium text-mousse-fonce underline underline-offset-2 hover:text-mousse"
             >

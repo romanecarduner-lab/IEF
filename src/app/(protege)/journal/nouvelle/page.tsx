@@ -16,6 +16,7 @@ export default async function PageNouvelleActivite({
     parcours?: string;
     objectifId?: string;
     objectifLibelle?: string;
+    refaire?: string;
   };
 }) {
   const supabase = creerClientServeur();
@@ -66,6 +67,63 @@ export default async function PageNouvelleActivite({
     };
   });
 
+  // "Refaire cette activite" : on repart d'une activite existante (titre,
+  // description, contexte, lieu, competences et niveaux d'autonomie), avec
+  // la date du jour. Photos, observations du jour et paroles de l'enfant
+  // ne sont pas reprises : elles sont propres a chaque fois.
+  let refaire: {
+    titre: string;
+    description: string;
+    contexteId: string;
+    lieu: string;
+    parcoursId: string;
+    competences: { id: string; libelle: string; niveauId: string }[];
+  } | null = null;
+  if (searchParams.refaire) {
+    const [{ data: source }, { data: obs }] = await Promise.all([
+      supabase
+        .from("activites")
+        .select("titre, description, contexte_id, lieu, parcours_id, parcours_scolaires(enfant_id)")
+        .eq("id", searchParams.refaire)
+        .maybeSingle(),
+      supabase
+        .from("observations_elements_programme")
+        .select("element_programme_id, niveau_autonomie_id, elements_programme(libelle)")
+        .eq("activite_id", searchParams.refaire),
+    ]);
+    if (source) {
+      const ps = Array.isArray(source.parcours_scolaires)
+        ? source.parcours_scolaires[0]
+        : source.parcours_scolaires;
+      const aujourdhui = new Date().toISOString().slice(0, 10);
+      const parcoursDuJour = parcours.find(
+        (p) =>
+          p.enfantId === ps?.enfant_id &&
+          p.dateDebutAnnee &&
+          p.dateFinAnnee &&
+          aujourdhui >= p.dateDebutAnnee &&
+          aujourdhui <= p.dateFinAnnee
+      );
+      refaire = {
+        titre: (source.titre as string) ?? "",
+        description: (source.description as string | null) ?? "",
+        contexteId: (source.contexte_id as string | null) ?? "",
+        lieu: (source.lieu as string | null) ?? "",
+        parcoursId: parcoursDuJour?.id ?? (source.parcours_id as string),
+        competences: (obs ?? []).map((o) => {
+          const el = Array.isArray(o.elements_programme)
+            ? o.elements_programme[0]
+            : o.elements_programme;
+          return {
+            id: o.element_programme_id as string,
+            libelle: (el?.libelle as string) ?? "",
+            niveauId: (o.niveau_autonomie_id as string | null) ?? "",
+          };
+        }),
+      };
+    }
+  }
+
   return (
     <div className="max-w-2xl">
       <Link
@@ -98,6 +156,7 @@ export default async function PageNouvelleActivite({
           contextes={contextes ?? []}
           autonomies={autonomies ?? []}
           familleId={appartenance.famille_id}
+          refaire={refaire}
           prerempli={{
             titre: searchParams.titre ?? "",
             description: searchParams.description ?? "",
