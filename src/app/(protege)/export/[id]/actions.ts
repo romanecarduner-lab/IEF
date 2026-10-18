@@ -360,7 +360,10 @@ export async function finaliserDossier(
 
   if (erreurUpload) {
     console.error("Erreur upload PDF", erreurUpload);
-    return { erreur: "Impossible d'enregistrer le PDF généré. Merci de réessayer." };
+    const tailleMo = (pdfBuffer.length / (1024 * 1024)).toFixed(1);
+    return {
+      erreur: `Impossible d'enregistrer le PDF généré (${tailleMo} Mo) : ${erreurUpload.message}. Si le message parle de taille ou de type de fichier, exécutez le SQL « stockage des dossiers » dans Supabase.`,
+    };
   }
 
   // Version PowerPoint, en plus du PDF -- non bloquant : si elle echoue,
@@ -534,7 +537,10 @@ export async function finaliserDossierJournal(
 
   if (erreurUpload) {
     console.error("Erreur upload PDF (journal periode)", erreurUpload);
-    return { erreur: "Impossible d'enregistrer le PDF généré. Merci de réessayer." };
+    const tailleMo = (pdfBuffer.length / (1024 * 1024)).toFixed(1);
+    return {
+      erreur: `Impossible d'enregistrer le PDF généré (${tailleMo} Mo) : ${erreurUpload.message}. Si le message parle de taille ou de type de fichier, exécutez le SQL « stockage des dossiers » dans Supabase.`,
+    };
   }
 
   let cheminPptx: string | null = null;

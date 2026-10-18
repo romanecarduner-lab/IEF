@@ -375,6 +375,18 @@ objet, est retiré.
   exemple ; PowerPoint : deux exemples par diapositive, diapositives de suite
   au-delà.
 
+### Correctif : « Impossible d'enregistrer le PDF généré » (migration 0064)
+
+Le bucket `traces-pedagogiques` limitait chaque fichier à 10 Mo et
+n'autorisait pas le format PowerPoint. Un dossier avec plusieurs photos par
+sous-domaine dépasse facilement 10 Mo : l'enregistrement du PDF échouait, et
+le PowerPoint (enregistrement non bloquant) n'était jamais conservé sans
+aucun message. La migration `0064_stockage_dossiers_taille_et_pptx.sql` relève
+la limite à 50 Mo (plafond du plan gratuit Supabase) et autorise
+`.pptx`. Le message d'erreur indique maintenant la taille du PDF et la
+réponse exacte du stockage. **À exécuter dans Supabase** (fichier
+`stockage-dossiers-a-coller-dans-supabase.sql`).
+
 ### Refonte ergonomie, lot 6 : Export en étapes, et dans la barre du bas
 
 - **Barre du bas (mobile)** : Export devient un onglet à part entière
