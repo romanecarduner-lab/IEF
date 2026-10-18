@@ -4,6 +4,8 @@
 
 :root {
   color-scheme: light;
+  --font-display: "Fraunces Variable", Georgia, "Times New Roman", serif;
+  --font-corps: "Manrope Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 html,

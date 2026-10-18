@@ -375,6 +375,18 @@ objet, est retiré.
   exemple ; PowerPoint : deux exemples par diapositive, diapositives de suite
   au-delà.
 
+### Polices hébergées avec l'application
+
+Les polices (Fraunces pour les titres, Manrope pour le texte) ne sont plus
+téléchargées chez Google à chaque build (`next/font/google`) : un incident
+réseau pouvait faire échouer le déploiement, ou laisser les titres sans leur
+police (rendu en police de texte penchée). Elles viennent maintenant des
+paquets `@fontsource-variable/fraunces` et `@fontsource-variable/manrope`,
+importés dans `src/app/layout.tsx` ; les variables `--font-display` et
+`--font-corps` sont définies dans `globals.css`. Conséquence : le build ne
+dépend plus d'aucun accès à Google Fonts. Deux dépendances ajoutées : lancer
+`npm install` après avoir récupéré cette version. Aucune migration.
+
 ### Refonte ergonomie, lot 2 : création d'activité en trois temps
 
 Le formulaire « Ajouter une activité » est présenté en trois étapes, avec un

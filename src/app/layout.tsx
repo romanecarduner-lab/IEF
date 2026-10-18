@@ -1,21 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Manrope } from "next/font/google";
+// Polices hebergees avec l'application (paquets @fontsource-variable) plutot
+// que telechargees chez Google a chaque build : un incident reseau lors du
+// deploiement ne peut plus faire echouer le build ni faire retomber les
+// titres sur une police de remplacement. Les variables CSS --font-display
+// et --font-corps sont definies dans globals.css.
+import "@fontsource-variable/fraunces/full.css";
+import "@fontsource-variable/fraunces/full-italic.css";
+import "@fontsource-variable/manrope/index.css";
 import "./globals.css";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const manrope = Manrope({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-corps",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "Chemins d'apprentissage",
@@ -54,7 +46,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr" className={`${fraunces.variable} ${manrope.variable}`}>
+    <html lang="fr">
       <body className="font-corps">{children}</body>
     </html>
   );
