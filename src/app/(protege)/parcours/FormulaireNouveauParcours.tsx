@@ -14,7 +14,7 @@ function BoutonEnregistrer() {
     <button
       type="submit"
       disabled={pending}
-      className="mt-2 rounded-doux bg-mousse-fonce px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-mousse disabled:cursor-not-allowed disabled:opacity-60"
+      className="bouton-primaire mt-2"
     >
       {pending ? "Enregistrement…" : "Créer ce parcours"}
     </button>
@@ -42,7 +42,7 @@ export function FormulaireNouveauParcours({
   const impossible = enfants.length === 0 || annees.length === 0;
 
   return (
-    <div className="rounded-doux border border-trait bg-white/80 p-6 shadow-doux">
+    <div className="carte p-6">
       <p className="mb-4 text-sm font-medium text-encre">
         Créer un parcours scolaire
       </p>
@@ -68,7 +68,7 @@ export function FormulaireNouveauParcours({
             name="enfant_id"
             required
             disabled={impossible}
-            className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
+            className="champ-saisie w-full"
           >
             <option value="">Sélectionner…</option>
             {enfants.map((enfant) => (
@@ -91,7 +91,7 @@ export function FormulaireNouveauParcours({
             name="annee_scolaire_id"
             required
             disabled={impossible}
-            className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
+            className="champ-saisie w-full"
           >
             <option value="">Sélectionner…</option>
             {annees.map((annee) => (
@@ -113,7 +113,7 @@ export function FormulaireNouveauParcours({
             id="cycle_id"
             name="cycle_id"
             required
-            className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
+            className="champ-saisie w-full"
           >
             {cycles.map((cycle) => (
               <option key={cycle.id} value={cycle.id}>
@@ -144,7 +144,7 @@ export function FormulaireNouveauParcours({
             id="remarques"
             name="remarques"
             rows={2}
-            className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
+            className="champ-saisie w-full"
           />
         </div>
 

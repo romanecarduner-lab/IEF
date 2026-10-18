@@ -15,7 +15,7 @@ export function SelecteurParcoursTableauDeBord({
     <select
       value={parcoursId}
       onChange={(e) => router.push(`/tableau-de-bord?parcours=${e.target.value}`)}
-      className="max-w-full rounded-doux border border-trait bg-white px-2.5 py-1 text-xs text-encre focus:border-mousse focus:outline-none"
+      className="champ-saisie champ-compact max-w-full text-xs"
     >
       {options.map((o) => (
         <option key={o.id} value={o.id}>

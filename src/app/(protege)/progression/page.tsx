@@ -386,7 +386,7 @@ export default async function PageProgression({
                 <details
                   key={domaine}
                   id={`domaine-${indexDomaine}`}
-                  className="scroll-mt-14 rounded-doux border border-trait bg-white/80 shadow-doux"
+                  className="carte scroll-mt-14"
                   open
                 >
                   <summary className="cursor-pointer list-none p-4 text-sm font-medium text-encre">
@@ -404,7 +404,7 @@ export default async function PageProgression({
                       return (
                         <li
                           key={l.elementId}
-                          className="rounded-doux border border-trait bg-white/80 p-4 shadow-doux"
+                          className="carte p-4"
                         >
                           <div className="flex flex-wrap items-start justify-between gap-3">
                             <div>

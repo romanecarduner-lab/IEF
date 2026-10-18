@@ -49,13 +49,13 @@ export function FormulairePrenom({ prenomActuel }: { prenomActuel: string }) {
           value={prenom}
           onChange={(e) => setPrenom(e.target.value)}
           placeholder="Romane"
-          className="rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
+          className="champ-saisie"
         />
       </div>
       <button
         type="submit"
         disabled={enCours}
-        className="rounded-doux bg-mousse-fonce px-4 py-2.5 text-sm font-medium text-white hover:bg-mousse disabled:cursor-not-allowed disabled:opacity-60"
+        className="bouton-primaire"
       >
         {enCours ? "Enregistrement…" : "Enregistrer"}
       </button>

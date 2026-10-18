@@ -53,7 +53,7 @@ export default async function PageRecapitulatifActivite({
         {activites.map((a) => (
           <li
             key={a.id}
-            className="flex items-center justify-between gap-3 rounded-doux border border-trait bg-white/80 p-4 shadow-doux"
+            className="carte flex items-center justify-between gap-3 p-4"
           >
             <div>
               <p className="text-sm font-medium text-encre">{a.prenomEnfant}</p>
@@ -61,7 +61,7 @@ export default async function PageRecapitulatifActivite({
             </div>
             <Link
               href={`/journal/${a.id}/competences`}
-              className="shrink-0 rounded-doux bg-mousse-fonce px-3.5 py-2 text-xs font-medium text-white hover:bg-mousse"
+              className="bouton-primaire bouton-petit shrink-0"
             >
               Compléter
             </Link>

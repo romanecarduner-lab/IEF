@@ -206,7 +206,7 @@ export default async function PageTableauDeBord({
         .filter((autre) => autre.enfantId === p.enfantId && autre.cycleId === p.cycleId)
         .map((autre) => autre.id);
 
-      const [{ data: tousLesObjectifs }, { data: observations }] = await Promise.all([
+      const [{ data: tousLesObjectifs }, { data: observations }, { data: syntheses }] = await Promise.all([
         supabase
           .from("v_objectif_domaine")
           .select("objectif_id, libelle, domaine")
@@ -215,11 +215,31 @@ export default async function PageTableauDeBord({
           .from("observations_elements_programme")
           .select("element_programme_id, activites!inner(parcours_id)")
           .in("activites.parcours_id", parcoursMemeCycle),
+        // Une competence deja suivie (statut present, valide a la main
+        // ou automatiquement) compte aussi comme abordee, meme sans
+        // observation directe sur une activite.
+        supabase
+          .from("v_synthese_cumulee_cycle")
+          .select("element_programme_id")
+          .eq("enfant_id", p.enfantId)
+          .eq("cycle_id", p.cycleId),
       ]);
 
-      const idsAbordes = new Set(
-        (observations ?? []).map((o) => o.element_programme_id as string)
+      const idsAbordes = new Set([
+        ...(observations ?? []).map((o) => o.element_programme_id as string),
+        ...(syntheses ?? []).map((o) => o.element_programme_id as string),
+      ]);
+      // Une competence au libelle strictement identique a une competence
+      // deja abordee (reprise a un autre age du cycle) est elle aussi
+      // consideree comme abordee : le suivi se fait a l'echelle du cycle.
+      const libellesAbordes = new Set(
+        (tousLesObjectifs ?? [])
+          .filter((o) => idsAbordes.has(o.objectif_id as string))
+          .map((o) => o.libelle as string)
       );
+      for (const o of tousLesObjectifs ?? []) {
+        if (libellesAbordes.has(o.libelle as string)) idsAbordes.add(o.objectif_id as string);
+      }
 
       // Sous-domaine d'une competence = 2e segment de son chemin complet
       // (on ignore les structures a deux niveaux seulement, ou ce
@@ -302,10 +322,14 @@ export default async function PageTableauDeBord({
   const tousVierges = candidatsParEnfant.flatMap((c) => c.vierges);
   const viergeChoisie = melanger(tousVierges)[0];
   const suggestionsCompetences = viergeChoisie
-    ? melanger([
+    ? [
         viergeChoisie,
-        ...melanger(tousNormaux.filter((c) => c.id !== viergeChoisie.id)).slice(0, 2),
-      ])
+        ...melanger(
+          tousNormaux.filter(
+            (c) => c.id !== viergeChoisie.id && c.libelle !== viergeChoisie.libelle
+          )
+        ).slice(0, 2),
+      ]
     : melanger(tousNormaux).slice(0, 3);
 
   // Chemin complet (tranche d'age comprise) recupere seulement pour les
@@ -393,7 +417,7 @@ export default async function PageTableauDeBord({
           </p>
           <Link
             href="/journal/nouvelle"
-            className="inline-flex min-h-[48px] items-center gap-2 rounded-doux bg-mousse-fonce px-6 py-3 text-base font-medium text-white shadow-doux transition-colors hover:bg-mousse active:bg-mousse"
+            className="bouton-primaire inline-flex min-h-[48px] items-center gap-2 text-base shadow-doux active:bg-mousse"
           >
             + Ajouter une activité
           </Link>
@@ -411,7 +435,7 @@ export default async function PageTableauDeBord({
         {cartes.map((c) => (
           <div
             key={c.libelle}
-            className="rounded-doux border border-trait bg-white/80 p-3 text-center shadow-doux sm:p-4"
+            className="carte p-3 text-center sm:p-4"
           >
             <span className="mx-auto mb-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-lin sm:mb-2 sm:h-11 sm:w-11">
               <c.Icone className="h-4 w-4 text-mousse-fonce sm:h-5 sm:w-5" strokeWidth={1.75} />
@@ -423,7 +447,7 @@ export default async function PageTableauDeBord({
       </div>
 
       <div className="grid min-w-0 gap-4 sm:gap-6 lg:grid-cols-[1fr_360px]">
-        <div className="min-w-0 rounded-doux border border-trait bg-white/80 p-4 shadow-doux sm:p-6">
+        <div className="carte min-w-0 p-4 sm:p-6">
           {parcoursSelectionne ? (
             <>
               <div className="mb-1 flex flex-wrap items-center gap-2">
@@ -511,7 +535,7 @@ export default async function PageTableauDeBord({
         </div>
 
         <div className="min-w-0 space-y-4 sm:space-y-6">
-          <div className="rounded-doux border border-trait bg-white/80 p-4 shadow-doux sm:p-5">
+          <div className="carte p-4 sm:p-5">
             <p className="mb-3 font-display text-base italic text-encre sm:text-lg">
               Dernières traces
             </p>
@@ -560,7 +584,7 @@ export default async function PageTableauDeBord({
           </div>
 
           {suggestionsCompetences.length > 0 && (
-            <div className="rounded-doux border border-trait bg-white/80 p-4 shadow-doux sm:p-5">
+            <div className="carte p-4 sm:p-5">
               <p className="mb-1 font-display text-base italic text-encre sm:text-lg">
                 Idées pour continuer
               </p>
@@ -603,7 +627,7 @@ export default async function PageTableauDeBord({
             </div>
           )}
 
-          <div className="flex items-center gap-4 rounded-doux border border-trait bg-white/80 p-4 shadow-doux sm:p-5">
+          <div className="carte flex items-center gap-4 p-4 sm:p-5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/illustrations/pot-plante.png"
@@ -626,7 +650,7 @@ export default async function PageTableauDeBord({
               </p>
               <Link
                 href="/journal/nouvelle"
-                className="inline-flex min-h-[40px] items-center gap-1.5 rounded-doux bg-mousse-fonce px-3.5 py-2 text-xs font-medium text-white hover:bg-mousse active:bg-mousse"
+                className="bouton-primaire bouton-petit inline-flex min-h-[40px] items-center gap-1.5 active:bg-mousse"
               >
                 + Ajouter une observation
               </Link>

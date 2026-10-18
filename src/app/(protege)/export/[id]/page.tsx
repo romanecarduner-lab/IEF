@@ -127,7 +127,7 @@ export default async function PageDossierExport({
                   href={urlPdf}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-block rounded-doux bg-mousse-fonce px-4 py-2.5 text-sm font-medium text-white hover:bg-mousse"
+                  className="bouton-primaire inline-block"
                 >
                   Télécharger le PDF
                 </a>
@@ -187,7 +187,7 @@ export default async function PageDossierExport({
               return (
                 <li
                   key={a.id}
-                  className="rounded-doux border border-trait bg-white/80 p-3 shadow-doux"
+                  className="carte p-3"
                 >
                   <BasculeElement
                     dossierId={dossier.id}
@@ -324,7 +324,7 @@ export default async function PageDossierExport({
                 href={urlPdf}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-doux bg-mousse-fonce px-4 py-2.5 text-sm font-medium text-white hover:bg-mousse"
+                className="bouton-primaire"
               >
                 Télécharger le PDF
               </a>
@@ -378,7 +378,7 @@ export default async function PageDossierExport({
           {Array.from(sousDomainesParDomaine.entries()).map(([domaine, sousDomaines]) => (
             <details
               key={domaine}
-              className="rounded-doux border border-trait bg-white/80 shadow-doux"
+              className="carte"
               open
             >
               <summary className="cursor-pointer list-none p-4 text-sm font-medium text-encre">

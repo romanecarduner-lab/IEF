@@ -71,7 +71,7 @@ export async function VueHistorique({ parcoursId }: { parcoursId: string }) {
       {lignes.map((l) => (
         <li
           key={l.id}
-          className="rounded-doux border border-trait bg-white/80 p-3 shadow-doux"
+          className="carte p-3"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-encre">{l.competence}</p>

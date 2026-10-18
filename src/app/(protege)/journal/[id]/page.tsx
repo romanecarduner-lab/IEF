@@ -211,7 +211,7 @@ export default async function PageActivite({ params }: { params: { id: string } 
 
         <Link
           href={`/journal/${params.id}/competences`}
-          className="mb-4 inline-block rounded-doux bg-mousse-fonce px-4 py-2 text-sm font-medium text-white hover:bg-mousse"
+          className="bouton-primaire bouton-petit mb-4 inline-block"
         >
           Relier à des compétences
         </Link>
@@ -221,7 +221,7 @@ export default async function PageActivite({ params }: { params: { id: string } 
             {observations.map((o) => (
               <li
                 key={o.id}
-                className="flex items-start justify-between gap-3 rounded-doux border border-trait bg-white/80 p-3 text-sm shadow-doux"
+                className="carte flex items-start justify-between gap-3 p-3 text-sm"
               >
                 <div>
                   <p className="text-encre">{o.elementLibelle}</p>
@@ -254,7 +254,7 @@ export default async function PageActivite({ params }: { params: { id: string } 
             {traces.map((t) => (
               <li
                 key={t.id}
-                className="rounded-doux border border-trait bg-white/80 p-3 shadow-doux"
+                className="carte p-3"
               >
                 {t.urlMiniature ? (
                   <a href={t.urlFichier ?? t.urlMiniature} target="_blank" rel="noopener noreferrer">

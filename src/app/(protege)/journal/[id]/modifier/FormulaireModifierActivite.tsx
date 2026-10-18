@@ -83,7 +83,7 @@ export function FormulaireModifierActivite({
   return (
     <form
       onSubmit={gererEnvoi}
-      className="rounded-doux border border-trait bg-white/80 p-6 shadow-doux"
+      className="carte p-6"
     >
       {erreur && <MessageStatut type="erreur">{erreur}</MessageStatut>}
 
@@ -105,7 +105,7 @@ export function FormulaireModifierActivite({
           required
           value={donnees.contexteId}
           onChange={(e) => modifierChamp("contexteId", e.target.value)}
-          className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
+          className="champ-saisie w-full"
         >
           <option value="">Sélectionner…</option>
           {contextes.map((c) => (
@@ -134,7 +134,7 @@ export function FormulaireModifierActivite({
           rows={3}
           value={donnees.description}
           onChange={(e) => modifierChamp("description", e.target.value)}
-          className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
+          className="champ-saisie w-full"
         />
       </div>
 
@@ -155,7 +155,7 @@ export function FormulaireModifierActivite({
           rows={3}
           value={donnees.observations}
           onChange={(e) => modifierChamp("observations", e.target.value)}
-          className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
+          className="champ-saisie w-full"
         />
         <button
           type="button"
@@ -194,7 +194,7 @@ export function FormulaireModifierActivite({
       <button
         type="submit"
         disabled={chargement}
-        className="mt-2 rounded-doux bg-mousse-fonce px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-mousse disabled:cursor-not-allowed disabled:opacity-60"
+        className="bouton-primaire mt-2"
       >
         {chargement ? "Enregistrement…" : "Enregistrer les modifications"}
       </button>

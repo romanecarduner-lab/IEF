@@ -101,7 +101,7 @@ export default async function PageJournal({
         </AideContextuelle>
         <Link
           href="/journal/nouvelle"
-          className="rounded-doux bg-mousse-fonce px-4 py-2 text-sm font-medium text-white hover:bg-mousse"
+          className="bouton-primaire bouton-petit"
         >
           Ajouter une activité
         </Link>
@@ -136,7 +136,7 @@ export default async function PageJournal({
         <>
       <form
         method="get"
-        className="mb-6 grid gap-3 rounded-doux border border-trait bg-white/80 p-4 shadow-doux sm:grid-cols-2 md:grid-cols-4"
+        className="carte mb-6 grid gap-3 p-4 sm:grid-cols-2 md:grid-cols-4"
       >
         <div className="sm:col-span-2 md:col-span-1">
           <label htmlFor="q" className="mb-1.5 block text-sm font-medium text-encre">
@@ -148,7 +148,7 @@ export default async function PageJournal({
             name="q"
             defaultValue={texte}
             placeholder="cabane, comptine…"
-            className="w-full rounded-doux border border-trait bg-white px-3 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
+            className="champ-saisie champ-compact w-full"
           />
         </div>
         <div>
@@ -159,7 +159,7 @@ export default async function PageJournal({
             id="enfant"
             name="enfant"
             defaultValue={enfantId}
-            className="w-full rounded-doux border border-trait bg-white px-3 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
+            className="champ-saisie champ-compact w-full"
           >
             <option value="">Tous</option>
             {(enfantsOptions ?? []).map((e) => (
@@ -178,7 +178,7 @@ export default async function PageJournal({
             id="du"
             name="du"
             defaultValue={du}
-            className="w-full rounded-doux border border-trait bg-white px-3 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
+            className="champ-saisie champ-compact w-full"
           />
         </div>
         <div>
@@ -190,13 +190,13 @@ export default async function PageJournal({
             id="au"
             name="au"
             defaultValue={au}
-            className="w-full rounded-doux border border-trait bg-white px-3 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
+            className="champ-saisie champ-compact w-full"
           />
         </div>
         <div className="sm:col-span-2 md:col-span-4 flex items-center gap-3">
           <button
             type="submit"
-            className="rounded-doux bg-mousse-fonce px-4 py-2 text-sm font-medium text-white hover:bg-mousse"
+            className="bouton-primaire bouton-petit"
           >
             Filtrer
           </button>
@@ -219,7 +219,7 @@ export default async function PageJournal({
           {activites.map((a) => (
             <li
               key={a.id}
-              className="rounded-doux border border-trait bg-white/80 p-5 shadow-doux"
+              className="carte p-5"
             >
               <div className="flex items-start justify-between gap-4">
                 <div>

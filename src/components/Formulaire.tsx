@@ -21,7 +21,7 @@ export function Champ({
       <input
         id={id}
         name={id}
-        className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre placeholder:text-ardoise/60 focus:border-mousse focus:outline-none"
+        className="champ-saisie w-full"
         aria-invalid={erreur ? "true" : undefined}
         aria-describedby={erreur ? `${id}-erreur` : undefined}
         {...props}
@@ -42,7 +42,7 @@ export function BoutonPrincipal({
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { chargement?: boolean }) {
   return (
     <button
-      className="mt-2 w-full rounded-doux bg-mousse-fonce px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-mousse disabled:cursor-not-allowed disabled:opacity-60"
+      className="bouton-primaire mt-2 w-full"
       disabled={chargement || props.disabled}
       {...props}
     >

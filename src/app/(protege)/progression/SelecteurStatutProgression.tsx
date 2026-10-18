@@ -68,7 +68,7 @@ export function SelecteurStatutProgression({
             setConfirme(false);
           }}
           disabled={enCours}
-          className="rounded-doux border border-trait bg-white px-2.5 py-1.5 text-xs text-encre focus:border-mousse focus:outline-none disabled:opacity-60"
+          className="champ-saisie champ-compact text-xs disabled:opacity-60"
         >
           {statuts.map((s) => (
             <option key={s.code} value={s.code}>
@@ -81,7 +81,7 @@ export function SelecteurStatutProgression({
             type="button"
             onClick={gererConfirmation}
             disabled={enCours}
-            className="rounded-doux bg-mousse-fonce px-2.5 py-1.5 text-xs font-medium text-white hover:bg-mousse disabled:cursor-not-allowed disabled:opacity-60"
+            className="bouton-primaire bouton-petit"
           >
             {enCours ? "…" : "Confirmer"}
           </button>

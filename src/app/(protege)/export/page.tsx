@@ -52,7 +52,7 @@ export default async function PageExport() {
         </AideContextuelle>
         <Link
           href="/export/nouveau"
-          className="rounded-doux bg-mousse-fonce px-4 py-2 text-sm font-medium text-white hover:bg-mousse"
+          className="bouton-primaire bouton-petit"
         >
           Nouveau dossier
         </Link>
@@ -67,7 +67,7 @@ export default async function PageExport() {
           {dossiers.map((d) => (
             <li
               key={d.id}
-              className="flex items-center justify-between rounded-doux border border-trait bg-white/80 p-5 shadow-doux"
+              className="carte flex items-center justify-between p-5"
             >
               <div>
                 <Link

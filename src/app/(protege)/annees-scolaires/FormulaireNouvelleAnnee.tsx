@@ -14,7 +14,7 @@ function BoutonEnregistrer() {
     <button
       type="submit"
       disabled={pending}
-      className="mt-2 rounded-doux bg-mousse-fonce px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-mousse disabled:cursor-not-allowed disabled:opacity-60"
+      className="bouton-primaire mt-2"
     >
       {pending ? "Enregistrement…" : "Ajouter cette année"}
     </button>
@@ -32,7 +32,7 @@ export function FormulaireNouvelleAnnee() {
   }, [etat]);
 
   return (
-    <div className="rounded-doux border border-trait bg-white/80 p-6 shadow-doux">
+    <div className="carte p-6">
       <p className="mb-4 text-sm font-medium text-encre">
         Ajouter une année scolaire
       </p>

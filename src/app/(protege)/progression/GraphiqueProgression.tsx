@@ -46,7 +46,7 @@ export function GraphiqueProgression({ donnees }: { donnees: DonneesDomaine[] })
   });
 
   return (
-    <div className="mb-8 rounded-doux border border-trait bg-white/80 p-4 shadow-doux">
+    <div className="carte mb-8 p-4">
       <p className="mb-1 text-sm font-medium text-encre">
         Couverture du programme par domaine
       </p>

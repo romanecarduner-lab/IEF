@@ -17,7 +17,7 @@ function BoutonCreer({ typeDossier }: { typeDossier: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="mt-2 rounded-doux bg-mousse-fonce px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-mousse disabled:cursor-not-allowed disabled:opacity-60"
+      className="bouton-primaire mt-2"
     >
       {pending
         ? "Création…"
@@ -55,7 +55,7 @@ export function FormulaireDossier({
   return (
     <form
       action={action}
-      className="rounded-doux border border-trait bg-white/80 p-6 shadow-doux"
+      className="carte p-6"
     >
       {etat.erreur && <MessageStatut type="erreur">{etat.erreur}</MessageStatut>}
 
@@ -128,7 +128,7 @@ export function FormulaireDossier({
           id="parcours_id"
           name="parcours_id"
           required
-          className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
+          className="champ-saisie w-full"
         >
           <option value="">Sélectionner…</option>
           {parcours.map((p) => (
@@ -169,7 +169,7 @@ export function FormulaireDossier({
                 required
                 value={periodeDebut}
                 onChange={(e) => setPeriodeDebut(e.target.value)}
-                className="rounded-doux border border-trait bg-white px-3 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
+                className="champ-saisie champ-compact"
               />
             </div>
             <div>
@@ -183,7 +183,7 @@ export function FormulaireDossier({
                 required
                 value={periodeFin}
                 onChange={(e) => setPeriodeFin(e.target.value)}
-                className="rounded-doux border border-trait bg-white px-3 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
+                className="champ-saisie champ-compact"
               />
             </div>
           </div>

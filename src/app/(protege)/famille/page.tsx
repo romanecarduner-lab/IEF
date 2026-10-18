@@ -68,7 +68,7 @@ export default async function PageFamille() {
               {enfants.map((enfant) => (
                 <li
                   key={enfant.id}
-                  className="flex items-center justify-between rounded-doux border border-trait bg-white/80 p-5 shadow-doux"
+                  className="carte flex items-center justify-between p-5"
                 >
                   <div>
                     <p className="font-display text-lg italic text-encre">{enfant.prenom}</p>
@@ -111,7 +111,7 @@ export default async function PageFamille() {
               {annees.map((annee) => (
                 <li
                   key={annee.id}
-                  className="flex items-center justify-between rounded-doux border border-trait bg-white/80 p-5 shadow-doux"
+                  className="carte flex items-center justify-between p-5"
                 >
                   <div>
                     <p className="font-display text-lg italic text-encre">{annee.libelle}</p>
@@ -156,7 +156,7 @@ export default async function PageFamille() {
                 return (
                   <li
                     key={p.id}
-                    className="flex items-center justify-between rounded-doux border border-trait bg-white/80 p-5 shadow-doux"
+                    className="carte flex items-center justify-between p-5"
                   >
                     <div>
                       <p className="font-display text-lg italic text-encre">

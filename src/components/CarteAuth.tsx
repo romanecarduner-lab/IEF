@@ -37,7 +37,7 @@ export function CarteAuth({
             )}
           </div>
 
-          <div className="rounded-doux border border-trait bg-white/80 p-8 shadow-doux backdrop-blur-sm">
+          <div className="carte p-8 backdrop-blur-sm">
             {children}
           </div>
 

@@ -96,7 +96,7 @@ export function FormulaireTrace({
   }
 
   return (
-    <div className="rounded-doux border border-trait bg-white/80 p-6 shadow-doux">
+    <div className="carte p-6">
       <p className="mb-4 text-sm font-medium text-encre">Ajouter une trace</p>
 
       {erreur && <MessageStatut type="erreur">{erreur}</MessageStatut>}
@@ -110,7 +110,7 @@ export function FormulaireTrace({
             id="type-trace"
             value={typeCode}
             onChange={(e) => setTypeCode(e.target.value)}
-            className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
+            className="champ-saisie w-full"
           >
             {types.map((t) => (
               <option key={t.code} value={t.code}>
@@ -145,7 +145,7 @@ export function FormulaireTrace({
               rows={3}
               value={contenuTexte}
               onChange={(e) => setContenuTexte(e.target.value)}
-              className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
+              className="champ-saisie w-full"
             />
           </div>
         )}
@@ -170,7 +170,7 @@ export function FormulaireTrace({
           <button
             type="submit"
             disabled={chargement}
-            className="rounded-doux bg-mousse-fonce px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-mousse disabled:cursor-not-allowed disabled:opacity-60"
+            className="bouton-primaire"
           >
             {chargement ? "Enregistrement…" : "Ajouter cette trace"}
           </button>

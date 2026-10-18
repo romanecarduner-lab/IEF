@@ -39,7 +39,7 @@ export function BoutonExportDonnees() {
         type="button"
         onClick={gererClic}
         disabled={enCours}
-        className="rounded-doux bg-mousse-fonce px-4 py-2.5 text-sm font-medium text-white hover:bg-mousse disabled:cursor-not-allowed disabled:opacity-60"
+        className="bouton-primaire"
       >
         {enCours ? "Préparation…" : "Exporter mes données (JSON)"}
       </button>

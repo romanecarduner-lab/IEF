@@ -59,7 +59,7 @@ export function BoutonDupliquerActivite({
         }}
         onBlur={() => setOuvert(false)}
         autoFocus
-        className="rounded-doux border border-trait bg-white px-2.5 py-1.5 text-sm text-encre focus:border-mousse focus:outline-none"
+        className="champ-saisie champ-compact"
       >
         <option value="" disabled>
           {enCours ? "Duplication…" : "Choisir l'enfant…"}

@@ -130,7 +130,7 @@ export async function VueGalerie({
     <div>
       <form
         method="get"
-        className="mb-8 grid gap-3 rounded-doux border border-trait bg-white/80 p-4 shadow-doux sm:grid-cols-4"
+        className="carte mb-8 grid gap-3 p-4 sm:grid-cols-4"
       >
         <input type="hidden" name="vue" value="galerie" />
         <div>
@@ -141,7 +141,7 @@ export async function VueGalerie({
             id="domaine"
             name="domaine"
             defaultValue={domaineChoisi}
-            className="w-full rounded-doux border border-trait bg-white px-3 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
+            className="champ-saisie champ-compact w-full"
           >
             <option value="">Tous</option>
             {Array.from(new Set((domainesBruts ?? []).map((d) => d.domaine as string))).map(
@@ -161,7 +161,7 @@ export async function VueGalerie({
             id="enfant"
             name="enfant"
             defaultValue={enfantId}
-            className="w-full rounded-doux border border-trait bg-white px-3 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
+            className="champ-saisie champ-compact w-full"
           >
             <option value="">Tous</option>
             {(enfants ?? []).map((e) => (
@@ -179,7 +179,7 @@ export async function VueGalerie({
             id="annee"
             name="annee"
             defaultValue={anneeId}
-            className="w-full rounded-doux border border-trait bg-white px-3 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
+            className="champ-saisie champ-compact w-full"
           >
             <option value="">Toutes</option>
             {(annees ?? []).map((a) => (
@@ -197,7 +197,7 @@ export async function VueGalerie({
             id="type"
             name="type"
             defaultValue={typeCode}
-            className="w-full rounded-doux border border-trait bg-white px-3 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
+            className="champ-saisie champ-compact w-full"
           >
             <option value="">Tous</option>
             {(types ?? []).map((t) => (
@@ -210,7 +210,7 @@ export async function VueGalerie({
         <div className="sm:col-span-4">
           <button
             type="submit"
-            className="rounded-doux bg-mousse-fonce px-4 py-2 text-sm font-medium text-white hover:bg-mousse"
+            className="bouton-primaire bouton-petit"
           >
             Filtrer
           </button>
@@ -227,7 +227,7 @@ export async function VueGalerie({
             <li key={t.id}>
               <Link
                 href={t.activiteId ? `/journal/${t.activiteId}` : "/journal"}
-                className="block rounded-doux border border-trait bg-white/80 p-2 shadow-doux hover:border-mousse-clair"
+                className="carte block p-2 hover:border-mousse-clair"
               >
                 {t.urlMiniature ? (
                   // eslint-disable-next-line @next/next/no-img-element

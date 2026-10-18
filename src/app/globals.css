@@ -83,3 +83,48 @@ select,
 textarea {
   font-size: 16px;
 }
+
+/* ------------------------------------------------------------------
+   Composants communs (refonte ergonomie, lot 1)
+   Un seul style de bouton, de champ et de carte pour toute
+   l'application, avec des zones de toucher d'au moins 44 px.
+   ------------------------------------------------------------------ */
+@layer components {
+  .bouton-primaire {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-doux bg-mousse-fonce px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors;
+  }
+  .bouton-primaire:hover {
+    background-color: #1c3a2d;
+  }
+  .bouton-primaire:active {
+    transform: translateY(1px);
+  }
+  .bouton-primaire:disabled {
+    @apply cursor-not-allowed opacity-60;
+  }
+  .bouton-secondaire {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-doux border border-mousse-fonce/30 bg-white px-5 py-2.5 text-sm font-medium text-mousse-fonce transition-colors hover:bg-lin;
+  }
+  .bouton-secondaire:disabled {
+    @apply cursor-not-allowed opacity-60;
+  }
+  /* Variante compacte, utilisee dans les listes : reste a 40 px de haut. */
+  .bouton-petit {
+    @apply min-h-[40px] px-4 py-2;
+  }
+  .champ-saisie {
+    @apply min-h-[44px] rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre transition-colors placeholder:text-ardoise/60 focus:border-mousse focus:outline-none;
+  }
+  .champ-saisie:focus {
+    box-shadow: 0 0 0 3px rgba(155, 175, 156, 0.28);
+  }
+  .champ-saisie:disabled {
+    @apply bg-lin text-ardoise;
+  }
+  .champ-compact {
+    @apply min-h-[40px] px-3 py-2;
+  }
+  .carte {
+    @apply rounded-doux border border-trait bg-white/80 shadow-doux;
+  }
+}

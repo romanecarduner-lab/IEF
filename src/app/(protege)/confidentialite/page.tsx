@@ -29,7 +29,7 @@ export default async function PageConfidentialite() {
         Confidentialité et données
       </h1>
 
-      <section className="mb-8 rounded-doux border border-trait bg-white/80 p-6 shadow-doux">
+      <section className="carte mb-8 p-6">
         <p className="mb-3 text-sm font-medium text-encre">Mon profil</p>
         <FormulairePrenom prenomActuel={(user?.user_metadata?.prenom as string) ?? ""} />
       </section>
@@ -48,7 +48,7 @@ export default async function PageConfidentialite() {
         </div>
       </section>
 
-      <section className="rounded-doux border border-trait bg-white/80 p-6 shadow-doux">
+      <section className="carte p-6">
         <p className="mb-2 text-sm font-medium text-encre">Zone de suppression</p>
         <p className="mb-4 text-sm text-ardoise">
           La suppression de votre espace familial est définitive : toutes

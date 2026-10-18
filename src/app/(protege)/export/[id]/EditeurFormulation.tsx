@@ -57,7 +57,7 @@ export function EditeurFormulation({
           setEnregistre(false);
         }}
         rows={rows}
-        className="w-full rounded-doux border border-trait bg-white px-3 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
+        className="champ-saisie champ-compact w-full"
       />
       <div className="mt-1 flex items-center gap-2">
         {!enregistre && (
@@ -65,7 +65,7 @@ export function EditeurFormulation({
             type="button"
             onClick={enregistrer}
             disabled={enCours}
-            className="rounded-doux bg-mousse-fonce px-3 py-1.5 text-xs font-medium text-white hover:bg-mousse disabled:cursor-not-allowed disabled:opacity-60"
+            className="bouton-primaire bouton-petit"
           >
             {enCours ? "…" : "Enregistrer"}
           </button>

@@ -4,6 +4,12 @@ const config: Config = {
   content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
     extend: {
+      // Echelle un cran plus lisible : le 12 px devient 13 px, le 14 px
+      // devient 15 px (tout le texte secondaire de l'application).
+      fontSize: {
+        xs: ["0.8125rem", { lineHeight: "1.2rem" }],
+        sm: ["0.9375rem", { lineHeight: "1.45rem" }],
+      },
       colors: {
         // Direction graphique "Chemins d'apprentissage" : vert forêt,
         // vert sauge, crème, terracotta, ocre doux — evoque la

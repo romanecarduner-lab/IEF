@@ -14,7 +14,7 @@ function BoutonEnregistrer() {
     <button
       type="submit"
       disabled={pending}
-      className="mt-2 rounded-doux bg-mousse-fonce px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-mousse disabled:cursor-not-allowed disabled:opacity-60"
+      className="bouton-primaire mt-2"
     >
       {pending ? "Enregistrement…" : "Ajouter cet enfant"}
     </button>
@@ -32,7 +32,7 @@ export function FormulaireEnfant() {
   }, [etat]);
 
   return (
-    <div className="rounded-doux border border-trait bg-white/80 p-6 shadow-doux">
+    <div className="carte p-6">
       <p className="mb-4 text-sm font-medium text-encre">Ajouter un enfant</p>
       {etat.erreur && <MessageStatut type="erreur">{etat.erreur}</MessageStatut>}
       <form ref={formRef} action={action}>
@@ -46,7 +46,7 @@ export function FormulaireEnfant() {
             id="pronom"
             name="pronom"
             defaultValue=""
-            className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
+            className="champ-saisie w-full"
           >
             <option value="">Laisser le logiciel déterminer seul</option>
             <option value="il">Il</option>
@@ -66,7 +66,7 @@ export function FormulaireEnfant() {
             id="remarques"
             name="remarques"
             rows={2}
-            className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
+            className="champ-saisie w-full"
           />
         </div>
         <BoutonEnregistrer />

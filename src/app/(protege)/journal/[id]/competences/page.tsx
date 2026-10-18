@@ -122,7 +122,7 @@ export default async function PageCompetencesActivite({
               {observations.map((o) => (
                 <li
                   key={o.id}
-                  className="rounded-doux border border-trait bg-white/80 p-3 text-sm shadow-doux"
+                  className="carte p-3 text-sm"
                 >
                   <p className="text-encre">{o.elementLibelle}</p>
                   <p className="text-xs text-ardoise">{o.niveauLibelle}</p>

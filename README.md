@@ -375,6 +375,29 @@ objet, est retiré.
   exemple ; PowerPoint : deux exemples par diapositive, diapositives de suite
   au-delà.
 
+### Refonte ergonomie, lot 1 : bases visuelles communes
+
+- Trois composants de style partagés dans `globals.css` : `bouton-primaire`
+  (+ `bouton-secondaire`, `bouton-petit`), `champ-saisie` (+ `champ-compact`) et
+  `carte`. Environ 110 emplacements qui répétaient des variantes différentes
+  de ces styles les utilisent désormais ; zones de toucher d'au moins 44 px
+  (40 px en version compacte).
+- Échelle typographique : le texte « xs » passe de 12 à 13 px et « sm » de 14
+  à 15 px dans toute l'application (`tailwind.config.ts`).
+- Survol des boutons verts plus foncé (le survol précédent, vert sauge clair,
+  rendait le texte blanc peu lisible).
+- Aucun changement de fonctionnement, aucune migration.
+
+### Idées pour continuer (tableau de bord), correction
+
+Une compétence comptait comme « déjà abordée » seulement si elle avait été
+observée sur une activité. Désormais elle l'est aussi si elle a un statut de
+progression (validé à la main ou automatiquement) et si une compétence de
+libellé strictement identique (reprise à un autre âge du cycle) est déjà
+abordée. Les idées proposées sont donc uniquement des compétences jamais
+vues ; celle d'un sous-domaine totalement vide est affichée en première
+position. Aucune migration.
+
 ### Refaire une activité
 
 Bouton « Refaire cette activité » (page d'une activité) et lien « Refaire »

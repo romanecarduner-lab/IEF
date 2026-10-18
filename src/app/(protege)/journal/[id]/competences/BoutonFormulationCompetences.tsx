@@ -89,7 +89,7 @@ export function BoutonFormulationCompetences({
   }
 
   return (
-    <div className="mt-6 rounded-doux border border-trait bg-white/80 p-4 shadow-doux">
+    <div className="carte mt-6 p-4">
       <p className="mb-1 text-sm font-medium text-encre">Formulation pédagogique</p>
       <p className="mb-3 text-xs text-ardoise">
         Rédige (ou met à jour) le champ Observations de l&rsquo;activité, à
@@ -105,14 +105,14 @@ export function BoutonFormulationCompetences({
               setModifie(true);
             }}
             rows={4}
-            className="w-full rounded-doux border border-trait bg-white px-3 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
+            className="champ-saisie champ-compact w-full"
           />
           {modifie && (
             <button
               type="button"
               onClick={enregistrer}
               disabled={chargementEnregistrement}
-              className="mt-1.5 rounded-doux bg-mousse-fonce px-3 py-1.5 text-xs font-medium text-white hover:bg-mousse disabled:cursor-not-allowed disabled:opacity-60"
+              className="bouton-primaire bouton-petit mt-1.5"
             >
               {chargementEnregistrement ? "Enregistrement…" : "Enregistrer dans Observations"}
             </button>

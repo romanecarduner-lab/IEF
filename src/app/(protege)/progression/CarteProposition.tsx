@@ -84,7 +84,7 @@ export function CarteProposition({
           type="button"
           onClick={appliquer}
           disabled={enCours !== null}
-          className="rounded-doux bg-mousse-fonce px-3 py-1.5 text-xs font-medium text-white hover:bg-mousse disabled:cursor-not-allowed disabled:opacity-60"
+          className="bouton-primaire bouton-petit"
         >
           {enCours === "appliquer" ? "Application…" : "Appliquer"}
         </button>

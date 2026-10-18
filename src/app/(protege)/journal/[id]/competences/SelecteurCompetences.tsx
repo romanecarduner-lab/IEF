@@ -247,7 +247,7 @@ export function SelecteurCompetences({
   }, [objectifs]);
 
   return (
-    <div className="rounded-doux border border-trait bg-white/80 p-6 shadow-doux">
+    <div className="carte p-6">
       <p className="mb-1 text-sm font-medium text-encre">
         Rechercher un objectif
       </p>
@@ -262,7 +262,7 @@ export function SelecteurCompetences({
         value={termeRecherche}
         onChange={(e) => setTermeRecherche(e.target.value)}
         placeholder="Rechercher un mot-clé…"
-        className="mb-3 w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
+        className="champ-saisie mb-3 w-full"
       />
 
       {rechercheEnCours && (
@@ -393,7 +393,7 @@ export function SelecteurCompetences({
                 <select
                   value={niveauParObjectif.get(id) ?? niveauAutonomieId}
                   onChange={(e) => changerNiveauObjectif(libelle, e.target.value)}
-                  className="mt-1.5 w-full rounded-doux border border-trait bg-white px-2.5 py-1.5 text-xs text-encre focus:border-mousse focus:outline-none"
+                  className="champ-saisie champ-compact mt-1.5 w-full text-xs"
                 >
                   {niveaux.map((n) => (
                     <option key={n.id} value={n.id}>
@@ -413,7 +413,7 @@ export function SelecteurCompetences({
               rows={2}
               value={justification}
               onChange={(e) => setJustification(e.target.value)}
-              className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
+              className="champ-saisie w-full"
             />
           </div>
 
@@ -425,7 +425,7 @@ export function SelecteurCompetences({
               rows={2}
               value={commentaire}
               onChange={(e) => setCommentaire(e.target.value)}
-              className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
+              className="champ-saisie w-full"
             />
           </div>
 
@@ -435,7 +435,7 @@ export function SelecteurCompetences({
           <button
             type="submit"
             disabled={chargement}
-            className="rounded-doux bg-mousse-fonce px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-mousse disabled:cursor-not-allowed disabled:opacity-60"
+            className="bouton-primaire"
           >
             {chargement
               ? "Enregistrement…"
@@ -469,7 +469,7 @@ function SelectNiveau({
         value={valeur}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none disabled:bg-lin disabled:text-ardoise"
+        className="champ-saisie w-full"
       >
         <option value="">{placeholder ?? "Sélectionner…"}</option>
         {options.map((o) => (

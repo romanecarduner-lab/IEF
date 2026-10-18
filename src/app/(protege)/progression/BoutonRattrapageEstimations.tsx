@@ -79,7 +79,7 @@ export function BoutonRattrapageEstimations({
         type="button"
         onClick={rattraper}
         disabled={enCours}
-        className="rounded-doux bg-mousse-fonce px-3.5 py-2 text-xs font-medium text-white hover:bg-mousse disabled:cursor-not-allowed disabled:opacity-60"
+        className="bouton-primaire bouton-petit"
       >
         {enCours ? "Rattrapage en cours…" : "Rattraper les compétences déjà observées"}
       </button>

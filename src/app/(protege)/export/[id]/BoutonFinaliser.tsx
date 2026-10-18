@@ -35,7 +35,7 @@ export function BoutonFinaliser({ dossierId }: { dossierId: string }) {
       <button
         type="button"
         onClick={() => setConfirmation(true)}
-        className="rounded-doux bg-mousse-fonce px-4 py-2.5 text-sm font-medium text-white hover:bg-mousse"
+        className="bouton-primaire"
       >
         Finaliser ce dossier
       </button>
@@ -55,7 +55,7 @@ export function BoutonFinaliser({ dossierId }: { dossierId: string }) {
           type="button"
           onClick={gererFinalisation}
           disabled={enCours}
-          className="rounded-doux bg-mousse-fonce px-4 py-2.5 text-sm font-medium text-white hover:bg-mousse disabled:cursor-not-allowed disabled:opacity-60"
+          className="bouton-primaire"
         >
           {enCours ? "Génération du PDF…" : "Confirmer et générer le PDF"}
         </button>

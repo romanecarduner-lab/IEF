@@ -73,7 +73,7 @@ export async function VueATravailler({
           {Array.from(nonAbordesParDomaine.entries()).map(([domaine, objectifs]) => (
             <details
               key={domaine}
-              className="rounded-doux border border-trait bg-white/80 shadow-doux"
+              className="carte"
             >
               <summary className="cursor-pointer list-none p-4 text-sm font-medium text-encre">
                 <span className="flex items-center justify-between">

@@ -28,7 +28,7 @@ export function SelecteurPronomEnfant({
       value={pronom}
       disabled={enCours}
       onChange={(e) => changer(e.target.value)}
-      className="mt-1 rounded-doux border border-trait bg-white px-2 py-1 text-xs text-encre focus:border-mousse focus:outline-none disabled:opacity-60"
+      className="champ-saisie champ-compact mt-1 text-xs disabled:opacity-60"
       title="Pronom à utiliser dans les textes générés automatiquement"
     >
       <option value="">Pronom non précisé</option>

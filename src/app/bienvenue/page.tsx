@@ -84,7 +84,7 @@ export default async function PageBienvenue() {
         <form action={terminerOnboarding}>
           <button
             type="submit"
-            className="w-full rounded-doux bg-mousse-fonce px-4 py-3 text-sm font-medium text-white hover:bg-mousse"
+            className="bouton-primaire w-full"
           >
             Commencer
           </button>

@@ -24,7 +24,7 @@ function SelectNiveau({
       <select
         value={valeur}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-doux border border-trait bg-white px-2.5 py-2 text-sm text-encre focus:border-mousse focus:outline-none"
+        className="champ-saisie champ-compact w-full"
       >
         <option value="">Sélectionner…</option>
         {options.map((o) => (
@@ -209,7 +209,7 @@ export function RechercheCompetences({
         value={termeRecherche}
         onChange={(e) => setTermeRecherche(e.target.value)}
         placeholder="Mots-clés…"
-        className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
+        className="champ-saisie w-full"
       />
       {rechercheEnCours && <p className="mt-1 text-xs text-ardoise">Recherche…</p>}
       {!rechercheEnCours && resultatsRecherche.length > 0 && (

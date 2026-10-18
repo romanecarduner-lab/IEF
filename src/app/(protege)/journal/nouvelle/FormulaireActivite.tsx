@@ -662,7 +662,7 @@ export function FormulaireActivite({
 
       <form
         onSubmit={gererEnvoi}
-        className="rounded-doux border border-trait bg-white/80 p-6 shadow-doux"
+        className="carte p-6"
       >
         <div className="mb-4">
           <label
@@ -676,7 +676,7 @@ export function FormulaireActivite({
             required
             value={donnees.parcoursId}
             onChange={(e) => modifierChamp("parcoursId", e.target.value)}
-            className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
+            className="champ-saisie w-full"
           >
             <option value="">Sélectionner…</option>
             {Array.from(
@@ -767,7 +767,7 @@ export function FormulaireActivite({
               required
               value={donnees.contexteId}
               onChange={(e) => modifierChamp("contexteId", e.target.value)}
-              className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
+              className="champ-saisie w-full"
             >
               <option value="">Sélectionner…</option>
               {contextes.map((c) => (
@@ -979,7 +979,7 @@ export function FormulaireActivite({
                   <select
                     value={niveauParCompetence.get(id) ?? niveauCompetencesId}
                     onChange={(e) => changerNiveauCompetence(libelle, e.target.value)}
-                    className="mt-1.5 ml-6 w-[calc(100%-1.5rem)] rounded-doux border border-trait bg-white px-2.5 py-1.5 text-xs text-encre focus:border-mousse focus:outline-none"
+                    className="champ-saisie champ-compact mt-1.5 ml-6 w-[calc(100%-1.5rem)] text-xs"
                   >
                     {autonomies.map((a) => (
                       <option key={a.id} value={a.id}>
@@ -1010,7 +1010,7 @@ export function FormulaireActivite({
             rows={3}
             value={donnees.description}
             onChange={(e) => modifierChamp("description", e.target.value)}
-            className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
+            className="champ-saisie w-full"
           />
         </div>
 
@@ -1034,7 +1034,7 @@ export function FormulaireActivite({
             rows={2}
             value={donnees.observations}
             onChange={(e) => modifierChamp("observations", e.target.value)}
-            className="w-full rounded-doux border border-trait bg-white px-3.5 py-2.5 text-sm text-encre focus:border-mousse focus:outline-none"
+            className="champ-saisie w-full"
           />
 
           <button
@@ -1078,7 +1078,7 @@ export function FormulaireActivite({
           <button
             type="submit"
             disabled={chargement}
-            className="rounded-doux bg-mousse-fonce px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-mousse disabled:cursor-not-allowed disabled:opacity-60"
+            className="bouton-primaire"
           >
             {chargement ? etapeEnvoi ?? "Enregistrement…" : "Enregistrer l'activité"}
           </button>

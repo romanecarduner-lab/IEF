@@ -22,7 +22,7 @@ export default function PageAccueil() {
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <Link
             href="/inscription"
-            className="rounded-doux bg-mousse-fonce px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-mousse"
+            className="bouton-primaire"
           >
             Créer mon espace
           </Link>
