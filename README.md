@@ -375,6 +375,17 @@ objet, est retiré.
   exemple ; PowerPoint : deux exemples par diapositive, diapositives de suite
   au-delà.
 
+### Refonte ergonomie, lot 3 : tableau de bord centré sur « aujourd'hui »
+
+Nouvel ordre de lecture (une colonne sur téléphone, deux sur grand écran) :
+bouton « Ajouter une activité » ; **Dernière activité** (titre, date, enfant,
+avec « Refaire cette activité » et « Ouvrir ») ; **Idées pour continuer**
+(compétences jamais vues, celle d'un sous-domaine vide en premier) ; le
+parcours et la progression par domaine ; puis à droite les dernières traces,
+**En quelques chiffres** (les quatre compteurs, déplacés et plus compacts) et
+l'encart « Une observation à noter ? ». Aucune information retirée. Nouvelle
+requête : dernière activité enregistrée. Aucune migration.
+
 ### Polices hébergées avec l'application
 
 Les polices (Fraunces pour les titres, Manrope pour le texte) ne sont plus

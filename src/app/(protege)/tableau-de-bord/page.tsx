@@ -382,6 +382,30 @@ export default async function PageTableauDeBord({
     })
   );
 
+  // Derniere activite enregistree (tous enfants confondus) : point de
+  // depart rapide pour "refaire" ou reprendre le fil.
+  const { data: derniereBrute } = await supabase
+    .from("activites")
+    .select("id, titre, date_activite, parcours_scolaires!inner(enfants(prenom))")
+    .order("date_activite", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const derniereActivite = derniereBrute
+    ? (() => {
+        const ps = Array.isArray(derniereBrute.parcours_scolaires)
+          ? derniereBrute.parcours_scolaires[0]
+          : derniereBrute.parcours_scolaires;
+        const enf = ps ? (Array.isArray(ps.enfants) ? ps.enfants[0] : ps.enfants) : null;
+        return {
+          id: derniereBrute.id as string,
+          titre: derniereBrute.titre as string,
+          date: derniereBrute.date_activite as string,
+          enfant: (enf?.prenom as string | undefined) ?? "",
+        };
+      })()
+    : null;
+
   const cartes = [
     { libelle: "Enfant", pluriel: "Enfants", Icone: User, valeur: nbEnfants ?? 0 },
     { libelle: "Activité", pluriel: "Activités", Icone: BookOpen, valeur: nbActivites ?? 0 },
@@ -431,23 +455,83 @@ export default async function PageTableauDeBord({
         />
       </div>
 
-      <div className="mb-5 grid grid-cols-2 gap-2.5 sm:mb-8 sm:gap-3">
-        {cartes.map((c) => (
-          <div
-            key={c.libelle}
-            className="carte p-3 text-center sm:p-4"
-          >
-            <span className="mx-auto mb-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-lin sm:mb-2 sm:h-11 sm:w-11">
-              <c.Icone className="h-4 w-4 text-mousse-fonce sm:h-5 sm:w-5" strokeWidth={1.75} />
-            </span>
-            <p className="font-display text-xl italic text-encre sm:text-2xl">{c.valeur}</p>
-            <p className="text-xs text-ardoise">{c.valeur > 1 ? c.pluriel : c.libelle}</p>
-          </div>
-        ))}
-      </div>
 
       <div className="grid min-w-0 gap-4 sm:gap-6 lg:grid-cols-[1fr_360px]">
-        <div className="carte min-w-0 p-4 sm:p-6">
+        <div className="min-w-0 space-y-4 sm:space-y-6">
+          {derniereActivite && (
+            <div className="carte p-4 sm:p-5">
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-ardoise">
+                Dernière activité
+              </p>
+              <Link
+                href={`/journal/${derniereActivite.id}`}
+                className="block font-display text-lg italic text-encre hover:text-mousse-fonce sm:text-xl"
+              >
+                {derniereActivite.titre}
+              </Link>
+              <p className="mb-3 text-sm text-ardoise">
+                {libelleDate(derniereActivite.date)}
+                {plusieursEnfants && derniereActivite.enfant ? ` · ${derniereActivite.enfant}` : ""}
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  href={`/journal/nouvelle?refaire=${derniereActivite.id}`}
+                  className="bouton-secondaire bouton-petit"
+                >
+                  Refaire cette activité
+                </Link>
+                <Link href={`/journal/${derniereActivite.id}`} className="bouton-secondaire bouton-petit">
+                  Ouvrir
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {suggestionsCompetences.length > 0 && (
+            <div className="carte p-4 sm:p-5">
+              <p className="mb-1 font-display text-base italic text-encre sm:text-lg">
+                Idées pour continuer
+              </p>
+              <p className="mb-3 text-xs text-ardoise">
+                Quelques compétences pas encore abordées — juste des pistes,
+                rien d&rsquo;obligatoire.
+              </p>
+              <ul className="space-y-3">
+                {suggestionsCompetences.map((s) => {
+                  const dupliqueParmiLesSuggestions =
+                    suggestionsCompetences.filter((autre) => autre.libelle === s.libelle).length >
+                    1;
+                  return (
+                    <li key={s.id} className="border-b border-trait pb-3 last:border-b-0 last:pb-0">
+                      <p className="text-xs font-medium text-argile">
+                        {libelleCourtDomaine(s.domaine)}
+                        {plusieursEnfants && ` · ${s.enfantPrenom}`}
+                      </p>
+                      <p className="mb-1 text-sm text-encre">{s.libelle}</p>
+                      {s.sousDomaineVierge && (
+                        <p className="mb-1 text-xs text-mousse-fonce">
+                          Rien n&rsquo;a encore été abordé dans ce sous-domaine
+                          ({s.sousDomaineVierge})
+                        </p>
+                      )}
+                      {dupliqueParmiLesSuggestions && cheminParObjectifId.has(s.id) && (
+                        <p className="mb-1 text-xs text-ardoise">
+                          {cheminParObjectifId.get(s.id)}
+                        </p>
+                      )}
+                      <BoutonIdeesActivites
+                        objectifId={s.id}
+                        objectifLibelle={s.libelle}
+                        parcoursId={s.parcoursId}
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
+          <div className="carte min-w-0 p-4 sm:p-6">
           {parcoursSelectionne ? (
             <>
               <div className="mb-1 flex flex-wrap items-center gap-2">
@@ -534,6 +618,8 @@ export default async function PageTableauDeBord({
           )}
         </div>
 
+        </div>
+
         <div className="min-w-0 space-y-4 sm:space-y-6">
           <div className="carte p-4 sm:p-5">
             <p className="mb-3 font-display text-base italic text-encre sm:text-lg">
@@ -583,49 +669,24 @@ export default async function PageTableauDeBord({
             </Link>
           </div>
 
-          {suggestionsCompetences.length > 0 && (
-            <div className="carte p-4 sm:p-5">
-              <p className="mb-1 font-display text-base italic text-encre sm:text-lg">
-                Idées pour continuer
-              </p>
-              <p className="mb-3 text-xs text-ardoise">
-                Quelques compétences pas encore abordées — juste des pistes,
-                rien d&rsquo;obligatoire.
-              </p>
-              <ul className="space-y-3">
-                {suggestionsCompetences.map((s) => {
-                  const dupliqueParmiLesSuggestions =
-                    suggestionsCompetences.filter((autre) => autre.libelle === s.libelle).length >
-                    1;
-                  return (
-                    <li key={s.id} className="border-b border-trait pb-3 last:border-b-0 last:pb-0">
-                      <p className="text-xs font-medium text-argile">
-                        {libelleCourtDomaine(s.domaine)}
-                        {plusieursEnfants && ` · ${s.enfantPrenom}`}
-                      </p>
-                      <p className="mb-1 text-sm text-encre">{s.libelle}</p>
-                      {s.sousDomaineVierge && (
-                        <p className="mb-1 text-xs text-mousse-fonce">
-                          Rien n&rsquo;a encore été abordé dans ce sous-domaine
-                          ({s.sousDomaineVierge})
-                        </p>
-                      )}
-                      {dupliqueParmiLesSuggestions && cheminParObjectifId.has(s.id) && (
-                        <p className="mb-1 text-xs text-ardoise">
-                          {cheminParObjectifId.get(s.id)}
-                        </p>
-                      )}
-                      <BoutonIdeesActivites
-                        objectifId={s.id}
-                        objectifLibelle={s.libelle}
-                        parcoursId={s.parcoursId}
-                      />
-                    </li>
-                  );
-                })}
-              </ul>
+          <div className="carte p-4 sm:p-5">
+            <p className="mb-3 font-display text-base italic text-encre sm:text-lg">
+              En quelques chiffres
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {cartes.map((c) => (
+                <div key={c.libelle} className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-lin">
+                    <c.Icone className="h-4 w-4 text-mousse-fonce" strokeWidth={1.75} />
+                  </span>
+                  <div>
+                    <p className="font-display text-xl italic leading-tight text-encre">{c.valeur}</p>
+                    <p className="text-xs text-ardoise">{c.valeur > 1 ? c.pluriel : c.libelle}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-          )}
+          </div>
 
           <div className="carte flex items-center gap-4 p-4 sm:p-5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
