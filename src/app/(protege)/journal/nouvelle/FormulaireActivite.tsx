@@ -19,6 +19,7 @@ import {
 import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaximal";
 import { RechercheCompetences } from "./RechercheCompetences";
 import { trouverJumelles } from "../jumellesActions";
+import { EtapesActivite } from "./EtapesActivite";
 import { declencherEstimationArrierePlan } from "@/lib/estimationArrierePlan";
 
 type Option = { id: string; libelle: string };
@@ -91,6 +92,14 @@ export function FormulaireActivite({
   const delaiAutosaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputPhotoRef = useRef<HTMLInputElement>(null);
   const erreurRef = useRef<HTMLDivElement>(null);
+  // Les trois temps de la creation : 1 = l'activite, 2 = competences,
+  // 3 = observation. Tous les champs restent montes (simplement masques)
+  // pour que rien ne soit perdu en changeant d'etape.
+  const [etape, setEtape] = useState<1 | 2 | 3>(1);
+  function allerEtape(n: number) {
+    setEtape(n as 1 | 2 | 3);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   // Parcours par defaut si un seul enfant existe dans le foyer -- celui
   // dont l'annee couvre la date du jour, comme dans le selecteur
@@ -442,6 +451,7 @@ export function FormulaireActivite({
     if (!donnees.titre.trim()) champsManquants.push("le titre");
 
     if (champsManquants.length > 0) {
+      setEtape(1);
       const liste =
         champsManquants.length === 1
           ? champsManquants[0]
@@ -662,276 +672,243 @@ export function FormulaireActivite({
 
       <form
         onSubmit={gererEnvoi}
-        className="carte p-6"
+        noValidate
+        className="carte p-4 sm:p-6"
       >
-        <div className="mb-4">
-          <label
-            htmlFor="parcours"
-            className="mb-1.5 block text-sm font-medium text-encre"
-          >
-            Enfant
-          </label>
-          <select
-            id="parcours"
-            required
-            value={donnees.parcoursId}
-            onChange={(e) => modifierChamp("parcoursId", e.target.value)}
-            className="champ-saisie w-full"
-          >
-            <option value="">Sélectionner…</option>
-            {Array.from(
-              parcours.reduce((carte, p) => {
-                const aujourdhui = new Date().toISOString().slice(0, 10);
-                const correspondAujourdhui =
-                  p.dateDebutAnnee &&
-                  p.dateFinAnnee &&
-                  aujourdhui >= p.dateDebutAnnee &&
-                  aujourdhui <= p.dateFinAnnee;
-                const dejaRetenu = carte.get(p.enfantId);
-                // Retient de preference le parcours dont l'annee couvre la
-                // date du jour, pour eviter un ajustement automatique
-                // visible juste apres la selection de l'enfant.
-                if (!dejaRetenu || correspondAujourdhui) carte.set(p.enfantId, p);
-                return carte;
-              }, new Map<string, (typeof parcours)[number]>())
-            ).map(([enfantId, p]) => (
-              <option key={enfantId} value={p.id}>
-                {p.prenomEnfant}
-              </option>
-            ))}
-          </select>
-        </div>
+        <EtapesActivite etape={etape} onChoisir={setEtape} titreOk={Boolean(donnees.titre.trim())} nbCompetences={new Set(suggestionsChoisies.values()).size} />
 
-        {(() => {
-          const enfantIdActuel = parcours.find((p) => p.id === donnees.parcoursId)?.enfantId;
-          const autresEnfants = Array.from(
-            new Map(
-              parcours
-                .filter((p) => p.enfantId !== enfantIdActuel)
-                .map((p) => [p.enfantId, p])
-            ).values()
-          );
-          if (autresEnfants.length === 0) return null;
-          return (
-            <div className="mb-4">
-              <p className="mb-1.5 text-sm font-medium text-encre">
-                Concerne aussi (facultatif)
-              </p>
-              <p className="mb-2 text-xs text-ardoise">
-                Une copie sera créée pour chaque enfant coché (sur son
-                année correspondant à la date ci-dessous) — même titre,
-                description et photos, mais des compétences et une
-                observation à choisir séparément pour chacun.
-              </p>
-              <div className="space-y-1.5">
-                {autresEnfants.map((p) => (
-                  <label key={p.enfantId} className="flex items-center gap-2 text-sm text-encre">
-                    <input
-                      type="checkbox"
-                      checked={autresEnfantsChoisis.has(p.enfantId)}
-                      onChange={() =>
-                        setAutresEnfantsChoisis((precedent) => {
-                          const suivant = new Set(precedent);
-                          if (suivant.has(p.enfantId)) suivant.delete(p.enfantId);
-                          else suivant.add(p.enfantId);
-                          return suivant;
-                        })
-                      }
-                    />
-                    {p.prenomEnfant}
-                  </label>
-                ))}
-              </div>
-            </div>
-          );
-        })()}
-
-        <div className="grid grid-cols-2 gap-4">
-          <Champ
-            label="Date"
-            id="date-activite"
-            type="date"
-            required
-            value={donnees.dateActivite}
-            onChange={(e) => modifierChamp("dateActivite", e.target.value)}
-          />
+        <div className={etape === 1 ? "" : "hidden"} aria-hidden={etape !== 1}>
+          <h2 className="mb-1 font-display text-lg italic text-encre">Qu&rsquo;avez-vous fait ?</h2>
+          <p className="mb-5 text-sm text-ardoise">L&rsquo;essentiel : l&rsquo;enfant, la date, un titre et une ou plusieurs photos.</p>
           <div className="mb-4">
             <label
-              htmlFor="contexte"
+              htmlFor="parcours"
               className="mb-1.5 block text-sm font-medium text-encre"
             >
-              Contexte
+              Enfant
             </label>
             <select
-              id="contexte"
+              id="parcours"
               required
-              value={donnees.contexteId}
-              onChange={(e) => modifierChamp("contexteId", e.target.value)}
+              value={donnees.parcoursId}
+              onChange={(e) => modifierChamp("parcoursId", e.target.value)}
               className="champ-saisie w-full"
             >
               <option value="">Sélectionner…</option>
-              {contextes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.libelle}
+              {Array.from(
+                parcours.reduce((carte, p) => {
+                  const aujourdhui = new Date().toISOString().slice(0, 10);
+                  const correspondAujourdhui =
+                    p.dateDebutAnnee &&
+                    p.dateFinAnnee &&
+                    aujourdhui >= p.dateDebutAnnee &&
+                    aujourdhui <= p.dateFinAnnee;
+                  const dejaRetenu = carte.get(p.enfantId);
+                  // Retient de preference le parcours dont l'annee couvre la
+                  // date du jour, pour eviter un ajustement automatique
+                  // visible juste apres la selection de l'enfant.
+                  if (!dejaRetenu || correspondAujourdhui) carte.set(p.enfantId, p);
+                  return carte;
+                }, new Map<string, (typeof parcours)[number]>())
+              ).map(([enfantId, p]) => (
+                <option key={enfantId} value={p.id}>
+                  {p.prenomEnfant}
                 </option>
               ))}
             </select>
           </div>
-        </div>
 
-        {noteAnneeAjustee && (
-          <p className="mb-4 rounded-doux bg-mousse/10 px-3 py-2 text-xs text-mousse-fonce">
-            {noteAnneeAjustee}
-          </p>
-        )}
-        {erreurAucunParcoursPourDate && (
-          <p className="mb-4 rounded-doux bg-argile/10 px-3 py-2 text-xs text-argile">
-            {erreurAucunParcoursPourDate}
-          </p>
-        )}
+          {(() => {
+            const enfantIdActuel = parcours.find((p) => p.id === donnees.parcoursId)?.enfantId;
+            const autresEnfants = Array.from(
+              new Map(
+                parcours
+                  .filter((p) => p.enfantId !== enfantIdActuel)
+                  .map((p) => [p.enfantId, p])
+              ).values()
+            );
+            if (autresEnfants.length === 0) return null;
+            return (
+              <div className="mb-4">
+                <p className="mb-1.5 text-sm font-medium text-encre">
+                  Concerne aussi (facultatif)
+                </p>
+                <p className="mb-2 text-xs text-ardoise">
+                  Une copie sera créée pour chaque enfant coché (sur son
+                  année correspondant à la date ci-dessous) — même titre,
+                  description et photos, mais des compétences et une
+                  observation à choisir séparément pour chacun.
+                </p>
+                <div className="space-y-1.5">
+                  {autresEnfants.map((p) => (
+                    <label key={p.enfantId} className="flex items-center gap-2 text-sm text-encre">
+                      <input
+                        type="checkbox"
+                        checked={autresEnfantsChoisis.has(p.enfantId)}
+                        onChange={() =>
+                          setAutresEnfantsChoisis((precedent) => {
+                            const suivant = new Set(precedent);
+                            if (suivant.has(p.enfantId)) suivant.delete(p.enfantId);
+                            else suivant.add(p.enfantId);
+                            return suivant;
+                          })
+                        }
+                      />
+                      {p.prenomEnfant}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
-        <Champ
-          label="Titre"
-          id="titre"
-          type="text"
-          required
-          placeholder="Cabane dans les bois"
-          value={donnees.titre}
-          onChange={(e) => modifierChamp("titre", e.target.value)}
-        />
-
-        <div className="mb-6">
-          <label
-            htmlFor="photo"
-            className="mb-1.5 block text-sm font-medium text-encre"
-          >
-            Photo ou document (facultatif)
-          </label>
-          <input
-            ref={inputPhotoRef}
-            id="photo"
-            type="file"
-            multiple
-            accept="image/jpeg,image/png,image/webp,application/pdf,application/msword,.docx"
-            onChange={(e) => {
-              setErreurDescriptionIA(null);
-              setNbPhotosSelectionnees(Array.from(e.target.files ?? []).filter(estImage).length);
-            }}
-            className="w-full text-sm text-encre"
-          />
-          <p className="mt-1.5 text-xs text-ardoise">
-            Ajoutées automatiquement comme premières traces de
-            l&rsquo;activité (plusieurs fichiers possibles). D&rsquo;autres
-            traces pourront être ajoutées ensuite depuis la fiche de
-            l&rsquo;activité.
-          </p>
-        </div>
-
-        <div className="mb-6 border-t border-trait pt-5">
-          <p className="mb-1 text-sm font-medium text-encre">
-            Compétences du programme
-          </p>
-          <p className="mb-3 text-xs text-ardoise">
-            Pour relier cette activité aux compétences officielles qu&rsquo;elle
-            pourrait développer — ce sont des propositions, à vous de
-            cocher, décocher ou ajuster celles qui conviennent vraiment.
-            Vous restez seule ou seul responsable du suivi pédagogique
-            de votre enfant.
-          </p>
-
-          {donnees.parcoursId ? (
-            <RechercheCompetences
-              cycleId={parcours.find((p) => p.id === donnees.parcoursId)?.cycleId ?? null}
-              selection={suggestionsChoisies}
-              onToggle={basculerSuggestion}
+          <div className="grid grid-cols-2 gap-4">
+            <Champ
+              label="Date"
+              id="date-activite"
+              type="date"
+              required
+              value={donnees.dateActivite}
+              onChange={(e) => modifierChamp("dateActivite", e.target.value)}
             />
-          ) : (
-            <p className="mb-4 text-xs text-ardoise">
-              Choisissez d&rsquo;abord l&rsquo;enfant ci-dessus pour pouvoir
-              chercher une compétence.
+            <div className="mb-4">
+              <label
+                htmlFor="contexte"
+                className="mb-1.5 block text-sm font-medium text-encre"
+              >
+                Contexte
+              </label>
+              <select
+                id="contexte"
+                required
+                value={donnees.contexteId}
+                onChange={(e) => modifierChamp("contexteId", e.target.value)}
+                className="champ-saisie w-full"
+              >
+                <option value="">Sélectionner…</option>
+                {contextes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.libelle}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {noteAnneeAjustee && (
+            <p className="mb-4 rounded-doux bg-mousse/10 px-3 py-2 text-xs text-mousse-fonce">
+              {noteAnneeAjustee}
             </p>
           )}
+          {erreurAucunParcoursPourDate && (
+            <p className="mb-4 rounded-doux bg-argile/10 px-3 py-2 text-xs text-argile">
+              {erreurAucunParcoursPourDate}
+            </p>
+          )}
+
+          <Champ
+            label="Titre"
+            id="titre"
+            type="text"
+            required
+            placeholder="Cabane dans les bois"
+            value={donnees.titre}
+            onChange={(e) => modifierChamp("titre", e.target.value)}
+          />
+
+          <div className="mb-6">
+            <label
+              htmlFor="photo"
+              className="mb-1.5 block text-sm font-medium text-encre"
+            >
+              Photo ou document (facultatif)
+            </label>
+            <input
+              ref={inputPhotoRef}
+              id="photo"
+              type="file"
+              multiple
+              accept="image/jpeg,image/png,image/webp,application/pdf,application/msword,.docx"
+              onChange={(e) => {
+                setErreurDescriptionIA(null);
+                setNbPhotosSelectionnees(Array.from(e.target.files ?? []).filter(estImage).length);
+              }}
+              className="w-full text-sm text-encre"
+            />
+            <p className="mt-1.5 text-xs text-ardoise">
+              Ajoutées automatiquement comme premières traces de
+              l&rsquo;activité (plusieurs fichiers possibles). D&rsquo;autres
+              traces pourront être ajoutées ensuite depuis la fiche de
+              l&rsquo;activité.
+            </p>
+          </div>
+
+          <div className="mb-4">
+            <label
+              htmlFor="description"
+              className="mb-1.5 block text-sm font-medium text-encre"
+            >
+              Description libre
+            </label>
+            <textarea
+              id="description"
+              rows={3}
+              value={donnees.description}
+              onChange={(e) => modifierChamp("description", e.target.value)}
+              className="champ-saisie w-full"
+            />
+          </div>
+
+          <Champ
+            label="Lieu (facultatif)"
+            id="lieu"
+            type="text"
+            value={donnees.lieu}
+            onChange={(e) => modifierChamp("lieu", e.target.value)}
+          />
         </div>
 
-        {chargementSuggestions && (
-          <p className="mb-4 -mt-2 text-xs text-ardoise">Recherche de compétences…</p>
-        )}
-
-        {!chargementSuggestions && suggestions.length > 0 && (
-          <div className="mb-4 -mt-2 rounded-doux border border-mousse/30 bg-mousse/5 p-3">
-            <p className="mb-2 text-xs font-medium text-mousse-fonce">
-              Compétences qui pourraient correspondre (rapprochement par
-              mots-clés — à vous de valider) :
+        <div className={etape === 2 ? "" : "hidden"} aria-hidden={etape !== 2}>
+          <h2 className="mb-1 font-display text-lg italic text-encre">Compétences du programme</h2>
+          <p className="mb-5 text-sm text-ardoise">Cherchez un mot, parcourez par domaine ou laissez le logiciel proposer. Vous pouvez aussi passer cette étape.</p>
+          <div className="mb-6 border-t border-trait pt-5">
+            <p className="mb-1 text-sm font-medium text-encre">
+              Compétences du programme
             </p>
-            <ul className="max-h-40 space-y-1 overflow-y-auto">
-              {suggestions.map((s) => (
-                <li key={s.id}>
-                  <label className="flex items-start gap-2 text-sm text-encre">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5"
-                      checked={suggestionsChoisies.has(s.id)}
-                      onChange={() => basculerSuggestion(s.id, s.libelle)}
-                    />
-                    <span>
-                      {s.libelle}
-                      {s.chemin && (
-                        <span className="block text-xs text-ardoise">{s.chemin}</span>
-                      )}
-                    </span>
-                  </label>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+            <p className="mb-3 text-xs text-ardoise">
+              Pour relier cette activité aux compétences officielles qu&rsquo;elle
+              pourrait développer — ce sont des propositions, à vous de
+              cocher, décocher ou ajuster celles qui conviennent vraiment.
+              Vous restez seule ou seul responsable du suivi pédagogique
+              de votre enfant.
+            </p>
 
-        <div className="mb-4 -mt-2">
-          <button
-            type="button"
-            onClick={demanderDescriptionEtCompetencesIA}
-            disabled={chargementDescriptionIA || !donnees.titre.trim()}
-            className="text-xs font-medium text-mousse-fonce underline decoration-mousse-clair/60 underline-offset-2 hover:text-mousse disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {chargementDescriptionIA
-              ? "Analyse en cours…"
-              : "✨ Décrire l'activité et identifier les compétences (photo + attendus)"}
-          </button>
-          <p className="mt-1 text-xs text-ardoise">
-            Regarde le titre, la ou les photo(s) et ce que vous avez déjà
-            écrit dans la description pour la compléter, puis propose
-            directement les compétences officielles concernées — en une
-            seule fois.
-            {nbPhotosSelectionnees > NB_MAX_PHOTOS_IA && (
-              <>
-                {" "}
-                Seules les {NB_MAX_PHOTOS_IA} premières photos sont
-                analysées (les autres seront quand même
-                ajoutées à l&rsquo;activité).
-              </>
-            )}
-          </p>
-
-          {erreurDescriptionIA && (
-            <p className="mt-1.5 text-xs text-alerte">{erreurDescriptionIA}</p>
-          )}
-
-          {!chargementDescriptionIA &&
-            demandeIAFaite &&
-            !erreurDescriptionIA &&
-            suggestionsIA.length === 0 && (
-              <p className="mt-1.5 text-xs text-ardoise">
-                Aucun objectif clairement lié n&rsquo;a été trouvé.
+            {donnees.parcoursId ? (
+              <RechercheCompetences
+                cycleId={parcours.find((p) => p.id === donnees.parcoursId)?.cycleId ?? null}
+                selection={suggestionsChoisies}
+                onToggle={basculerSuggestion}
+              />
+            ) : (
+              <p className="mb-4 text-xs text-ardoise">
+                Choisissez d&rsquo;abord l&rsquo;enfant ci-dessus pour pouvoir
+                chercher une compétence.
               </p>
             )}
+          </div>
 
-          {suggestionsIA.length > 0 && (
-            <div className="mt-2 rounded-doux border border-argile/30 bg-argile/5 p-3">
-              <p className="mb-2 text-xs font-medium text-encre">
-                Suggestions (à valider) :
+          {chargementSuggestions && (
+            <p className="mb-4 -mt-2 text-xs text-ardoise">Recherche de compétences…</p>
+          )}
+
+          {!chargementSuggestions && suggestions.length > 0 && (
+            <div className="mb-4 -mt-2 rounded-doux border border-mousse/30 bg-mousse/5 p-3">
+              <p className="mb-2 text-xs font-medium text-mousse-fonce">
+                Compétences qui pourraient correspondre (rapprochement par
+                mots-clés — à vous de valider) :
               </p>
               <ul className="max-h-40 space-y-1 overflow-y-auto">
-                {suggestionsIA.map((s) => (
+                {suggestions.map((s) => (
                   <li key={s.id}>
                     <label className="flex items-start gap-2 text-sm text-encre">
                       <input
@@ -952,136 +929,196 @@ export function FormulaireActivite({
               </ul>
             </div>
           )}
-        </div>
 
-        {suggestionsChoisies.size > 0 && (
-          <div className="mb-4 rounded-doux border border-trait bg-white/60 p-3">
-            <p className="mb-2 text-xs font-medium text-encre">
-              Compétence{suggestionsChoisies.size > 1 ? "s" : ""} sélectionnée
-              {suggestionsChoisies.size > 1 ? "s" : ""} — sera
-              {suggestionsChoisies.size > 1 ? "ont" : ""} enregistrée
-              {suggestionsChoisies.size > 1 ? "s" : ""} avec cette activité :
+          <div className="mb-4 -mt-2">
+            <button
+              type="button"
+              onClick={demanderDescriptionEtCompetencesIA}
+              disabled={chargementDescriptionIA || !donnees.titre.trim()}
+              className="text-xs font-medium text-mousse-fonce underline decoration-mousse-clair/60 underline-offset-2 hover:text-mousse disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {chargementDescriptionIA
+                ? "Analyse en cours…"
+                : "✨ Décrire l'activité et identifier les compétences (photo + attendus)"}
+            </button>
+            <p className="mt-1 text-xs text-ardoise">
+              Regarde le titre, la ou les photo(s) et ce que vous avez déjà
+              écrit dans la description pour la compléter, puis propose
+              directement les compétences officielles concernées — en une
+              seule fois.
+              {nbPhotosSelectionnees > NB_MAX_PHOTOS_IA && (
+                <>
+                  {" "}
+                  Seules les {NB_MAX_PHOTOS_IA} premières photos sont
+                  analysées (les autres seront quand même
+                  ajoutées à l&rsquo;activité).
+                </>
+              )}
             </p>
-            <ul className="mb-3 space-y-2">
-              {Array.from(suggestionsChoisies.entries())
-                .filter(([, libelle], i, tout) => tout.findIndex(([, l]) => l === libelle) === i)
-                .map(([id, libelle]) => (
-                <li key={id} className="rounded-doux border border-trait bg-white p-2.5">
-                  <label className="flex items-start gap-2 text-sm text-encre">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5"
-                      checked
-                      onChange={() => basculerSuggestion(id, libelle)}
-                    />
-                    <span>{libelle}</span>
-                  </label>
-                  <select
-                    value={niveauParCompetence.get(id) ?? niveauCompetencesId}
-                    onChange={(e) => changerNiveauCompetence(libelle, e.target.value)}
-                    className="champ-saisie champ-compact mt-1.5 ml-6 w-[calc(100%-1.5rem)] text-xs"
-                  >
-                    {autonomies.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.libelle}
-                      </option>
-                    ))}
-                  </select>
-                </li>
-              ))}
-            </ul>
-            <p className="text-xs text-ardoise">
-              Décrit comment l&rsquo;enfant a mobilisé chaque compétence
-              précisément — peut différer d&rsquo;une compétence à
-              l&rsquo;autre dans la même activité.
-            </p>
+
+            {erreurDescriptionIA && (
+              <p className="mt-1.5 text-xs text-alerte">{erreurDescriptionIA}</p>
+            )}
+
+            {!chargementDescriptionIA &&
+              demandeIAFaite &&
+              !erreurDescriptionIA &&
+              suggestionsIA.length === 0 && (
+                <p className="mt-1.5 text-xs text-ardoise">
+                  Aucun objectif clairement lié n&rsquo;a été trouvé.
+                </p>
+              )}
+
+            {suggestionsIA.length > 0 && (
+              <div className="mt-2 rounded-doux border border-argile/30 bg-argile/5 p-3">
+                <p className="mb-2 text-xs font-medium text-encre">
+                  Suggestions (à valider) :
+                </p>
+                <ul className="max-h-40 space-y-1 overflow-y-auto">
+                  {suggestionsIA.map((s) => (
+                    <li key={s.id}>
+                      <label className="flex items-start gap-2 text-sm text-encre">
+                        <input
+                          type="checkbox"
+                          className="mt-0.5"
+                          checked={suggestionsChoisies.has(s.id)}
+                          onChange={() => basculerSuggestion(s.id, s.libelle)}
+                        />
+                        <span>
+                          {s.libelle}
+                          {s.chemin && (
+                            <span className="block text-xs text-ardoise">{s.chemin}</span>
+                          )}
+                        </span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
-        )}
 
-        <div className="mb-4">
-          <label
-            htmlFor="description"
-            className="mb-1.5 block text-sm font-medium text-encre"
-          >
-            Description libre
-          </label>
-          <textarea
-            id="description"
-            rows={3}
-            value={donnees.description}
-            onChange={(e) => modifierChamp("description", e.target.value)}
-            className="champ-saisie w-full"
-          />
-        </div>
-
-        <Champ
-          label="Lieu (facultatif)"
-          id="lieu"
-          type="text"
-          value={donnees.lieu}
-          onChange={(e) => modifierChamp("lieu", e.target.value)}
-        />
-
-        <div className="mb-4">
-          <label
-            htmlFor="observations"
-            className="mb-1.5 block text-sm font-medium text-encre"
-          >
-            Observations (facultatif)
-          </label>
-          <textarea
-            id="observations"
-            rows={2}
-            value={donnees.observations}
-            onChange={(e) => modifierChamp("observations", e.target.value)}
-            className="champ-saisie w-full"
-          />
-
-          <button
-            type="button"
-            onClick={demanderFormulation}
-            disabled={chargementFormulation || suggestionsChoisies.size === 0}
-            title={
-              suggestionsChoisies.size === 0
-                ? "Sélectionnez d'abord au moins une compétence"
-                : undefined
-            }
-            className="mt-1.5 text-xs font-medium text-mousse-fonce underline decoration-mousse-clair/60 underline-offset-2 hover:text-mousse disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {chargementFormulation
-              ? "Rédaction en cours…"
-              : "✨ Proposer une formulation pédagogique"}
-          </button>
-
-          {erreurFormulation && (
-            <p className="mt-1.5 text-xs text-alerte">{erreurFormulation}</p>
+          {suggestionsChoisies.size > 0 && (
+            <div className="mb-4 rounded-doux border border-trait bg-white/60 p-3">
+              <p className="mb-2 text-xs font-medium text-encre">
+                Compétence{suggestionsChoisies.size > 1 ? "s" : ""} sélectionnée
+                {suggestionsChoisies.size > 1 ? "s" : ""} — sera
+                {suggestionsChoisies.size > 1 ? "ont" : ""} enregistrée
+                {suggestionsChoisies.size > 1 ? "s" : ""} avec cette activité :
+              </p>
+              <ul className="mb-3 space-y-2">
+                {Array.from(suggestionsChoisies.entries())
+                  .filter(([, libelle], i, tout) => tout.findIndex(([, l]) => l === libelle) === i)
+                  .map(([id, libelle]) => (
+                  <li key={id} className="rounded-doux border border-trait bg-white p-2.5">
+                    <label className="flex items-start gap-2 text-sm text-encre">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked
+                        onChange={() => basculerSuggestion(id, libelle)}
+                      />
+                      <span>{libelle}</span>
+                    </label>
+                    <select
+                      value={niveauParCompetence.get(id) ?? niveauCompetencesId}
+                      onChange={(e) => changerNiveauCompetence(libelle, e.target.value)}
+                      className="champ-saisie champ-compact mt-1.5 ml-6 w-[calc(100%-1.5rem)] text-xs"
+                    >
+                      {autonomies.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.libelle}
+                        </option>
+                      ))}
+                    </select>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-ardoise">
+                Décrit comment l&rsquo;enfant a mobilisé chaque compétence
+                précisément — peut différer d&rsquo;une compétence à
+                l&rsquo;autre dans la même activité.
+              </p>
+            </div>
           )}
         </div>
 
-        <Champ
-          label="Paroles exactes de l'enfant (facultatif)"
-          id="paroles-enfant"
-          type="text"
-          value={donnees.parolesEnfant}
-          onChange={(e) => modifierChamp("parolesEnfant", e.target.value)}
-        />
+        <div className={etape === 3 ? "" : "hidden"} aria-hidden={etape !== 3}>
+          <h2 className="mb-1 font-display text-lg italic text-encre">Votre observation</h2>
+          <p className="mb-5 text-sm text-ardoise">Facultatif : ce que vous avez remarqué, les paroles de l&rsquo;enfant, qui était là.</p>
+          <div className="mb-4">
+            <label
+              htmlFor="observations"
+              className="mb-1.5 block text-sm font-medium text-encre"
+            >
+              Observations (facultatif)
+            </label>
+            <textarea
+              id="observations"
+              rows={2}
+              value={donnees.observations}
+              onChange={(e) => modifierChamp("observations", e.target.value)}
+              className="champ-saisie w-full"
+            />
 
-        <Champ
-          label="Personnes présentes (facultatif)"
-          id="personnes-presentes"
-          type="text"
-          value={donnees.personnesPresentes}
-          onChange={(e) => modifierChamp("personnesPresentes", e.target.value)}
-        />
+            <button
+              type="button"
+              onClick={demanderFormulation}
+              disabled={chargementFormulation || suggestionsChoisies.size === 0}
+              title={
+                suggestionsChoisies.size === 0
+                  ? "Sélectionnez d'abord au moins une compétence"
+                  : undefined
+              }
+              className="mt-1.5 text-xs font-medium text-mousse-fonce underline decoration-mousse-clair/60 underline-offset-2 hover:text-mousse disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {chargementFormulation
+                ? "Rédaction en cours…"
+                : "✨ Proposer une formulation pédagogique"}
+            </button>
 
-        <div className="flex items-center justify-between">
-          <button
-            type="submit"
-            disabled={chargement}
-            className="bouton-primaire"
-          >
-            {chargement ? etapeEnvoi ?? "Enregistrement…" : "Enregistrer l'activité"}
-          </button>
+            {erreurFormulation && (
+              <p className="mt-1.5 text-xs text-alerte">{erreurFormulation}</p>
+            )}
+          </div>
+
+          <Champ
+            label="Paroles exactes de l'enfant (facultatif)"
+            id="paroles-enfant"
+            type="text"
+            value={donnees.parolesEnfant}
+            onChange={(e) => modifierChamp("parolesEnfant", e.target.value)}
+          />
+
+          <Champ
+            label="Personnes présentes (facultatif)"
+            id="personnes-presentes"
+            type="text"
+            value={donnees.personnesPresentes}
+            onChange={(e) => modifierChamp("personnesPresentes", e.target.value)}
+          />
+        </div>
+
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-trait pt-5">
+          <div className="flex flex-wrap items-center gap-3">
+            {etape > 1 && (
+              <button type="button" onClick={() => allerEtape(etape - 1)} className="bouton-secondaire">
+                Retour
+              </button>
+            )}
+            {etape < 3 && (
+              <button type="button" onClick={() => allerEtape(etape + 1)} className="bouton-secondaire">
+                {etape === 1 ? "Suivant : compétences" : "Suivant : observation"}
+              </button>
+            )}
+            <button type="submit" disabled={chargement} className="bouton-primaire">
+              {chargement
+                ? etapeEnvoi ?? "Enregistrement…"
+                : etape < 3
+                  ? "Enregistrer maintenant"
+                  : "Enregistrer l'activité"}
+            </button>
+          </div>
           <IndicateurSynchronisation statut={statutSync} />
         </div>
       </form>

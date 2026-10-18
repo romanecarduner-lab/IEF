@@ -375,6 +375,27 @@ objet, est retiré.
   exemple ; PowerPoint : deux exemples par diapositive, diapositives de suite
   au-delà.
 
+### Refonte ergonomie, lot 2 : création d'activité en trois temps
+
+Le formulaire « Ajouter une activité » est présenté en trois étapes, avec un
+fil d'étapes cliquable en haut :
+
+1. **Activité** : enfant (et « concerne aussi »), date, contexte, titre,
+   photos ou documents, description libre, lieu.
+2. **Compétences** : recherche par mot, parcours par domaine, suggestions
+   automatiques, bouton de description automatique, compétences choisies avec
+   leur niveau d'autonomie.
+3. **Observation** : observations (avec la rédaction automatique), paroles de
+   l'enfant, personnes présentes.
+
+Aucun champ ni aucune fonction retirés : toutes les zones restent montées
+(simplement masquées), donc rien n'est perdu en changeant d'étape ; la
+sauvegarde automatique de brouillon, l'envoi des photos, la duplication vers un
+autre enfant et la validation automatique des compétences sont inchangés. On
+peut enregistrer dès la première étape (« Enregistrer maintenant »). Si le
+titre, le contexte ou l'enfant manque, le formulaire revient à l'étape 1 avec
+le message d'erreur. Aucune migration.
+
 ### « Ce qui reste à voir » (Progression), correction
 
 L'onglet comptait une compétence comme « à voir » tant qu'elle n'avait pas été
