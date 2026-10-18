@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, BookOpen, Plus, TrendingUp, MoreHorizontal, X } from "lucide-react";
+import { Home, BookOpen, Plus, TrendingUp, FileText, MoreHorizontal, X } from "lucide-react";
 import { creerClientNavigateur } from "@/lib/supabase/client";
 
 const ONGLETS = [
@@ -11,7 +11,10 @@ const ONGLETS = [
   { href: "/journal", libelle: "Journal", Icone: BookOpen },
 ];
 
-const ONGLETS_DROITE = [{ href: "/progression", libelle: "Progression", Icone: TrendingUp }];
+const ONGLETS_DROITE = [
+  { href: "/progression", libelle: "Progression", Icone: TrendingUp },
+  { href: "/export", libelle: "Export", Icone: FileText },
+];
 
 export function NavigationBasse() {
   const pathname = usePathname();
@@ -62,12 +65,6 @@ export function NavigationBasse() {
             </button>
           </div>
           <Link
-            href="/export"
-            className="flex min-h-[44px] items-center rounded-doux px-3 py-3 text-sm text-encre active:bg-lin"
-          >
-            Export
-          </Link>
-          <Link
             href="/famille"
             className="flex min-h-[44px] items-center rounded-doux px-3 py-3 text-sm text-encre active:bg-lin"
           >
@@ -98,7 +95,7 @@ export function NavigationBasse() {
             <Link
               key={onglet.href}
               href={onglet.href}
-              className={`flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[11px] ${
+              className={`flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[10px] min-[380px]:text-[11px] ${
                 estActif(onglet.href)
                   ? "font-semibold text-mousse-fonce"
                   : "text-ardoise active:text-mousse-fonce"
@@ -123,7 +120,7 @@ export function NavigationBasse() {
             <Link
               key={onglet.href}
               href={onglet.href}
-              className={`flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[11px] ${
+              className={`flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[10px] min-[380px]:text-[11px] ${
                 estActif(onglet.href)
                   ? "font-semibold text-mousse-fonce"
                   : "text-ardoise active:text-mousse-fonce"
@@ -137,7 +134,7 @@ export function NavigationBasse() {
           <button
             type="button"
             onClick={() => setFeuilleOuverte(true)}
-            className={`flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[11px] ${
+            className={`flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[10px] min-[380px]:text-[11px] ${
               feuilleOuverte ? "font-semibold text-mousse-fonce" : "text-ardoise active:text-mousse-fonce"
             }`}
           >

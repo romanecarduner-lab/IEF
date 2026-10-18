@@ -375,6 +375,23 @@ objet, est retiré.
   exemple ; PowerPoint : deux exemples par diapositive, diapositives de suite
   au-delà.
 
+### Refonte ergonomie, lot 6 : Export en étapes, et dans la barre du bas
+
+- **Barre du bas (mobile)** : Export devient un onglet à part entière
+  (Accueil, Journal, +, Progression, Export, Plus). Il n'est plus caché dans
+  « Plus ». Vérifié sans débordement à 360 px et 320 px.
+- **Dossier pédagogique en brouillon** : fil d'étapes en haut (1 Préparer,
+  2 Relire, 3 Finaliser, avec l'étape en cours mise en avant) et trois
+  sections titrées portant chacune sa courte explication. La page reprend
+  tous les éléments d'avant : préparation des formulations, synthèses
+  modifiables, choix d'exemples et de photos, finalisation PDF et PowerPoint.
+- **Relecture** : raccourcis par domaine (même barre que sur Progression),
+  seul le premier domaine est ouvert au départ pour éviter une page
+  interminable, les autres s'ouvrent en un toucher.
+- **Suppression d'un dossier** : confirmation demandée (composant commun
+  `BoutonSupprimerConfirme`). Bouton PowerPoint harmonisé.
+- Aucune migration.
+
 ### Refonte ergonomie, lot 5 : Journal en cartes avec photo
 
 - Chaque activité est une carte avec sa **première photo** (miniature, ou une

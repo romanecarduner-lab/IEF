@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { creerClientServeur } from "@/lib/supabase/server";
 import { BasculeElement } from "./BasculeElement";
+import { EtapesExport } from "./EtapesExport";
+import { NavigationDomaines } from "../../progression/NavigationDomaines";
 import { BoutonFinaliser } from "./BoutonFinaliser";
 import { BoutonFinaliserJournal } from "./BoutonFinaliserJournal";
 import { BoutonPreparerFormulations } from "./BoutonPreparerFormulations";
@@ -334,7 +336,7 @@ export default async function PageDossierExport({
                 href={urlPptx}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-doux border border-mousse-fonce px-4 py-2.5 text-sm font-medium text-mousse-fonce hover:bg-mousse/10"
+                className="bouton-secondaire"
               >
                 Télécharger en PowerPoint (pour Canva…)
               </a>
@@ -360,13 +362,25 @@ export default async function PageDossierExport({
 
       {resume}
 
-      <p className="mb-4 text-sm text-ardoise">
-        Pour chaque sous-domaine déjà abordé, une synthèse à relire et
-        deux exemples illustrés. Les sous-domaines pas encore abordés
-        n&rsquo;apparaissent pas ici.
-      </p>
+      <EtapesExport etapeCourante={(sousDomainesBruts ?? []).length === 0 ? 1 : 2} />
 
-      <BoutonPreparerFormulations dossierId={params.id} />
+      <section id="preparer" className="mb-8 scroll-mt-20">
+        <h2 className="mb-1 font-display text-lg italic text-encre">1. Préparer</h2>
+        <p className="mb-3 text-sm text-ardoise">
+          Le logiciel rédige, pour chaque sous-domaine déjà abordé, une
+          synthèse et propose deux exemples illustrés. Les sous-domaines pas
+          encore abordés n&rsquo;apparaissent pas. Vous pouvez relancer la
+          préparation à tout moment.
+        </p>
+        <BoutonPreparerFormulations dossierId={params.id} />
+      </section>
+
+      <section id="relire" className="scroll-mt-20">
+        <h2 className="mb-1 font-display text-lg italic text-encre">2. Relire et choisir les exemples</h2>
+        <p className="mb-4 text-sm text-ardoise">
+          Corrigez chaque synthèse comme vous le souhaitez, puis choisissez les
+          activités et les photos qui illustrent le mieux chaque sous-domaine.
+        </p>
 
       {(sousDomainesBruts ?? []).length === 0 ? (
         <p className="rounded-doux border border-dashed border-trait bg-white/50 p-8 text-center text-sm text-ardoise">
@@ -374,12 +388,21 @@ export default async function PageDossierExport({
           &laquo; Préparer les formulations &raquo; ci-dessus pour commencer.
         </p>
       ) : (
+        <>
+        <NavigationDomaines
+          domaines={Array.from(sousDomainesParDomaine.entries()).map(([nom, liste], i) => ({
+            id: `domaine-export-${i}`,
+            nom,
+            nb: (liste ?? []).length,
+          }))}
+        />
         <div className="space-y-3">
-          {Array.from(sousDomainesParDomaine.entries()).map(([domaine, sousDomaines]) => (
+          {Array.from(sousDomainesParDomaine.entries()).map(([domaine, sousDomaines], indexDomaine) => (
             <details
               key={domaine}
-              className="carte"
-              open
+              id={`domaine-export-${indexDomaine}`}
+              className="carte scroll-mt-32"
+              open={indexDomaine === 0}
             >
               <summary className="cursor-pointer list-none p-4 text-sm font-medium text-encre">
                 {domaine}
@@ -457,11 +480,20 @@ export default async function PageDossierExport({
             </details>
           ))}
         </div>
+        </>
       )}
 
-      <div className="mt-8">
+      </section>
+
+      <section id="finaliser" className="mt-8 scroll-mt-20">
+        <h2 className="mb-1 font-display text-lg italic text-encre">3. Finaliser</h2>
+        <p className="mb-3 text-sm text-ardoise">
+          Quand tout vous convient, générez le dossier en PDF et en PowerPoint.
+          Il sera alors figé : le contenu correspondra exactement au document
+          téléchargeable.
+        </p>
         <BoutonFinaliser dossierId={params.id} />
-      </div>
+      </section>
     </div>
   );
 }

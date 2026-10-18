@@ -2,6 +2,7 @@ import Link from "next/link";
 import { creerClientServeur } from "@/lib/supabase/server";
 import { supprimerDossier } from "./actions";
 import { AideContextuelle } from "@/components/AideContextuelle";
+import { BoutonSupprimerConfirme } from "@/components/BoutonSupprimerConfirme";
 
 export default async function PageExport() {
   const supabase = creerClientServeur();
@@ -97,12 +98,7 @@ export default async function PageExport() {
                 </div>
               </div>
               <form action={supprimerDossier.bind(null, d.id)}>
-                <button
-                  type="submit"
-                  className="text-sm text-alerte underline decoration-alerte/40 underline-offset-2 hover:decoration-alerte"
-                >
-                  Supprimer
-                </button>
+                <BoutonSupprimerConfirme nom={d.titre} type="le dossier" />
               </form>
             </li>
           ))}
