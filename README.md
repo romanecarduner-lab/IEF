@@ -386,6 +386,35 @@ dossier, dans le PowerPoint, ainsi que dans l'aperçu à l'écran et dans le
 sélecteur de photos. Vérifié sur un PDF d'essai avec une photo portrait et une
 photo paysage. Aucune migration.
 
+### Pages d'erreur et page introuvable
+
+Avant, une page qui plantait affichait le message technique de Next.js
+(« Application error: a client-side exception has occurred »), et une adresse
+inconnue une page anglaise. Ajout de :
+- `src/components/PageErreur.tsx` : écran commun (message rassurant, bouton
+  « Réessayer », retour à l'accueil, code court à transmettre à la personne
+  qui administre l'application) ;
+- `src/app/(protege)/error.tsx` : erreur dans une page protégée, l'en-tête et
+  la barre du bas restent affichés ;
+- `src/app/error.tsx` : erreur dans une page publique ;
+- `src/app/global-error.tsx` : dernier filet si la mise en page racine plante
+  (styles en ligne, volontairement minimal) ;
+- `src/app/not-found.tsx` : « Cette page n'existe pas ».
+Vérifié en forçant une erreur et une adresse inconnue à 360 px. Aucune
+migration.
+
+### Ajustements d'affichage sur téléphone
+
+Contrôle à 360 et 390 px de large sur un banc d'essai local (fausse base de
+données) : aucun débordement horizontal sur Accueil, Journal, Progression,
+Export, création d'activité et fiche d'activité. Deux retouches : les
+étiquettes des 3 étapes de création sont légèrement resserrées pour que
+« Compétences » ne se coupe plus, et les liens d'action de la fiche d'une
+activité (Dupliquer pour un autre enfant, Refaire cette activité, Modifier)
+passent sous le titre, sur une ligne qui se replie proprement. Les trois
+pastilles d'étapes de l'export ont maintenant toutes la même hauteur. Aucune
+migration.
+
 ### Correctif : « Impossible d'enregistrer le PDF généré » (migration 0064)
 
 Le bucket `traces-pedagogiques` limitait chaque fichier à 10 Mo et

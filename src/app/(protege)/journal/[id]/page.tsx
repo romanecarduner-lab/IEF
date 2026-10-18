@@ -147,9 +147,9 @@ export default async function PageActivite({ params }: { params: { id: string } 
           ← Retour au journal
         </Link>
 
-        <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+        <div className="mb-2">
           <h1 className="font-display text-2xl italic text-encre">{activite.titre}</h1>
-          <div className="flex items-center gap-3">
+          <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1">
             {autresEnfants.length > 0 && (
               <BoutonDupliquerActivite
                 activiteId={params.id}

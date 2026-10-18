@@ -19,7 +19,7 @@ export function EtapesExport({ etapeCourante }: { etapeCourante: 1 | 2 | 3 }) {
             <a
               href={e.ancre}
               aria-current={courante ? "step" : undefined}
-              className={`block rounded-doux border px-2 py-2 transition-colors ${
+              className={`block h-full rounded-doux border px-2 py-2 transition-colors ${
                 courante
                   ? "border-mousse-fonce bg-mousse-fonce text-white"
                   : faite
