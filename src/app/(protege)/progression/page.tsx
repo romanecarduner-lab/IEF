@@ -6,7 +6,7 @@ import { SelecteurStatutProgression } from "./SelecteurStatutProgression";
 import { GraphiqueProgression, type DonneesDomaine } from "./GraphiqueProgression";
 import { VueATravailler } from "./VueATravailler";
 import { BoutonRattrapageEstimations } from "./BoutonRattrapageEstimations";
-import { NavigationDomaines } from "./NavigationDomaines";
+import { FiltresProgression } from "./FiltresProgression";
 import { VueHistorique } from "./VueHistorique";
 import { SUGGESTION_DEPUIS_AUTONOMIE } from "@/lib/moteurProgression";
 import { CarteProposition } from "./CarteProposition";
@@ -337,7 +337,12 @@ export default async function PageProgression({
         <VueHistorique parcoursId={parcoursId} />
       ) : (
         <>
-          <p className="mb-4 text-xs text-ardoise">
+          <details className="mb-4 rounded-doux border border-trait bg-white/60 px-4 py-2.5">
+            <summary className="cursor-pointer text-sm font-medium text-mousse-fonce">
+              Comment lire cette page
+            </summary>
+            <div className="mt-2 space-y-2">
+          <p className="text-sm text-ardoise">
             Cette vue est cumulée sur tout le cycle : une compétence
             validée une année précédente reste acquise ici, quelle que
             soit l&rsquo;année choisie ci-dessus. Le sélecteur ne sert
@@ -346,7 +351,7 @@ export default async function PageProgression({
             de validation propre à cette période.
           </p>
 
-          <p className="mb-4 text-xs text-ardoise">
+          <p className="text-sm text-ardoise">
             Pour une vue regroupée et rédigée par sous-domaine (plutôt
             que compétence par compétence), rendez-vous dans{" "}
             <Link href="/export" className="underline underline-offset-2 hover:text-encre">
@@ -354,6 +359,9 @@ export default async function PageProgression({
             </Link>
             .
           </p>
+
+            </div>
+          </details>
 
           {enfantIdActuel &&
             cycleIdActuel &&
@@ -375,24 +383,36 @@ export default async function PageProgression({
             </p>
           ) : (
             <>
-            <NavigationDomaines
+            <FiltresProgression
+              statuts={(statuts ?? []).map((st) => ({
+                code: st.code as string,
+                libelle: st.libelle as string,
+              }))}
               domaines={Array.from(lignesParDomaine.entries()).map(([nom, liste], i) => ({
                 id: `domaine-${i}`,
                 nom,
                 nb: liste.length,
               }))}
             />
-            <div className="space-y-3">
+            <p
+              id="aucun-resultat"
+              hidden
+              className="mb-4 rounded-doux border border-dashed border-trait bg-white/50 p-6 text-center text-sm text-ardoise"
+            >
+              Aucune compétence ne correspond. Modifiez ou effacez le filtre ci-dessus.
+            </p>
+            <div id="liste-competences" className="space-y-3">
               {Array.from(lignesParDomaine.entries()).map(([domaine, lignesDomaine], indexDomaine) => (
                 <details
                   key={domaine}
                   id={`domaine-${indexDomaine}`}
-                  className="carte scroll-mt-14"
+                  data-domaine=""
+                  className="carte scroll-mt-40"
                   open
                 >
                   <summary className="cursor-pointer list-none p-4 text-sm font-medium text-encre">
                     {domaine}{" "}
-                    <span className="font-normal text-ardoise">
+                    <span data-compteur="" className="font-normal text-ardoise">
                       ({lignesDomaine.length})
                     </span>
                   </summary>
@@ -405,6 +425,11 @@ export default async function PageProgression({
                       return (
                         <li
                           key={l.elementId}
+                          data-competence=""
+                          data-statut={l.statutCode ?? ""}
+                          data-etat={[!l.dejaValide ? "a-choisir" : "", l.aRevoir ? "a-reexaminer" : ""]
+                            .filter(Boolean)
+                            .join(" ")}
                           className="carte p-4"
                         >
                           <div className="flex flex-wrap items-start justify-between gap-3">

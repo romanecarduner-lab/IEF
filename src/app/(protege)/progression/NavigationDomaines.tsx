@@ -11,8 +11,11 @@ import { libelleCourtDomaine } from "@/lib/libelleCourtDomaine";
  */
 export function NavigationDomaines({
   domaines,
+  collant = true,
 }: {
   domaines: { id: string; nom: string; nb: number }[];
+  // false quand la barre est deja contenue dans un bloc fixe (filtres).
+  collant?: boolean;
 }) {
   function aller(id: string) {
     const element = document.getElementById(id);
@@ -26,7 +29,7 @@ export function NavigationDomaines({
   return (
     <nav
       aria-label="Aller à un domaine"
-      className="sticky top-0 z-10 -mx-4 mb-4 overflow-x-auto bg-brume/95 px-4 py-2 backdrop-blur sm:mx-0 sm:px-0"
+      className={`overflow-x-auto py-2 ${collant ? "sticky top-0 z-10 -mx-4 mb-4 bg-brume/95 px-4 backdrop-blur sm:mx-0 sm:px-0" : ""}`}
     >
       <div className="flex gap-1.5 whitespace-nowrap">
         <span className="shrink-0 self-center pr-1 text-xs text-ardoise">Aller à :</span>

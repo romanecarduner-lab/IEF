@@ -375,6 +375,20 @@ objet, est retiré.
   exemple ; PowerPoint : deux exemples par diapositive, diapositives de suite
   au-delà.
 
+### Refonte ergonomie, lot 4 : Progression plus lisible
+
+- **Barre fixe en haut de la liste** (`FiltresProgression.tsx`) : recherche
+  d'une compétence par mot (sans tenir compte des accents ni des majuscules),
+  filtre par statut (tous, à choisir vous-même, à réexaminer, puis chaque
+  statut) et raccourcis vers chaque domaine. Le filtre masque sans rien
+  retirer ; le décompte de chaque domaine devient « 3 sur 12 », les domaines
+  vides se replient, un message s'affiche s'il n'y a aucun résultat, et le
+  filtre est réappliqué après une validation de statut.
+- **Explications repliées** : les deux paragraphes d'introduction sont dans
+  « Comment lire cette page ». Le contenu est identique.
+- Aucune compétence, aucun statut ni aucune fonction retirés ; aucune
+  migration.
+
 ### Refonte ergonomie, lot 3 : tableau de bord centré sur « aujourd'hui »
 
 Nouvel ordre de lecture (une colonne sur téléphone, deux sur grand écran) :
