@@ -330,6 +330,7 @@ export default async function PageProgression({
             parcoursId={parcoursId}
             parcoursMemeCycle={parcoursMemeCycle}
             cycleId={parcoursActuel.cycle_id as string}
+            enfantId={parcoursActuel.enfant_id as string}
           />
         ) : null
       ) : onglet === "historique" ? (

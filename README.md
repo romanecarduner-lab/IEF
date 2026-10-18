@@ -375,6 +375,14 @@ objet, est retiré.
   exemple ; PowerPoint : deux exemples par diapositive, diapositives de suite
   au-delà.
 
+### « Ce qui reste à voir » (Progression), correction
+
+L'onglet comptait une compétence comme « à voir » tant qu'elle n'avait pas été
+cochée sur une activité sous son identifiant exact. Il tient désormais compte,
+comme le tableau de bord, des compétences qui ont déjà un statut de
+progression et de celles dont le libellé est strictement identique à une
+compétence déjà abordée (reprise à un autre âge du cycle). Aucune migration.
+
 ### Refonte ergonomie, lot 1 : bases visuelles communes
 
 - Trois composants de style partagés dans `globals.css` : `bouton-primaire`

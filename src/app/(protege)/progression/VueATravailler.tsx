@@ -5,14 +5,21 @@ export async function VueATravailler({
   parcoursId,
   parcoursMemeCycle,
   cycleId,
+  enfantId,
 }: {
   parcoursId: string;
   parcoursMemeCycle: string[];
   cycleId: string;
+  enfantId: string;
 }) {
   const supabase = creerClientServeur();
 
-  const [{ data: tousLesObjectifs }, { data: observations }, { data: chemins }] = await Promise.all([
+  const [
+    { data: tousLesObjectifs },
+    { data: observations },
+    { data: chemins },
+    { data: syntheses },
+  ] = await Promise.all([
     supabase
       .from("v_objectif_domaine")
       .select("objectif_id, libelle, domaine")
@@ -23,15 +30,33 @@ export async function VueATravailler({
       .select("element_programme_id, activites!inner(parcours_id)")
       .in("activites.parcours_id", parcoursMemeCycle),
     supabase.from("v_chemin_complet_objectif").select("objectif_id, chemin"),
+    // Une competence deja suivie (statut present) compte comme abordee.
+    supabase
+      .from("v_synthese_cumulee_cycle")
+      .select("element_programme_id")
+      .eq("enfant_id", enfantId)
+      .eq("cycle_id", cycleId),
   ]);
 
   const cheminParObjectif = new Map(
     (chemins ?? []).map((c) => [c.objectif_id as string, c.chemin as string])
   );
 
-  const idsAbordes = new Set(
-    (observations ?? []).map((o) => o.element_programme_id as string)
+  const idsAbordes = new Set([
+    ...(observations ?? []).map((o) => o.element_programme_id as string),
+    ...(syntheses ?? []).map((o) => o.element_programme_id as string),
+  ]);
+  // Une competence au libelle strictement identique a une competence deja
+  // abordee (reprise a un autre age du cycle) l'est aussi : le suivi se
+  // fait a l'echelle du cycle.
+  const libellesAbordes = new Set(
+    (tousLesObjectifs ?? [])
+      .filter((o) => idsAbordes.has(o.objectif_id as string))
+      .map((o) => o.libelle as string)
   );
+  for (const o of tousLesObjectifs ?? []) {
+    if (libellesAbordes.has(o.libelle as string)) idsAbordes.add(o.objectif_id as string);
+  }
 
   const nonAbordesParDomaine = new Map<
     string,
