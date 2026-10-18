@@ -3,6 +3,11 @@ import { creerClientServeur } from "@/lib/supabase/server";
 import { supprimerActivite, basculerFavori, basculerStatutActivite } from "./actions";
 import { VueGalerie } from "./VueGalerie";
 import { AideContextuelle } from "@/components/AideContextuelle";
+import { BoutonSupprimerActivite } from "./BoutonSupprimerActivite";
+import { Camera } from "lucide-react";
+
+const DUREE_SIGNATURE_SECONDES = 60 * 60;
+const PAS_AFFICHAGE = 24;
 
 export default async function PageJournal({
   searchParams,
@@ -16,6 +21,7 @@ export default async function PageJournal({
     annee?: string;
     type?: string;
     domaine?: string;
+    limite?: string;
   };
 }) {
   const supabase = creerClientServeur();
@@ -31,15 +37,24 @@ export default async function PageJournal({
   const du = searchParams.du ?? "";
   const au = searchParams.au ?? "";
   const filtresActifs = Boolean(texte || enfantId || du || au);
+  // Affichage par paquets : la liste peut compter plusieurs centaines
+  // d'activites, chacune avec sa photo -- on en montre 24 puis "Voir plus".
+  const limite = Math.min(
+    Math.max(parseInt(searchParams.limite ?? "", 10) || PAS_AFFICHAGE, PAS_AFFICHAGE),
+    2000
+  );
 
   let requete = supabase
     .from("activites")
     .select(
       `id, date_activite, titre, description, favori,
        contextes_activite(libelle), statuts_activite(code, libelle),
-       parcours_scolaires!inner(enfant_id, enfants(prenom), annees_scolaires(libelle))`
+       parcours_scolaires!inner(enfant_id, enfants(prenom), annees_scolaires(libelle))`,
+      { count: "exact" }
     )
-    .order("date_activite", { ascending: false });
+    .order("date_activite", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(limite);
 
   if (texte) {
     requete = requete.or(
@@ -50,7 +65,8 @@ export default async function PageJournal({
   if (du) requete = requete.gte("date_activite", du);
   if (au) requete = requete.lte("date_activite", au);
 
-  const { data: activitesBrutes } = vue === "liste" ? await requete : { data: [] };
+  const { data: activitesBrutes, count: nbTotal } =
+    vue === "liste" ? await requete : { data: [], count: 0 };
 
   const activites = (activitesBrutes ?? []).map((a) => {
     const contexte = Array.isArray(a.contextes_activite)
@@ -86,6 +102,49 @@ export default async function PageJournal({
       annee: annee?.libelle as string | undefined,
     };
   });
+
+  // Premiere photo (miniature) de chaque activite affichee : une seule
+  // requete pour toutes, puis une seule signature groupee.
+  const miniatureParActivite = new Map<string, string>();
+  if (activites.length > 0) {
+    const { data: tracesPhoto } = await supabase
+      .from("traces")
+      .select("activite_id, miniature_chemin_stockage, ordre_affichage")
+      .in(
+        "activite_id",
+        activites.map((a) => a.id)
+      )
+      .not("miniature_chemin_stockage", "is", null)
+      .order("ordre_affichage", { ascending: true });
+    const cheminParActivite = new Map<string, string>();
+    for (const t of tracesPhoto ?? []) {
+      const id = t.activite_id as string;
+      if (!cheminParActivite.has(id)) {
+        cheminParActivite.set(id, t.miniature_chemin_stockage as string);
+      }
+    }
+    const chemins = Array.from(new Set(cheminParActivite.values()));
+    if (chemins.length > 0) {
+      const { data: signees } = await supabase.storage
+        .from("traces-pedagogiques")
+        .createSignedUrls(chemins, DUREE_SIGNATURE_SECONDES);
+      const urlParChemin = new Map(
+        (signees ?? []).map((u) => [u.path as string, u.signedUrl as string | undefined])
+      );
+      for (const [activiteId, chemin] of cheminParActivite) {
+        const url = urlParChemin.get(chemin);
+        if (url) miniatureParActivite.set(activiteId, url);
+      }
+    }
+  }
+
+  const paramsFiltres = new URLSearchParams();
+  if (texte) paramsFiltres.set("q", texte);
+  if (enfantId) paramsFiltres.set("enfant", enfantId);
+  if (du) paramsFiltres.set("du", du);
+  if (au) paramsFiltres.set("au", au);
+  paramsFiltres.set("limite", String(limite + PAS_AFFICHAGE));
+  const lienVoirPlus = `/journal?${paramsFiltres.toString()}`;
 
   return (
     <div>
@@ -134,9 +193,18 @@ export default async function PageJournal({
         <VueGalerie searchParams={searchParams} />
       ) : (
         <>
+      <details className="carte mb-6" open={filtresActifs}>
+        <summary className="flex min-h-[48px] cursor-pointer list-none items-center justify-between gap-3 px-4 py-2 text-sm font-medium text-encre">
+          <span>Rechercher et filtrer</span>
+          {filtresActifs && (
+            <span className="rounded-full bg-mousse/15 px-2.5 py-0.5 text-xs font-normal text-mousse-fonce">
+              filtre actif
+            </span>
+          )}
+        </summary>
       <form
         method="get"
-        className="carte mb-6 grid gap-3 p-4 sm:grid-cols-2 md:grid-cols-4"
+        className="grid gap-3 border-t border-trait p-4 sm:grid-cols-2 md:grid-cols-4"
       >
         <div className="sm:col-span-2 md:col-span-1">
           <label htmlFor="q" className="mb-1.5 block text-sm font-medium text-encre">
@@ -207,6 +275,7 @@ export default async function PageJournal({
           )}
         </div>
       </form>
+      </details>
 
       {activites.length === 0 ? (
         <p className="rounded-doux border border-dashed border-trait bg-white/50 p-8 text-center text-sm text-ardoise">
@@ -215,34 +284,71 @@ export default async function PageJournal({
             : "Aucune activité enregistrée pour l\u2019instant."}
         </p>
       ) : (
+        <>
+        <p className="mb-3 text-sm text-ardoise">
+          {activites.length < (nbTotal ?? 0)
+            ? `${activites.length} activités affichées sur ${nbTotal}`
+            : `${activites.length} activité${activites.length > 1 ? "s" : ""}`}
+        </p>
         <ul className="space-y-3">
-          {activites.map((a) => (
-            <li
-              key={a.id}
-              className="carte p-5"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
+          {activites.map((a) => {
+            const miniature = miniatureParActivite.get(a.id);
+            return (
+              <li key={a.id} className="carte p-3 sm:p-4">
+                <div className="flex gap-3 sm:gap-4">
                   <Link
                     href={`/journal/${a.id}`}
-                    className="font-display text-lg italic text-encre hover:text-mousse-fonce"
+                    aria-label={`Ouvrir ${a.titre}`}
+                    className="shrink-0"
                   >
-                    {a.titre}
+                    {miniature ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={miniature}
+                        alt=""
+                        loading="lazy"
+                        className="h-20 w-20 rounded-doux object-cover sm:h-24 sm:w-24"
+                      />
+                    ) : (
+                      <span className="flex h-20 w-20 items-center justify-center rounded-doux bg-lin sm:h-24 sm:w-24">
+                        <Camera className="h-6 w-6 text-ardoise/60" strokeWidth={1.5} />
+                      </span>
+                    )}
                   </Link>
-                  <Link
-                    href={`/journal/nouvelle?refaire=${a.id}`}
-                    className="ml-3 text-xs font-medium text-mousse-fonce underline underline-offset-2 hover:text-mousse"
-                  >
-                    Refaire
-                  </Link>
-                  <p className="text-sm text-ardoise">
-                    {a.enfant} · {a.annee} ·{" "}
-                    {new Date(a.date).toLocaleDateString("fr-FR")}
-                    {a.contexte ? ` · ${a.contexte}` : ""}
-                  </p>
-                  {a.description && (
-                    <p className="mt-2 text-sm text-encre">{a.description}</p>
-                  )}
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <Link
+                        href={`/journal/${a.id}`}
+                        className="font-display text-lg italic leading-snug text-encre hover:text-mousse-fonce"
+                      >
+                        {a.titre}
+                      </Link>
+                      <form action={basculerFavori.bind(null, a.id, a.favori)} className="shrink-0">
+                        <button
+                          type="submit"
+                          title={a.favori ? "Retirer des favoris" : "Marquer comme favori"}
+                          aria-label={a.favori ? "Retirer des favoris" : "Marquer comme favori"}
+                          className={`flex h-10 w-10 items-center justify-center text-xl ${
+                            a.favori ? "text-argile" : "text-trait hover:text-argile"
+                          }`}
+                        >
+                          ★
+                        </button>
+                      </form>
+                    </div>
+                    <p className="text-sm text-ardoise">
+                      {a.enfant} · {a.annee} ·{" "}
+                      {new Date(a.date).toLocaleDateString("fr-FR")}
+                      {a.contexte ? ` · ${a.contexte}` : ""}
+                    </p>
+                    {a.description && (
+                      <p className="mt-1.5 line-clamp-2 text-sm text-encre">{a.description}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-trait pt-2">
                   <form action={basculerStatutActivite.bind(null, a.id, a.statutCode ?? "brouillon")}>
                     <button
                       type="submit"
@@ -251,7 +357,7 @@ export default async function PageJournal({
                           ? "Remettre en brouillon"
                           : "Valider cette activité"
                       }
-                      className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs transition-colors ${
+                      className={`min-h-[36px] rounded-full px-3 py-1 text-xs transition-colors ${
                         a.statutCode === "valide"
                           ? "bg-mousse/10 text-mousse-fonce hover:bg-mousse/20"
                           : "bg-trait text-ardoise hover:bg-argile/20"
@@ -261,36 +367,30 @@ export default async function PageJournal({
                       {a.statutCode !== "valide" && " · cliquer pour valider"}
                     </button>
                   </form>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-2">
-                  <form action={basculerFavori.bind(null, a.id, a.favori)}>
-                    <button
-                      type="submit"
-                      title={
-                        a.favori
-                          ? "Retirer des favoris"
-                          : "Marquer comme favori"
-                      }
-                      className={`text-lg ${
-                        a.favori ? "text-argile" : "text-trait hover:text-argile"
-                      }`}
+                  <div className="flex items-center gap-4">
+                    <Link
+                      href={`/journal/nouvelle?refaire=${a.id}`}
+                      className="inline-flex min-h-[40px] items-center text-sm font-medium text-mousse-fonce underline underline-offset-2 hover:text-mousse"
                     >
-                      ★
-                    </button>
-                  </form>
-                  <form action={supprimerActivite.bind(null, a.id)}>
-                    <button
-                      type="submit"
-                      className="text-sm text-alerte underline decoration-alerte/40 underline-offset-2 hover:decoration-alerte"
-                    >
-                      Supprimer
-                    </button>
-                  </form>
+                      Refaire
+                    </Link>
+                    <form action={supprimerActivite.bind(null, a.id)}>
+                      <BoutonSupprimerActivite titre={a.titre} />
+                    </form>
+                  </div>
                 </div>
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
+        {activites.length < (nbTotal ?? 0) && (
+          <div className="mt-5 text-center">
+            <Link href={lienVoirPlus} className="bouton-secondaire">
+              Voir {Math.min(PAS_AFFICHAGE, (nbTotal ?? 0) - activites.length)} de plus
+            </Link>
+          </div>
+        )}
+        </>
       )}
         </>
       )}

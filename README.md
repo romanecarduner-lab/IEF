@@ -375,6 +375,23 @@ objet, est retiré.
   exemple ; PowerPoint : deux exemples par diapositive, diapositives de suite
   au-delà.
 
+### Refonte ergonomie, lot 5 : Journal en cartes avec photo
+
+- Chaque activité est une carte avec sa **première photo** (miniature, ou une
+  icône quand il n'y en a pas), le titre, l'enfant, l'année, la date, le
+  contexte et un aperçu de deux lignes. Les miniatures sont chargées en une
+  seule requête et une seule signature groupée.
+- Pied de carte : statut (cliquer pour valider ou remettre en brouillon),
+  « Refaire » et « Supprimer ». **La suppression demande désormais une
+  confirmation** (`BoutonSupprimerActivite.tsx`), car elle est définitive.
+  Le favori (★) reste en haut à droite.
+- **Filtres repliés** sous « Rechercher et filtrer » (ouverts automatiquement
+  quand un filtre est actif, avec la mention « filtre actif »).
+- **Affichage par paquets de 24** avec « Voir N de plus » (paramètre
+  `limite`, les filtres sont conservés) et un compteur « 24 activités
+  affichées sur 210 ». Tri : date puis création, de la plus récente.
+- La vue Galerie est inchangée. Aucune migration.
+
 ### Refonte ergonomie, lot 4 : Progression plus lisible
 
 - **Barre fixe en haut de la liste** (`FiltresProgression.tsx`) : recherche
