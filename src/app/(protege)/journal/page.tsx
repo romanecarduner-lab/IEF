@@ -5,6 +5,7 @@ import { VueGalerie } from "./VueGalerie";
 import { AideContextuelle } from "@/components/AideContextuelle";
 import { BoutonSupprimerActivite } from "./BoutonSupprimerActivite";
 import { Camera } from "lucide-react";
+import { chargerAuteurs } from "@/lib/auteurs";
 
 const DUREE_SIGNATURE_SECONDES = 60 * 60;
 const PAS_AFFICHAGE = 24;
@@ -44,10 +45,12 @@ export default async function PageJournal({
     2000
   );
 
+  const auteurs = await chargerAuteurs(supabase);
+
   let requete = supabase
     .from("activites")
     .select(
-      `id, date_activite, titre, description, favori,
+      `id, date_activite, titre, description, favori, auteur_id, auteur_nom_affiche,
        contextes_activite(libelle), statuts_activite(code, libelle),
        parcours_scolaires!inner(enfant_id, enfants(prenom), annees_scolaires(libelle))`,
       { count: "exact" }
@@ -100,6 +103,8 @@ export default async function PageJournal({
       statutLibelle: statut?.libelle as string | undefined,
       enfant: enfant?.prenom as string | undefined,
       annee: annee?.libelle as string | undefined,
+      auteurId: a.auteur_id as string | null,
+      auteurInstantane: a.auteur_nom_affiche as string | null,
     };
   });
 
@@ -341,6 +346,9 @@ export default async function PageJournal({
                       {a.enfant} · {a.annee} ·{" "}
                       {new Date(a.date).toLocaleDateString("fr-FR")}
                       {a.contexte ? ` · ${a.contexte}` : ""}
+                      {auteurs.afficher && auteurs.nom(a.auteurId, a.auteurInstantane)
+                        ? ` · ajoutée par ${auteurs.nom(a.auteurId, a.auteurInstantane)}`
+                        : ""}
                     </p>
                     {a.description && (
                       <p className="mt-1.5 line-clamp-2 text-sm text-encre">{a.description}</p>

@@ -4,6 +4,7 @@ import { creerClientServeur } from "@/lib/supabase/server";
 import { BoutonDeconnexion } from "@/components/BoutonDeconnexion";
 import { MenuDeroulant } from "@/components/MenuDeroulant";
 import { NavigationBasse } from "@/components/NavigationBasse";
+import { empreinteJeton } from "@/lib/invitations";
 
 const LIEN_STYLE =
   "block rounded-doux px-3 py-2 text-sm text-encre hover:bg-lin";
@@ -59,6 +60,21 @@ export default async function LayoutProtege({
   let onboardingTermine = false;
 
   if (!appartenances || appartenances.length === 0) {
+    // Compte cree depuis un lien d'invitation : on propose de rejoindre
+    // l'espace qui l'invite plutot que d'en creer un nouveau. Si le lien
+    // n'est plus valable (utilise, expire, annule), on retombe sur la
+    // creation habituelle, sans boucle.
+    const jetonInvitation = user.user_metadata?.invitation_token as string | undefined;
+    if (jetonInvitation) {
+      const { data: apercu } = await supabase.rpc("rpc_apercu_invitation", {
+        p_token_hash: empreinteJeton(jetonInvitation),
+      });
+      const ligne = (Array.isArray(apercu) ? apercu[0] : apercu) as { motif?: string } | undefined;
+      if (ligne?.motif === "ok") {
+        redirect(`/invitation/${encodeURIComponent(jetonInvitation)}`);
+      }
+    }
+
     const nomDemande =
       (user.user_metadata?.nom_famille as string | undefined) || "Ma famille";
 
@@ -118,6 +134,9 @@ export default async function LayoutProtege({
             <MenuDeroulant libelle="Compte">
               <Link href="/famille" className={LIEN_STYLE}>
                 Famille
+              </Link>
+              <Link href="/famille/personnes" className={LIEN_STYLE}>
+                Personnes de l&rsquo;espace
               </Link>
               <Link href="/confidentialite" className={LIEN_STYLE}>
                 Confidentialité

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { creerClientServeur } from "@/lib/supabase/server";
+import { nomAuteurPourEnregistrement } from "@/lib/auteurs";
 
 const MODELE_REDACTION = "claude-sonnet-5";
 
@@ -213,7 +214,7 @@ Règles impératives :
       element_programme_id: elementProgrammeId,
       statut_global_id: statutDepart.id,
       valide_par: user.id,
-      valide_par_nom_affiche: user.email ?? "Parent",
+      valide_par_nom_affiche: nomAuteurPourEnregistrement(user),
       synthese_ia: texte,
       synthese_ia_generee_le: new Date().toISOString(),
     });

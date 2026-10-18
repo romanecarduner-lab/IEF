@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { creerClientServeur } from "@/lib/supabase/server";
+import { nomAuteurPourEnregistrement } from "@/lib/auteurs";
 
 export type DonneesObservationsLot = {
   activiteId: string;
@@ -36,7 +37,7 @@ export async function creerObservations(
     justification: donnees.justification || null,
     commentaire_pedagogique: donnees.commentairePedagogique || null,
     auteur_id: user.id,
-    auteur_nom_affiche: user.email ?? "Parent",
+    auteur_nom_affiche: nomAuteurPourEnregistrement(user),
   }));
 
   // upsert : permet de recocher/mettre a jour une observation deja existante

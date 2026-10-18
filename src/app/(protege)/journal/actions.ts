@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { creerClientServeur } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { nomAuteurPourEnregistrement } from "@/lib/auteurs";
 
 /**
  * Coeur commun : trouve le parcours d'un enfant dont l'annee couvre la
@@ -145,7 +146,7 @@ export async function creerActivite(
     id: donnees.idLocal,
     parcours_id: resolution.parcoursId,
     auteur_id: user.id,
-    auteur_nom_affiche: user.email ?? "Parent",
+    auteur_nom_affiche: nomAuteurPourEnregistrement(user),
     date_activite: donnees.dateActivite,
     titre: donnees.titre.trim(),
     description: donnees.description || null,
@@ -351,7 +352,7 @@ export async function dupliquerActiviteVersParcours(
     .insert({
       parcours_id: parcoursCibleId,
       auteur_id: user.id,
-      auteur_nom_affiche: user.email ?? "Parent",
+      auteur_nom_affiche: nomAuteurPourEnregistrement(user),
       date_activite: source.date_activite,
       titre: source.titre,
       description: source.description,
@@ -382,7 +383,7 @@ export async function dupliquerActiviteVersParcours(
         ...t,
         activite_id: nouvelleActivite.id,
         auteur_id: user.id,
-        auteur_nom_affiche: user.email ?? "Parent",
+        auteur_nom_affiche: nomAuteurPourEnregistrement(user),
       }))
     );
   }

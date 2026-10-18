@@ -12,7 +12,7 @@ export default async function PageConfidentialite() {
 
   const { data: appartenance } = await supabase
     .from("utilisateurs_familles")
-    .select("familles(nom)")
+    .select("famille_id, familles(nom)")
     .eq("user_id", user?.id ?? "")
     .limit(1)
     .maybeSingle();
@@ -22,6 +22,17 @@ export default async function PageConfidentialite() {
       ? appartenance.familles[0]
       : appartenance.familles
     : null;
+
+  // Nombre de personnes de l'espace : la suppression retire le compte de
+  // chacune. Si la fonction SQL d'invitation n'est pas encore installee, on
+  // retombe sur 1 sans bloquer la page.
+  let nbPersonnes = 1;
+  if (appartenance?.famille_id) {
+    const { data: membres } = await supabase.rpc("rpc_membres_famille", {
+      p_famille_id: appartenance.famille_id as string,
+    });
+    if (Array.isArray(membres) && membres.length > 0) nbPersonnes = membres.length;
+  }
 
   return (
     <div className="max-w-2xl">
@@ -56,7 +67,7 @@ export default async function PageConfidentialite() {
           supprimés (pas seulement archivés), y compris votre compte de
           connexion.
         </p>
-        {famille && <FormulaireSuppressionFamille nomFamille={famille.nom as string} />}
+        {famille && <FormulaireSuppressionFamille nomFamille={famille.nom as string} nbPersonnes={nbPersonnes} />}
       </section>
     </div>
   );

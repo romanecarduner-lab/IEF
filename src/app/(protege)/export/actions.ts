@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { creerClientServeur } from "@/lib/supabase/server";
+import { nomAuteurPourEnregistrement } from "@/lib/auteurs";
 
 export async function creerDossier(
   _etatPrecedent: { erreur?: string },
@@ -45,7 +46,7 @@ export async function creerDossier(
         periode_debut: periodeDebut,
         periode_fin: periodeFin,
         created_par: user.id,
-        created_par_nom_affiche: user.email ?? "Parent",
+        created_par_nom_affiche: nomAuteurPourEnregistrement(user),
       })
       .select("id")
       .single();
@@ -86,7 +87,7 @@ export async function creerDossier(
       titre,
       type_dossier: "pedagogique",
       created_par: user.id,
-      created_par_nom_affiche: user.email ?? "Parent",
+      created_par_nom_affiche: nomAuteurPourEnregistrement(user),
     })
     .select("id")
     .single();

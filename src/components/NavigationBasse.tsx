@@ -71,6 +71,12 @@ export function NavigationBasse() {
             Famille
           </Link>
           <Link
+            href="/famille/personnes"
+            className="flex min-h-[44px] items-center rounded-doux px-3 py-3 text-sm text-encre active:bg-lin"
+          >
+            Personnes de l&rsquo;espace
+          </Link>
+          <Link
             href="/confidentialite"
             className="flex min-h-[44px] items-center rounded-doux px-3 py-3 text-sm text-encre active:bg-lin"
           >

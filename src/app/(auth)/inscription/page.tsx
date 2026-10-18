@@ -36,6 +36,12 @@ export default function PageInscription() {
       return;
     }
 
+    // Arrivee par un lien d'invitation (/invitation/<jeton>) : le jeton est
+    // conserve dans le compte, pour que la personne rejoigne l'espace qui
+    // l'invite meme si elle confirme son e-mail depuis un autre appareil.
+    const jetonInvitation =
+      new URLSearchParams(window.location.search).get("invitation") || null;
+
     setChargement(true);
     console.log("Début inscription");
 
@@ -52,7 +58,11 @@ export default function PageInscription() {
             // qu'à ce moment-là, jamais ici : si la confirmation par mail
             // est activée (réglage par défaut de Supabase), signUp() ne
             // renvoie encore aucune session exploitable.
-            data: { nom_famille: nomFamille || "Ma famille", prenom: prenom || null },
+            data: {
+              nom_famille: nomFamille || "Ma famille",
+              prenom: prenom || null,
+              ...(jetonInvitation ? { invitation_token: jetonInvitation } : {}),
+            },
             emailRedirectTo: `${window.location.origin}/connexion`,
           },
         })

@@ -5,6 +5,7 @@ import { creerClientServeur } from "@/lib/supabase/server";
 import { estimerStatutDepuisObservations } from "@/lib/moteurProgression";
 import { estimerProgressionIA } from "./actionsIA";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { nomAuteurPourEnregistrement } from "@/lib/auteurs";
 
 /**
  * Enregistre un instantane des observations actuelles d'une competence,
@@ -127,7 +128,7 @@ export async function validerStatutProgression(
         element_programme_id: elementProgrammeId,
         statut_global_id: nouveauStatut.id,
         valide_par: user.id,
-        valide_par_nom_affiche: user.email ?? "Parent",
+        valide_par_nom_affiche: nomAuteurPourEnregistrement(user),
         valide_le: maintenant,
         origine: "manuel",
         derniere_prise_en_compte_le: maintenant,
@@ -155,7 +156,7 @@ export async function validerStatutProgression(
       ancien_statut: ancienStatutLibelle,
       nouveau_statut: nouveauStatut.libelle,
       change_par: user.id,
-      change_par_nom_affiche: user.email ?? "Parent",
+      change_par_nom_affiche: nomAuteurPourEnregistrement(user),
       commentaire: commentaire || null,
       origine: "manuel",
     })
@@ -738,7 +739,7 @@ export async function appliquerPropositionProgression(
       statut_global_id: synthese.statut_propose_id,
       origine: garderAutomatique ? "automatique" : "manuel",
       valide_par: user.id,
-      valide_par_nom_affiche: user.email ?? "Parent",
+      valide_par_nom_affiche: nomAuteurPourEnregistrement(user),
       valide_le: maintenant,
       derniere_prise_en_compte_le: maintenant,
       statut_propose_id: null,
@@ -761,7 +762,7 @@ export async function appliquerPropositionProgression(
       ancien_statut: ancienStatutLibelle ?? null,
       nouveau_statut: statutPropose.libelle,
       change_par: user.id,
-      change_par_nom_affiche: user.email ?? "Parent",
+      change_par_nom_affiche: nomAuteurPourEnregistrement(user),
       commentaire: synthese.justification_proposition,
       origine: garderAutomatique ? "automatique" : "manuel",
     })

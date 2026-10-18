@@ -386,6 +386,42 @@ dossier, dans le PowerPoint, ainsi que dans l'aperçu à l'écran et dans le
 sélecteur de photos. Vérifié sur un PDF d'essai avec une photo portrait et une
 photo paysage. Aucune migration.
 
+### Inviter un second parent (migration 0065)
+
+Un second parent peut rejoindre **le même espace familial** : il voit les mêmes
+enfants, activités, photos, progressions et dossiers, avec les mêmes droits
+(un seul niveau, « Parent »). Rien n'est copié ni déplacé.
+
+- Page **Personnes de l'espace** (`/famille/personnes`, menu Compte et menu
+  « Plus » du téléphone) : liste des personnes, création d'un lien
+  d'invitation (prénom et e-mail facultatifs), invitations en attente,
+  retrait d'une personne, et le réglage « Afficher "ajouté par" »
+  (désactivé par défaut).
+- Le lien (`/invitation/<jeton>`) est secret, à usage unique, valable 7 jours.
+  Seule son empreinte sha-256 est en base. Avec une adresse e-mail, il est
+  réservé à cette adresse. Le logiciel n'envoie pas de courrier : « Envoyer
+  par e-mail » ouvre la messagerie avec le message et le lien déjà écrits.
+- Un compte = un seul espace. Si la personne invitée a déjà un espace, il doit
+  être vide (aucun enfant, aucune autre personne), sinon l'invitation est
+  refusée pour ne rien faire perdre. Un compte créé depuis le lien garde le
+  jeton dans ses métadonnées : même s'il confirme son e-mail sur un autre
+  appareil, il est conduit vers l'espace qui l'invite (`(protege)/layout.tsx`).
+- Tout passe par des fonctions SQL `security definer` (créer, annuler,
+  accepter, retirer, lister), sans nouvelle policy d'écriture. On ne peut pas
+  se retirer soi-même : l'espace garde toujours un parent.
+- « Ajouté par » : nouvelle colonne `familles.afficher_auteur`. Le nom affiché
+  est le prénom de la personne (les anciennes activités, enregistrées avec
+  l'e-mail, sont retrouvées par identifiant). Les nouveaux ajouts enregistrent
+  le prénom plutôt que l'e-mail.
+- La suppression de l'espace avertit maintenant qu'elle efface le compte de
+  **toutes** les personnes de l'espace.
+- Vérifié sur un banc d'essai local (fausse base) : lien hors connexion et
+  connecté, création du lien, e-mail pré-rempli, redirection d'un compte
+  invité, affichage « ajoutée par », 360 px sans débordement. Les règles SQL
+  (e-mail réservé, espace non vide, expiration) n'ont pas pu être exécutées
+  ici : à essayer en vrai.
+- **À exécuter dans Supabase** : `invitations-a-coller-dans-supabase.sql`.
+
 ### Pages d'erreur et page introuvable
 
 Avant, une page qui plantait affichait le message technique de Next.js

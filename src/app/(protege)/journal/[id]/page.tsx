@@ -6,6 +6,7 @@ import { supprimerTrace } from "./actions";
 import { basculerStatutActivite } from "../actions";
 import { supprimerObservation } from "./competences/actions";
 import { BoutonDupliquerActivite } from "./BoutonDupliquerActivite";
+import { chargerAuteurs } from "@/lib/auteurs";
 
 const DUREE_SIGNATURE_SECONDES = 60 * 60; // 1 heure, cf. Corrections-Schema-et-Lot1.md, section 11
 
@@ -15,7 +16,7 @@ export default async function PageActivite({ params }: { params: { id: string } 
   const { data: activite } = await supabase
     .from("activites")
     .select(
-      `id, titre, description, date_activite, lieu, observations, paroles_enfant, parcours_id,
+      `id, titre, description, date_activite, lieu, observations, paroles_enfant, parcours_id, auteur_id, auteur_nom_affiche,
        contextes_activite(libelle), statuts_activite(code, libelle),
        parcours_scolaires(enfant_id, enfants(prenom, famille_id), annees_scolaires(libelle))`
     )
@@ -23,6 +24,8 @@ export default async function PageActivite({ params }: { params: { id: string } 
     .maybeSingle();
 
   if (!activite) notFound();
+
+  const auteurs = await chargerAuteurs(supabase);
 
   const parcoursBrut = Array.isArray(activite.parcours_scolaires)
     ? activite.parcours_scolaires[0]
@@ -74,7 +77,7 @@ export default async function PageActivite({ params }: { params: { id: string } 
       supabase
         .from("traces")
         .select(
-          "id, legende, date_trace, contenu_texte, chemin_stockage, miniature_chemin_stockage, types_trace(libelle)"
+          "id, legende, date_trace, contenu_texte, chemin_stockage, miniature_chemin_stockage, auteur_id, auteur_nom_affiche, types_trace(libelle)"
         )
         .eq("activite_id", params.id)
         .order("date_trace", { ascending: false }),
@@ -136,6 +139,8 @@ export default async function PageActivite({ params }: { params: { id: string } 
         typeLibelle: type?.libelle as string | undefined,
         urlMiniature,
         urlFichier,
+        auteurId: t.auteur_id as string | null,
+        auteurInstantane: t.auteur_nom_affiche as string | null,
       };
     })
   );
@@ -174,6 +179,9 @@ export default async function PageActivite({ params }: { params: { id: string } 
           {enfant?.prenom} · {annee?.libelle} ·{" "}
           {new Date(activite.date_activite as string).toLocaleDateString("fr-FR")}
           {contexte ? ` · ${contexte.libelle}` : ""}
+          {auteurs.afficher && auteurs.nom(activite.auteur_id as string | null, activite.auteur_nom_affiche as string | null)
+            ? ` · ajoutée par ${auteurs.nom(activite.auteur_id as string | null, activite.auteur_nom_affiche as string | null)}`
+            : ""}
         </p>
 
         <form
@@ -283,6 +291,11 @@ export default async function PageActivite({ params }: { params: { id: string } 
                   </p>
                 )}
                 <p className="text-xs text-ardoise">{t.typeLibelle}</p>
+                {auteurs.afficher && auteurs.nom(t.auteurId, t.auteurInstantane) && (
+                  <p className="text-xs text-ardoise">
+                    Ajoutée par {auteurs.nom(t.auteurId, t.auteurInstantane)}
+                  </p>
+                )}
                 {t.legende && <p className="text-xs text-encre">{t.legende}</p>}
                 <form action={supprimerTrace.bind(null, t.id, params.id)} className="mt-1">
                   <button

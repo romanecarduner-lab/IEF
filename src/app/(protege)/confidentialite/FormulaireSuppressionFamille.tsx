@@ -7,7 +7,13 @@ import { creerClientNavigateur } from "@/lib/supabase/client";
 import { avecDelaiMaximal, messagePourErreurInattendue } from "@/lib/delaiMaximal";
 import { MessageStatut } from "@/components/Formulaire";
 
-export function FormulaireSuppressionFamille({ nomFamille }: { nomFamille: string }) {
+export function FormulaireSuppressionFamille({
+  nomFamille,
+  nbPersonnes = 1,
+}: {
+  nomFamille: string;
+  nbPersonnes?: number;
+}) {
   const router = useRouter();
   const [confirmationOuverte, setConfirmationOuverte] = useState(false);
   const [saisie, setSaisie] = useState("");
@@ -59,6 +65,14 @@ export function FormulaireSuppressionFamille({ nomFamille }: { nomFamille: strin
         compte associés à cet espace familial. Pensez à exporter vos données
         et vos fichiers avant, si besoin.
       </p>
+      {nbPersonnes > 1 && (
+        <p className="mb-3 text-sm font-medium text-alerte">
+          Cet espace compte {nbPersonnes} personnes : la suppression efface aussi
+          le compte de connexion de chacune d&rsquo;elles, pas seulement le
+          vôtre. Pour simplement retirer quelqu&rsquo;un, utilisez plutôt «
+          Personnes de l&rsquo;espace ».
+        </p>
+      )}
       <p className="mb-3 text-sm text-encre">
         Pour confirmer, retapez le nom exact de votre espace :{" "}
         <strong>{nomFamille}</strong>

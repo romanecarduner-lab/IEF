@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { creerClientServeur } from "@/lib/supabase/server";
+import { nomAuteurPourEnregistrement } from "@/lib/auteurs";
 
 export type DonneesTrace = {
   activiteId: string;
@@ -56,7 +57,7 @@ export async function creerTrace(
       date_trace: donnees.dateTrace,
       statut_id: statut.id,
       auteur_id: user.id,
-      auteur_nom_affiche: user.email ?? "Parent",
+      auteur_nom_affiche: nomAuteurPourEnregistrement(user),
     })
     .select("id")
     .single();
