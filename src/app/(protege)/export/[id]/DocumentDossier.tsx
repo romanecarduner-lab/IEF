@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
   competenceLigne: { fontSize: 8, color: "#26312D", marginBottom: 2 },
   competenceNiveau: { color: "#5C6A62" },
   tracesGrille: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 },
-  traceImage: { width: 130, height: 100, objectFit: "cover", borderRadius: 4 },
+  traceImage: { width: 130, height: 100, objectFit: "contain", backgroundColor: "#F6F1E8", borderRadius: 4 },
   traceTexte: { fontSize: 9, fontStyle: "italic", color: "#26312D", marginBottom: 4 },
 
   piedDePage: {

@@ -183,7 +183,7 @@ export function SelecteurExemples({
                               >
                                 {p.url ? (
                                   // eslint-disable-next-line @next/next/no-img-element
-                                  <img src={p.url} alt="" className="h-full w-full object-cover" />
+                                  <img src={p.url} alt="" className="h-full w-full bg-lin object-contain" />
                                 ) : (
                                   <span className="flex h-full w-full items-center justify-center bg-lin text-xs text-ardoise">
                                     ?

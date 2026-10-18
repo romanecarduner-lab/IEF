@@ -210,7 +210,7 @@ function ajouterDiapositiveSousDomaine(
             y: yImages,
             w: largeurPhoto,
             h: hauteurImages,
-            sizing: { type: "cover", w: largeurPhoto, h: hauteurImages },
+            sizing: { type: "contain", w: largeurPhoto, h: hauteurImages },
           });
         });
       }

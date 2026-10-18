@@ -375,6 +375,17 @@ objet, est retiré.
   exemple ; PowerPoint : deux exemples par diapositive, diapositives de suite
   au-delà.
 
+### Photos entières dans les dossiers d'export
+
+Les photos des dossiers étaient recadrées pour remplir leur cadre
+(`objectFit: cover`) : une photo en portrait perdait le haut et le bas. Elles
+sont maintenant affichées **en entier** (`contain`) sur un fond crème discret,
+dans le PDF du dossier pédagogique (cadres un peu plus grands : 150 pt pour une
+photo seule, 100 pt à deux), dans le PDF du journal de période et de l'ancien
+dossier, dans le PowerPoint, ainsi que dans l'aperçu à l'écran et dans le
+sélecteur de photos. Vérifié sur un PDF d'essai avec une photo portrait et une
+photo paysage. Aucune migration.
+
 ### Correctif : « Impossible d'enregistrer le PDF généré » (migration 0064)
 
 Le bucket `traces-pedagogiques` limitait chaque fichier à 10 Mo et

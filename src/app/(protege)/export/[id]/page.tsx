@@ -444,7 +444,7 @@ export default async function PageDossierExport({
                                         key={i}
                                         src={url}
                                         alt=""
-                                        className={`w-full rounded-doux object-cover ${
+                                        className={`w-full rounded-doux bg-lin object-contain ${
                                           photos.length === 1 ? "h-32" : "h-20"
                                         }`}
                                       />
