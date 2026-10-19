@@ -58,6 +58,7 @@ export async function creerObservations(
   // (voir declencherEstimationArrierePlan et /api/estimation-activite).
   revalidatePath(`/journal/${donnees.activiteId}`);
   revalidatePath(`/journal/${donnees.activiteId}/competences`);
+  revalidatePath(`/journal/${donnees.activiteId}/modifier`);
   revalidatePath("/progression");
   revalidatePath("/tableau-de-bord");
   return { nombreCreees: data?.length ?? 0 };
@@ -68,4 +69,5 @@ export async function supprimerObservation(id: string, activiteId: string) {
   await supabase.from("observations_elements_programme").delete().eq("id", id);
   revalidatePath(`/journal/${activiteId}`);
   revalidatePath(`/journal/${activiteId}/competences`);
+  revalidatePath(`/journal/${activiteId}/modifier`);
 }

@@ -18,6 +18,11 @@ export default function PageHorsLigne() {
           <Link href="/journal/nouvelle" prefetch={false} className="bouton-primaire">
             Ajouter une activité
           </Link>
+          {/* Lien classique : la copie du journal gardée sur ce téléphone s'ouvre si elle existe. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a href="/journal" className="bouton-secondaire">
+            Lire mon journal
+          </a>
           {/* Lien classique (rechargement complet) : seul moyen fiable de retenter la page. */}
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a href="/tableau-de-bord" className="bouton-secondaire">

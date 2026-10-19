@@ -15,7 +15,8 @@ import { useEnLigne } from "@/lib/useEnLigne";
 /**
  * Mode hors-ligne, cote application :
  *  - enregistre le service worker et fait garder le formulaire d'ajout
- *    d'activite pour qu'il s'ouvre sans reseau ;
+ *    d'activite, la liste du journal et les activites recentes pour qu'ils
+ *    s'ouvrent sans reseau ;
  *  - affiche ce qui attend d'etre envoye et l'envoie tout seul des que le
  *    reseau revient (retour en ligne, reouverture de l'application, ou
  *    toutes les 15 secondes tant que quelque chose attend).
@@ -138,7 +139,7 @@ export function HorsLigne({ familleId }: { familleId: string }) {
     <div className="mb-4 space-y-2" aria-live="polite">
       {!enLigne && (
         <p className="rounded-doux border border-trait bg-white px-3 py-2 text-xs text-ardoise">
-          📡 Hors connexion. Vous pouvez saisir une activité : elle sera envoyée dès le retour du réseau.
+          📡 Hors connexion. Vous lisez la dernière copie gardée sur ce téléphone, qui peut ne pas être à jour. Vous pouvez saisir une activité : elle sera envoyée dès le retour du réseau.
         </p>
       )}
 

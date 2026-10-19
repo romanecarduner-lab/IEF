@@ -10,11 +10,13 @@ export function EtapesActivite({
   onChoisir,
   titreOk,
   nbCompetences,
+  libelleAria = "Étapes de la création",
 }: {
   etape: 1 | 2 | 3;
   onChoisir: (n: 1 | 2 | 3) => void;
   titreOk: boolean;
   nbCompetences: number;
+  libelleAria?: string;
 }) {
   const etapes: { n: 1 | 2 | 3; libelle: string; detail: string }[] = [
     { n: 1, libelle: "Activité", detail: titreOk ? "Titre rempli" : "Titre à saisir" },
@@ -29,7 +31,7 @@ export function EtapesActivite({
     { n: 3, libelle: "Observation", detail: "Facultatif" },
   ];
   return (
-    <ol className="mb-6 grid grid-cols-3 gap-1.5 sm:gap-2" aria-label="Étapes de la création">
+    <ol className="mb-6 grid grid-cols-3 gap-1.5 sm:gap-2" aria-label={libelleAria}>
       {etapes.map((e) => {
         const actif = e.n === etape;
         return (

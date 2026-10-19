@@ -3,15 +3,15 @@
 import { lireFile } from "./fileAttente";
 
 /**
- * A appeler a la deconnexion : retire du telephone les pages gardees pour
- * le mode hors-ligne, pour qu'elles ne restent pas accessibles a la
+ * A appeler a la deconnexion : retire du telephone les pages et photos gardees
+ * pour le mode hors-ligne, pour qu'elles ne restent pas accessibles a la
  * personne suivante qui se servirait du meme appareil.
  */
 export async function viderCachePagesHorsLigne(): Promise<void> {
   try {
     if ("caches" in window) {
       const noms = await caches.keys();
-      await Promise.all(noms.filter((n) => n.startsWith("ief-pages-")).map((n) => caches.delete(n)));
+      await Promise.all(noms.filter((n) => n.startsWith("ief-pages-") || n.startsWith("ief-images-")).map((n) => caches.delete(n)));
     }
     const reg = await navigator.serviceWorker?.getRegistration();
     reg?.active?.postMessage({ type: "VIDER" });

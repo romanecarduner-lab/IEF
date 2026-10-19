@@ -436,7 +436,7 @@ ajouté ni supprimé) et la colonne existante `traces.ordre_affichage`.
   doublon du même auteur (code 23505) au lieu de signaler une erreur.
 - **Limites assumées** : hors réseau, pas de recherche de compétences ni de
   proposition du logiciel (message à l'étape 2, compétences ajoutables depuis
-  la fiche) ; pas de lecture du journal hors ligne (prévu en B2 si utile) ;
+  la fiche) ; la lecture du journal hors ligne est décrite plus bas (lot B2) ;
   sur iPhone l'envoi part à l'ouverture de l'application, pas en arrière-plan.
 - Les éléments en attente sont liés à l'espace familial du compte qui les a
   saisis : un autre compte sur le même appareil ne les envoie pas. Se
@@ -2411,3 +2411,40 @@ repensé :
 
 Import réel du programme officiel, journal pédagogique, traces,
 progression, exports, IA — prévus dans les lots suivants.
+
+### Lire le journal sans réseau (lot B2, aucune migration SQL)
+
+- Le *service worker* (`public/sw.js`, version `v2`) garde aussi, à chaque
+  visite réussie : la liste du journal (`/journal`, chaque variante de filtre
+  séparément) et chaque fiche d'activité (`/journal/<id>`). Une fois par
+  session, après la connexion, il garde d'avance la liste et les 12
+  activités les plus récentes. Sans réseau, ces pages s'ouvrent avec ce qui
+  avait été vu la dernière fois ; les autres pages affichent « Pas de réseau
+  pour le moment » (avec un lien « Lire mon journal »).
+- **Photos** : les photos affichées dans ces pages sont gardées sous leur
+  adresse sans la signature (`?token=`), qui change à chaque affichage ; au
+  maximum 400 photos et 60 pages gardées (les plus anciennes partent d'abord).
+- Un bandeau prévient hors connexion : « Vous lisez la dernière copie gardée
+  sur ce téléphone, qui peut ne pas être à jour ».
+- **Vie privée** : pages et photos gardées sont retirées à la déconnexion
+  (`viderCachePagesHorsLigne`, qui vide aussi le cache des photos).
+- **Limites assumées** : lecture seule (modifier, supprimer, exporter, etc.
+  demandent le réseau) ; une activité jamais ouverte et hors des 12 plus
+  récentes n'est pas disponible ; les photos ouvertes en grand ne sont gardées
+  que si elles ont déjà été affichées.
+- Vérifié sur banc d'essai, serveur arrêté : liste, deux fiches (dont une avec
+  un paramètre d'adresse) et leurs 4 photos s'ouvrent ; une autre page donne la
+  page de secours. À essayer sur téléphone en mode avion.
+
+### Modifier une activité en trois étapes
+
+- La page « Modifier » reprend les trois étapes de la création : 1 Activité
+  (date, contexte, titre, description, lieu), 2 Compétences (liste des
+  compétences reliées avec « Retirer », et le même choix de compétences qu'à
+  la création), 3 Observation (observations, formulation proposée par le
+  logiciel, paroles de l'enfant, personnes présentes).
+- Les trois étapes restent dans la page : rien n'est perdu en changeant
+  d'étape. Les compétences s'ajoutent tout de suite avec le bouton du choix ;
+  le reste s'enregistre avec « Enregistrer les modifications » (toujours
+  visible). Ce n'est plus un `<form>` (le choix des compétences en contient un) :
+  la date, le contexte et le titre sont vérifiés par le code.
