@@ -85,7 +85,7 @@ async function envoyerUnElement(
 
     // 2. Photos
     let photoEnEchec = false;
-    for (const photo of element.photos) {
+    for (const [rang, photo] of element.photos.entries()) {
       if (element.etat.photosFaites.includes(photo.id)) continue;
       try {
         let chemins = element.etat.photosTeleversees[photo.id];
@@ -107,6 +107,7 @@ async function envoyerUnElement(
             contenuTexte: null,
             legende: "",
             dateTrace: element.donnees.dateActivite,
+            ordreAffichage: rang,
           }),
           30000
         );

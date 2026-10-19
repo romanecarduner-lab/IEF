@@ -12,6 +12,8 @@ export type DonneesTrace = {
   contenuTexte: string | null;
   legende: string;
   dateTrace: string;
+  /** Rang d'affichage voulu (0 = premiere). Absent : la trace passe apres les autres. */
+  ordreAffichage?: number;
 };
 
 export async function creerTrace(
@@ -45,9 +47,24 @@ export async function creerTrace(
     return { erreur: "Configuration des traces introuvable." };
   }
 
+  // Rang d'affichage : celui demande, sinon a la suite des traces deja
+  // presentes (la premiere photo d'une activite sert d'apercu dans le Journal).
+  let ordreAffichage = donnees.ordreAffichage;
+  if (ordreAffichage === undefined) {
+    const { data: derniere } = await supabase
+      .from("traces")
+      .select("ordre_affichage")
+      .eq("activite_id", donnees.activiteId)
+      .order("ordre_affichage", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    ordreAffichage = derniere ? ((derniere.ordre_affichage as number) ?? 0) + 1 : 0;
+  }
+
   const { data, error } = await supabase
     .from("traces")
     .insert({
+      ordre_affichage: ordreAffichage,
       activite_id: donnees.activiteId,
       type_id: type.id,
       chemin_stockage: donnees.cheminStockage,
@@ -92,4 +109,54 @@ export async function supprimerTrace(id: string, activiteId: string) {
 
   await supabase.from("traces").delete().eq("id", id);
   revalidatePath(`/journal/${activiteId}`);
+}
+
+/**
+ * Enregistre le nouvel ordre des traces d'une activite (la premiere sert
+ * d'apercu dans le Journal). La liste recue doit contenir exactement les
+ * traces de l'activite : rien n'est jamais supprime ni ajoute ici.
+ */
+export async function reordonnerTraces(
+  activiteId: string,
+  idsOrdonnes: string[]
+): Promise<{ erreur: string } | { ok: true }> {
+  const supabase = creerClientServeur();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { erreur: "Votre session a expiré. Merci de vous reconnecter." };
+
+  const { data: existantes, error: erreurLecture } = await supabase
+    .from("traces")
+    .select("id")
+    .eq("activite_id", activiteId);
+  if (erreurLecture || !existantes) {
+    return { erreur: "Impossible de lire les photos de cette activité. Merci de réessayer." };
+  }
+
+  const idsExistants = new Set(existantes.map((t) => t.id as string));
+  const idsRecus = new Set(idsOrdonnes);
+  if (
+    idsRecus.size !== idsOrdonnes.length ||
+    idsRecus.size !== idsExistants.size ||
+    idsOrdonnes.some((id) => !idsExistants.has(id))
+  ) {
+    return {
+      erreur:
+        "La liste des photos a changé entre-temps (autre appareil ?). Rechargez la page puis réessayez.",
+    };
+  }
+
+  const resultats = await Promise.all(
+    idsOrdonnes.map((id, rang) =>
+      supabase.from("traces").update({ ordre_affichage: rang }).eq("id", id).eq("activite_id", activiteId)
+    )
+  );
+  if (resultats.some((r) => r.error)) {
+    return { erreur: "L'ordre n'a pas pu être enregistré. Merci de réessayer." };
+  }
+
+  revalidatePath(`/journal/${activiteId}`);
+  revalidatePath("/journal");
+  return { ok: true };
 }

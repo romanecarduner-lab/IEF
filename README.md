@@ -386,6 +386,26 @@ dossier, dans le PowerPoint, ainsi que dans l'aperçu à l'écran et dans le
 sélecteur de photos. Vérifié sur un PDF d'essai avec une photo portrait et une
 photo paysage. Aucune migration.
 
+### Réordonner les photos d'une activité (aucune migration SQL)
+
+Sur la fiche d'une activité, les traces (photos, documents, textes) se
+réordonnent : on attrape la poignée ⠿ d'une carte et on la fait glisser devant
+ou derrière une autre (souris ou doigt, avec défilement automatique près des
+bords). Le bouton « En premier » et les flèches du clavier (sur la poignée)
+font la même chose sans glisser. La première porte le badge « Première » et
+sert d'aperçu dans le Journal. Le composant est
+`(protege)/journal/[id]/ListeTraces.tsx` ; l'enregistrement passe par
+`reordonnerTraces` (même liste exactement que celle de l'activité, rien n'est
+ajouté ni supprimé) et la colonne existante `traces.ordre_affichage`.
+- Ordre d'affichage de la fiche : `ordre_affichage`, puis ordre d'ajout (avant :
+  date de la trace). Les photos ajoutées à la création prennent l'ordre dans
+  lequel elles ont été choisies ; une trace ajoutée plus tard passe à la suite.
+- Au passage : supprimer une trace demande maintenant une confirmation.
+- Vérifié sur banc d'essai à 360 px : glisser 4e vers 1re, « En premier »,
+  flèches clavier, badge « Première ». Le glissement au doigt utilise les mêmes
+  événements que la souris (`touch-action: none` sur la poignée) : à essayer
+  sur téléphone.
+
 ### Mode hors-ligne : saisir une activité sans réseau (lot B1, aucune migration SQL)
 
 - **L'application s'installe** sur l'écran d'accueil (manifeste déjà présent)

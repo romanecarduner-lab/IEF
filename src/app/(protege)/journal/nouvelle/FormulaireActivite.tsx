@@ -617,7 +617,7 @@ export function FormulaireActivite({
       // doivent rester sequentielles pour eviter tout conflit en base --
       // ici, paralleliser est sans risque et nettement plus rapide.
       const resultatsPhotos = await Promise.all(
-        fichiers.map(async (fichier) => {
+        fichiers.map(async (fichier, rang) => {
           try {
             const supabase = creerClientNavigateur();
             // Delai maximal plus genereux que le defaut (envoi de
@@ -645,6 +645,7 @@ export function FormulaireActivite({
                 contenuTexte: null,
                 legende: "",
                 dateTrace: donnees.dateActivite,
+                ordreAffichage: rang,
               })
             );
             return { ok: true as const };

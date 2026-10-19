@@ -120,7 +120,8 @@ export default async function PageJournal({
         activites.map((a) => a.id)
       )
       .not("miniature_chemin_stockage", "is", null)
-      .order("ordre_affichage", { ascending: true });
+      .order("ordre_affichage", { ascending: true })
+      .order("created_at", { ascending: true });
     const cheminParActivite = new Map<string, string>();
     for (const t of tracesPhoto ?? []) {
       const id = t.activite_id as string;

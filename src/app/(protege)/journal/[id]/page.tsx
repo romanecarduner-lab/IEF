@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { creerClientServeur } from "@/lib/supabase/server";
 import { FormulaireTrace } from "./FormulaireTrace";
-import { supprimerTrace } from "./actions";
+import { ListeTraces } from "./ListeTraces";
 import { basculerStatutActivite } from "../actions";
 import { supprimerObservation } from "./competences/actions";
 import { BoutonDupliquerActivite } from "./BoutonDupliquerActivite";
@@ -80,7 +80,8 @@ export default async function PageActivite({ params }: { params: { id: string } 
           "id, legende, date_trace, contenu_texte, chemin_stockage, miniature_chemin_stockage, auteur_id, auteur_nom_affiche, types_trace(libelle)"
         )
         .eq("activite_id", params.id)
-        .order("date_trace", { ascending: false }),
+        .order("ordre_affichage", { ascending: true })
+        .order("created_at", { ascending: true }),
       supabase
         .from("types_trace")
         .select("code, libelle")
@@ -258,56 +259,18 @@ export default async function PageActivite({ params }: { params: { id: string } 
             Aucune trace ajoutée pour l&rsquo;instant.
           </p>
         ) : (
-          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {traces.map((t) => (
-              <li
-                key={t.id}
-                className="carte p-3"
-              >
-                {t.urlMiniature ? (
-                  <a href={t.urlFichier ?? t.urlMiniature} target="_blank" rel="noopener noreferrer">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={t.urlMiniature}
-                      alt={t.legende ?? t.typeLibelle ?? "Trace"}
-                      className="mb-2 h-24 w-full rounded object-cover"
-                    />
-                  </a>
-                ) : t.urlFichier ? (
-                  <a
-                    href={t.urlFichier}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mb-2 flex h-24 flex-col items-center justify-center gap-1 rounded bg-lin text-center text-mousse-fonce hover:bg-trait"
-                  >
-                    <span className="text-2xl">📄</span>
-                    <span className="text-xs underline underline-offset-2">
-                      Ouvrir le document
-                    </span>
-                  </a>
-                ) : (
-                  <p className="mb-2 line-clamp-3 text-sm text-encre">
-                    {t.contenuTexte}
-                  </p>
-                )}
-                <p className="text-xs text-ardoise">{t.typeLibelle}</p>
-                {auteurs.afficher && auteurs.nom(t.auteurId, t.auteurInstantane) && (
-                  <p className="text-xs text-ardoise">
-                    Ajoutée par {auteurs.nom(t.auteurId, t.auteurInstantane)}
-                  </p>
-                )}
-                {t.legende && <p className="text-xs text-encre">{t.legende}</p>}
-                <form action={supprimerTrace.bind(null, t.id, params.id)} className="mt-1">
-                  <button
-                    type="submit"
-                    className="text-xs text-alerte underline decoration-alerte/40 underline-offset-2 hover:decoration-alerte"
-                  >
-                    Supprimer
-                  </button>
-                </form>
-              </li>
-            ))}
-          </ul>
+          <ListeTraces
+            activiteId={params.id}
+            traces={traces.map((t) => ({
+              id: t.id,
+              legende: t.legende,
+              typeLibelle: t.typeLibelle,
+              contenuTexte: t.contenuTexte,
+              urlMiniature: t.urlMiniature,
+              urlFichier: t.urlFichier,
+              auteurAffiche: auteurs.afficher ? auteurs.nom(t.auteurId, t.auteurInstantane) : null,
+            }))}
+          />
         )}
       </div>
 
