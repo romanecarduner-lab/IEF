@@ -386,6 +386,19 @@ dossier, dans le PowerPoint, ainsi que dans l'aperçu à l'écran et dans le
 sélecteur de photos. Vérifié sur un PDF d'essai avec une photo portrait et une
 photo paysage. Aucune migration.
 
+### Description visible à l'étape 2 de la création d'activité
+
+Le bouton « Décrire l'activité et identifier les compétences » est à l'étape 2
+mais écrit dans la « Description libre » de l'étape 1 : on ne voyait donc pas
+le résultat. À l'étape 2, une carte « Description de l'activité » est
+maintenant placée juste au-dessus du bouton : elle affiche le texte, avec un
+bouton « Modifier » pour le retoucher sur place (c'est le même champ que
+l'étape 1, rien n'est dupliqué). Quand le logiciel complète la description, la
+carte s'illumine un instant et indique « Complétée par le logiciel », avec
+« Revenir à mon texte » (le texte d'avant n'est plus écrasé sans retour
+possible ; une confirmation est demandée si vous avez retouché depuis). La
+même mention apparaît sous la description à l'étape 1. Aucune migration.
+
 ### Inviter un second parent (migration 0065)
 
 Un second parent peut rejoindre **le même espace familial** : il voit les mêmes

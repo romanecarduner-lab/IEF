@@ -239,6 +239,13 @@ export function FormulaireActivite({
   }, [donnees.dateActivite, donnees.parcoursId]);
   const [autresEnfantsChoisis, setAutresEnfantsChoisis] = useState<Set<string>>(new Set());
   const [erreurDescriptionIA, setErreurDescriptionIA] = useState<string | null>(null);
+  // Description proposee par le logiciel : on garde le texte d'avant (pour
+  // pouvoir y revenir) et le texte propose (pour savoir si vous l'avez
+  // retouche depuis). Null tant que le logiciel n'a rien propose.
+  const [descriptionAvantIA, setDescriptionAvantIA] = useState<string | null>(null);
+  const [descriptionProposeeIA, setDescriptionProposeeIA] = useState<string | null>(null);
+  const [descriptionModifiable, setDescriptionModifiable] = useState(false);
+  const [descriptionMiseEnValeur, setDescriptionMiseEnValeur] = useState(false);
 
   const [chargementFormulation, setChargementFormulation] = useState(false);
   const [erreurFormulation, setErreurFormulation] = useState<string | null>(null);
@@ -372,8 +379,13 @@ export function FormulaireActivite({
         setErreurDescriptionIA(resultat.erreur);
         return;
       }
+      setDescriptionAvantIA(donnees.description);
+      setDescriptionProposeeIA(resultat.description);
+      setDescriptionModifiable(false);
       modifierChamp("description", resultat.description);
       setSuggestionsIA(resultat.suggestions);
+      setDescriptionMiseEnValeur(true);
+      window.setTimeout(() => setDescriptionMiseEnValeur(false), 2500);
     } catch (erreurInattendue) {
       console.error(
         "Erreur lors de la génération de la description et des compétences IA",
@@ -383,6 +395,21 @@ export function FormulaireActivite({
     } finally {
       setChargementDescriptionIA(false);
     }
+  }
+
+  function revenirAMonTexte() {
+    if (descriptionAvantIA === null) return;
+    if (
+      donnees.description !== descriptionProposeeIA &&
+      !window.confirm(
+        "Vous avez modifié le texte depuis la proposition du logiciel. Revenir quand même à votre texte d'origine ?"
+      )
+    ) {
+      return;
+    }
+    modifierChamp("description", descriptionAvantIA);
+    setDescriptionAvantIA(null);
+    setDescriptionProposeeIA(null);
   }
 
   async function demanderFormulation() {
@@ -857,6 +884,14 @@ export function FormulaireActivite({
               onChange={(e) => modifierChamp("description", e.target.value)}
               className="champ-saisie w-full"
             />
+            {descriptionAvantIA !== null && (
+              <p className="mt-1.5 text-xs text-mousse-fonce">
+                ✨ Complétée par le logiciel à l&rsquo;étape 2.{" "}
+                <button type="button" onClick={revenirAMonTexte} className="underline underline-offset-2">
+                  Revenir à mon texte
+                </button>
+              </p>
+            )}
           </div>
 
           <Champ
@@ -929,6 +964,49 @@ export function FormulaireActivite({
               </ul>
             </div>
           )}
+
+          <div
+            className={`mb-3 rounded-doux border bg-white p-3 transition-shadow ${
+              descriptionMiseEnValeur
+                ? "border-mousse-fonce shadow-[0_0_0_3px_rgba(155,175,156,0.45)]"
+                : "border-trait"
+            }`}
+          >
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <p className="text-sm font-medium text-encre">Description de l&rsquo;activité</p>
+              <button
+                type="button"
+                onClick={() => setDescriptionModifiable((v) => !v)}
+                className="min-h-[36px] px-1 text-xs font-medium text-mousse-fonce underline underline-offset-2"
+              >
+                {descriptionModifiable ? "Terminer" : "Modifier"}
+              </button>
+            </div>
+            {descriptionModifiable ? (
+              <textarea
+                rows={5}
+                value={donnees.description}
+                onChange={(e) => modifierChamp("description", e.target.value)}
+                aria-label="Description de l'activité"
+                className="champ-saisie w-full"
+              />
+            ) : donnees.description.trim() ? (
+              <p className="whitespace-pre-line text-sm text-encre">{donnees.description}</p>
+            ) : (
+              <p className="text-sm text-ardoise">
+                Aucune description pour l&rsquo;instant. Le logiciel peut en proposer une à partir du titre et
+                des photos.
+              </p>
+            )}
+            {descriptionAvantIA !== null && (
+              <p className="mt-2 text-xs text-mousse-fonce">
+                ✨ Complétée par le logiciel, à relire et corriger si besoin.{" "}
+                <button type="button" onClick={revenirAMonTexte} className="underline underline-offset-2">
+                  Revenir à mon texte
+                </button>
+              </p>
+            )}
+          </div>
 
           <div className="mb-4 -mt-2">
             <button
