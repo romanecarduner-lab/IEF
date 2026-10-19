@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Home, BookOpen, Plus, TrendingUp, FileText, MoreHorizontal, X } from "lucide-react";
 import { creerClientNavigateur } from "@/lib/supabase/client";
+import { confirmerDeconnexionSiFileNonVide, viderCachePagesHorsLigne } from "@/lib/horsLigne";
 
 const ONGLETS = [
   { href: "/tableau-de-bord", libelle: "Accueil", Icone: Home },
@@ -31,8 +32,10 @@ export function NavigationBasse() {
   }
 
   async function seDeconnecter() {
+    if (!(await confirmerDeconnexionSiFileNonVide())) return;
     const supabase = creerClientNavigateur();
     await supabase.auth.signOut();
+    await viderCachePagesHorsLigne();
     router.push("/connexion");
     router.refresh();
   }

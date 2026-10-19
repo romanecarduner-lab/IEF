@@ -21,6 +21,9 @@ import { RechercheCompetences } from "./RechercheCompetences";
 import { trouverJumelles } from "../jumellesActions";
 import { EtapesActivite } from "./EtapesActivite";
 import { declencherEstimationArrierePlan } from "@/lib/estimationArrierePlan";
+import { ajouterALaFile, signalerChangementFile, type PhotoEnAttente } from "@/lib/fileAttente";
+import { estErreurReseau } from "@/lib/synchroActivite";
+import { useEnLigne } from "@/lib/useEnLigne";
 
 type Option = { id: string; libelle: string };
 type OptionParcours = Option & {
@@ -88,6 +91,10 @@ export function FormulaireActivite({
   };
 }) {
   const router = useRouter();
+  const enLigne = useEnLigne();
+  // Vrai quand l'activite a ete gardee sur le telephone (pas de reseau) :
+  // elle partira toute seule au retour de la connexion.
+  const [misEnFile, setMisEnFile] = useState(false);
   const idLocalRef = useRef<string>(genererIdLocal());
   const delaiAutosaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputPhotoRef = useRef<HTMLInputElement>(null);
@@ -468,6 +475,65 @@ export function FormulaireActivite({
     setBrouillonPropose(null);
   }
 
+  /**
+   * Pas de reseau (ou reseau trop faible) : l'activite, ses photos deja
+   * compressees, les competences choisies et les copies demandees sont
+   * gardees sur ce telephone. Rien n'est retire de la file tant que le
+   * serveur n'a pas tout confirme (voir src/lib/synchroActivite.ts).
+   */
+  async function basculerVersFile(donneesEnvoyees: DonneesActivite) {
+    setEtapeEnvoi("Mise de côté sur ce téléphone…");
+    const fichiers = Array.from(inputPhotoRef.current?.files ?? []);
+    const photos: PhotoEnAttente[] = [];
+    for (const fichier of fichiers) {
+      if (estImage(fichier)) {
+        const { image, miniature } = await preparerImage(fichier);
+        photos.push({
+          id: crypto.randomUUID(),
+          nom: fichier.name,
+          estImage: true,
+          fichier: image,
+          miniature,
+          typeMime: "image/jpeg",
+        });
+      } else {
+        photos.push({
+          id: crypto.randomUUID(),
+          nom: fichier.name,
+          estImage: false,
+          fichier,
+          miniature: null,
+          typeMime: fichier.type,
+        });
+      }
+    }
+    await ajouterALaFile({
+      idLocal: donneesEnvoyees.idLocal,
+      familleId,
+      creeLe: Date.now(),
+      donnees: donneesEnvoyees,
+      photos,
+      competences: Array.from(suggestionsChoisies.keys()).map((id) => ({
+        id,
+        niveauAutonomieId: niveauParCompetence.get(id) || niveauCompetencesId || autonomies[0]?.id || "",
+      })),
+      autresEnfantsIds: Array.from(autresEnfantsChoisis),
+      etat: {
+        activiteCreee: false,
+        photosTeleversees: {},
+        photosFaites: [],
+        competencesFaites: false,
+        copiesFaites: [],
+      },
+      derniereErreur: null,
+      tentatives: 0,
+    });
+    await supprimerBrouillon().catch(() => {});
+    signalerChangementFile();
+    setMisEnFile(true);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   async function gererEnvoi(evenement: React.FormEvent<HTMLFormElement>) {
     evenement.preventDefault();
     setErreur(null);
@@ -503,7 +569,35 @@ export function FormulaireActivite({
     };
 
     try {
-      const resultat = await avecDelaiMaximal(creerActivite(donneesEnvoyees));
+      // Hors connexion, ou reseau qui lache pendant l'envoi : on garde
+      // l'activite sur le telephone au lieu de la perdre.
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        try {
+          await basculerVersFile(donneesEnvoyees);
+        } catch (erreurFile) {
+          console.error("Impossible de garder l'activité sur le téléphone", erreurFile);
+          setErreur(
+            "Pas de réseau, et l'activité n'a pas pu être gardée sur ce téléphone (espace de stockage insuffisant ?). Vos champs restent à l'écran : n'oubliez pas de réessayer dès que possible."
+          );
+          setStatutSync("non_synchronise");
+        }
+        return;
+      }
+
+      let resultat: Awaited<ReturnType<typeof creerActivite>>;
+      try {
+        resultat = await avecDelaiMaximal(creerActivite(donneesEnvoyees));
+      } catch (erreurEnvoi) {
+        if (estErreurReseau(erreurEnvoi)) {
+          try {
+            await basculerVersFile(donneesEnvoyees);
+            return;
+          } catch (erreurFile) {
+            console.error("Impossible de garder l'activité sur le téléphone", erreurFile);
+          }
+        }
+        throw erreurEnvoi;
+      }
 
       if ("erreur" in resultat) {
         setErreur(resultat.erreur);
@@ -661,6 +755,31 @@ export function FormulaireActivite({
       setChargement(false);
       setEtapeEnvoi(null);
     }
+  }
+
+  if (misEnFile) {
+    return (
+      <div className="carte p-6 text-center">
+        <p className="text-4xl" aria-hidden="true">
+          📥
+        </p>
+        <h2 className="mt-3 font-display text-xl italic text-encre">Activité gardée sur ce téléphone</h2>
+        <p className="mt-3 text-sm text-ardoise">
+          Elle sera envoyée automatiquement dès que le réseau sera de retour, avec ses photos. Il suffit que
+          l&rsquo;application soit ouverte. Rien n&rsquo;est perdu : vous retrouvez ce qui attend en haut de
+          l&rsquo;écran.
+        </p>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <button
+            type="button"
+            onClick={() => window.location.assign("/journal/nouvelle")}
+            className="bouton-primaire"
+          >
+            Ajouter une autre activité
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -906,6 +1025,13 @@ export function FormulaireActivite({
         <div className={etape === 2 ? "" : "hidden"} aria-hidden={etape !== 2}>
           <h2 className="mb-1 font-display text-lg italic text-encre">Compétences du programme</h2>
           <p className="mb-5 text-sm text-ardoise">Cherchez un mot, parcourez par domaine ou laissez le logiciel proposer. Vous pouvez aussi passer cette étape.</p>
+          {!enLigne && (
+            <p className="mb-5 rounded-doux border border-ocre/50 bg-white px-3 py-2 text-xs text-ardoise">
+              Hors connexion : la recherche de compétences et les propositions du logiciel ont besoin du
+              réseau. Vous pouvez enregistrer l&rsquo;activité maintenant et ajouter les compétences depuis sa
+              fiche une fois qu&rsquo;elle sera envoyée.
+            </p>
+          )}
           <div className="mb-6 border-t border-trait pt-5">
             <p className="mb-1 text-sm font-medium text-encre">
               Compétences du programme
@@ -1012,7 +1138,7 @@ export function FormulaireActivite({
             <button
               type="button"
               onClick={demanderDescriptionEtCompetencesIA}
-              disabled={chargementDescriptionIA || !donnees.titre.trim()}
+              disabled={chargementDescriptionIA || !donnees.titre.trim() || !enLigne}
               className="text-xs font-medium text-mousse-fonce underline decoration-mousse-clair/60 underline-offset-2 hover:text-mousse disabled:cursor-not-allowed disabled:opacity-50"
             >
               {chargementDescriptionIA

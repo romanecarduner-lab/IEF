@@ -158,6 +158,22 @@ export async function creerActivite(
     statut_id: statut.id,
   });
 
+  // Reprise sans doublon : l'identifiant de l'activite est genere par
+  // l'appareil. Si un envoi precedent est arrive jusqu'au serveur sans que
+  // la reponse revienne (reseau coupe au mauvais moment), la ligne existe
+  // deja : on la reconnait (meme auteur) au lieu de signaler une erreur.
+  if (error && error.code === "23505") {
+    const { data: existante } = await supabase
+      .from("activites")
+      .select("id, auteur_id")
+      .eq("id", donnees.idLocal)
+      .maybeSingle();
+    if (existante && existante.auteur_id === user.id) {
+      revalidatePath("/journal");
+      return { id: donnees.idLocal };
+    }
+  }
+
   if (error) {
     console.error("Erreur lors de l'insertion de l'activite", error);
     return {

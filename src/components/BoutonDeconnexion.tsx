@@ -3,15 +3,18 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { creerClientNavigateur } from "@/lib/supabase/client";
+import { confirmerDeconnexionSiFileNonVide, viderCachePagesHorsLigne } from "@/lib/horsLigne";
 
 export function BoutonDeconnexion() {
   const router = useRouter();
   const [chargement, setChargement] = useState(false);
 
   async function seDeconnecter() {
+    if (!(await confirmerDeconnexionSiFileNonVide())) return;
     setChargement(true);
     const supabase = creerClientNavigateur();
     await supabase.auth.signOut();
+    await viderCachePagesHorsLigne();
     router.push("/connexion");
     router.refresh();
   }

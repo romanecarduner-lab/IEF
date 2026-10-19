@@ -386,6 +386,42 @@ dossier, dans le PowerPoint, ainsi que dans l'aperçu à l'écran et dans le
 sélecteur de photos. Vérifié sur un PDF d'essai avec une photo portrait et une
 photo paysage. Aucune migration.
 
+### Mode hors-ligne : saisir une activité sans réseau (lot B1, aucune migration SQL)
+
+- **L'application s'installe** sur l'écran d'accueil (manifeste déjà présent)
+  et un *service worker* (`public/sw.js`) garde le strict nécessaire : les
+  fichiers statiques de l'application, la page de secours `/hors-ligne` et le
+  formulaire « Ajouter une activité » (`/journal/nouvelle`), préchargé une fois
+  par session quand on est connecté. Aucune donnée de journal, aucune photo,
+  aucun appel à la base n'est gardé. Les pages gardées sont retirées à la
+  déconnexion. Les autres pages affichent « Pas de réseau pour le moment ».
+- **Saisie sans réseau** : au clic sur « Enregistrer maintenant » (ou si le
+  réseau lâche pendant l'envoi), l'activité, ses photos déjà compressées, les
+  compétences déjà cochées et les copies vers d'autres enfants sont gardées
+  dans IndexedDB (`src/lib/fileAttente.ts`). Un écran confirme « Activité
+  gardée sur ce téléphone ».
+- **Envoi automatique** (`src/lib/synchroActivite.ts`, `src/components/HorsLigne.tsx`) :
+  dès le retour du réseau, à la réouverture de l'application, ou toutes les
+  15 secondes tant que quelque chose attend. L'encart en haut des pages
+  protégées montre ce qui attend, avec « Envoyer maintenant » et « Retirer »
+  (avec confirmation). Un élément n'est retiré de la file qu'une fois tout
+  confirmé par le serveur ; chaque étape franchie (activité, chaque photo,
+  compétences, copies) est enregistrée pour reprendre sans doublon. L'activité
+  porte un identifiant créé par l'appareil et `creerActivite` reconnaît un
+  doublon du même auteur (code 23505) au lieu de signaler une erreur.
+- **Limites assumées** : hors réseau, pas de recherche de compétences ni de
+  proposition du logiciel (message à l'étape 2, compétences ajoutables depuis
+  la fiche) ; pas de lecture du journal hors ligne (prévu en B2 si utile) ;
+  sur iPhone l'envoi part à l'ouverture de l'application, pas en arrière-plan.
+- Les éléments en attente sont liés à l'espace familial du compte qui les a
+  saisis : un autre compte sur le même appareil ne les envoie pas. Se
+  déconnecter avec des éléments en attente demande confirmation.
+- Vérifié sur un banc d'essai local : serveur de l'application arrêté, le
+  formulaire s'ouvre depuis le cache, la saisie part en file, puis l'envoi
+  complet (activité + photos) se fait seul au retour du serveur. À essayer en
+  vrai sur téléphone (mode avion) : installation, ouverture hors ligne,
+  retour du réseau.
+
 ### Description visible à l'étape 2 de la création d'activité
 
 Le bouton « Décrire l'activité et identifier les compétences » est à l'étape 2

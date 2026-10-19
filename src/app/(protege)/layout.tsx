@@ -4,6 +4,7 @@ import { creerClientServeur } from "@/lib/supabase/server";
 import { BoutonDeconnexion } from "@/components/BoutonDeconnexion";
 import { MenuDeroulant } from "@/components/MenuDeroulant";
 import { NavigationBasse } from "@/components/NavigationBasse";
+import { HorsLigne } from "@/components/HorsLigne";
 import { empreinteJeton } from "@/lib/invitations";
 
 const LIEN_STYLE =
@@ -57,6 +58,7 @@ export default async function LayoutProtege({
     .limit(1);
 
   let nomFamille: string;
+  let familleId: string | null = null;
   let onboardingTermine = false;
 
   if (!appartenances || appartenances.length === 0) {
@@ -99,6 +101,7 @@ export default async function LayoutProtege({
       | null;
     const familleUnique = Array.isArray(famille) ? famille[0] : famille;
     nomFamille = familleUnique?.nom ?? "Votre espace";
+    familleId = (appartenances[0]?.famille_id as string | undefined) ?? null;
     onboardingTermine = familleUnique?.onboarding_termine ?? false;
   }
 
@@ -149,6 +152,7 @@ export default async function LayoutProtege({
         </div>
       </header>
       <div className="mx-auto max-w-4xl px-4 pb-28 pt-6 sm:px-6 sm:pt-10 md:pb-10">
+        {familleId && <HorsLigne familleId={familleId} />}
         {children}
       </div>
       <NavigationBasse />

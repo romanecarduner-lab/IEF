@@ -57,3 +57,44 @@ export async function televerserFichierTrace(
 
   return { cheminStockage: chemin, miniatureCheminStockage: null };
 }
+
+/**
+ * Envoi d'une photo ou d'un document deja prepares (compresses) : utilise
+ * par l'envoi differe des activites saisies sans reseau. Ne refait aucune
+ * compression.
+ */
+export async function televerserBlobsTrace(
+  supabase: SupabaseClient,
+  familleId: string,
+  piece: { fichier: Blob; miniature: Blob | null; estImage: boolean; nom: string; typeMime: string }
+): Promise<ResultatTeleversement> {
+  const idTrace = crypto.randomUUID();
+
+  if (piece.estImage) {
+    const cheminImage = `${familleId}/${idTrace}.jpg`;
+    const cheminMiniature = piece.miniature ? `${familleId}/${idTrace}_thumb.jpg` : null;
+    const envois = [
+      supabase.storage
+        .from("traces-pedagogiques")
+        .upload(cheminImage, piece.fichier, { contentType: "image/jpeg" }),
+    ];
+    if (cheminMiniature && piece.miniature) {
+      envois.push(
+        supabase.storage
+          .from("traces-pedagogiques")
+          .upload(cheminMiniature, piece.miniature, { contentType: "image/jpeg" })
+      );
+    }
+    const resultats = await Promise.all(envois);
+    if (resultats.some((r) => r.error)) throw new Error("Echec de l'envoi de l'image.");
+    return { cheminStockage: cheminImage, miniatureCheminStockage: cheminMiniature };
+  }
+
+  const extension = piece.nom.split(".").pop() || "bin";
+  const chemin = `${familleId}/${idTrace}.${extension}`;
+  const resultat = await supabase.storage
+    .from("traces-pedagogiques")
+    .upload(chemin, piece.fichier, { contentType: piece.typeMime || undefined });
+  if (resultat.error) throw new Error("Echec de l'envoi du fichier.");
+  return { cheminStockage: chemin, miniatureCheminStockage: null };
+}
