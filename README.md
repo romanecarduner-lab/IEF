@@ -402,9 +402,14 @@ ajouté ni supprimé) et la colonne existante `traces.ordre_affichage`.
   lequel elles ont été choisies ; une trace ajoutée plus tard passe à la suite.
 - Au passage : supprimer une trace demande maintenant une confirmation.
 - Vérifié sur banc d'essai à 360 px : glisser 4e vers 1re, « En premier »,
-  flèches clavier, badge « Première ». Le glissement au doigt utilise les mêmes
-  événements que la souris (`touch-action: none` sur la poignée) : à essayer
-  sur téléphone.
+  flèches clavier, badge « Première », et glissement au doigt (événements
+  tactiles simulés).
+- Correctif (premier essai sur téléphone : « je n'arrive pas à bouger les
+  photos ») : les écouteurs du glissement étaient posés sur la poignée. Quand
+  une carte change de place, le navigateur déplace les éléments de la page et,
+  au doigt, la poignée tenue est perdue (`lostpointercapture`) : le geste
+  s'arrêtait et l'ordre n'était jamais enregistré. Les écouteurs sont
+  désormais posés sur la fenêtre (`pointermove`, `pointerup`, `pointercancel`).
 
 ### Mode hors-ligne : saisir une activité sans réseau (lot B1, aucune migration SQL)
 

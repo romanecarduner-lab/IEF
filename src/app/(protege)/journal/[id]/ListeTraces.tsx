@@ -100,49 +100,56 @@ export function ListeTraces({ activiteId, traces }: { activiteId: string; traces
   }
 
   // --- Glisser (souris ou doigt), via la poignee ---
+  // Les ecouteurs sont poses sur la fenetre, pas sur la poignee : quand une
+  // carte change de place, le navigateur reordonne les elements de la page,
+  // ce qui, sur telephone, fait perdre au doigt la poignee qu'il tenait.
+  // Avec des ecouteurs sur la fenetre, le geste continue sans interruption.
+  const glisseId = useRef<string | null>(null);
+
   function debutGeste(e: React.PointerEvent<HTMLButtonElement>, id: string) {
     const carte = cartes.current.get(id);
-    if (!carte) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
+    if (!carte || glisseId.current) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    e.preventDefault();
     const r = carte.getBoundingClientRect();
+    glisseId.current = id;
     ordreAvantGeste.current = ordreCourant.current;
     dernierPointeur.current = { x: e.clientX, y: e.clientY };
     setGlisse({ id, x: e.clientX, y: e.clientY, w: r.width, h: r.height, dx: e.clientX - r.left, dy: e.clientY - r.top });
     setMessage(null);
-  }
 
-  function mouvementGeste(e: React.PointerEvent<HTMLButtonElement>) {
-    if (!glisse) return;
-    dernierPointeur.current = { x: e.clientX, y: e.clientY };
-    setGlisse((g) => (g ? { ...g, x: e.clientX, y: e.clientY } : g));
-    // La carte survolee (autre que celle qu'on tient) donne la nouvelle place.
-    for (const [autreId, el] of cartes.current) {
-      if (autreId === glisse.id) continue;
-      const r = el.getBoundingClientRect();
-      if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
-        deplacer(glisse.id, ordreCourant.current.indexOf(autreId));
-        break;
+    const surMouvement = (ev: PointerEvent) => {
+      dernierPointeur.current = { x: ev.clientX, y: ev.clientY };
+      setGlisse((g) => (g ? { ...g, x: ev.clientX, y: ev.clientY } : g));
+      // La carte survolee (autre que celle qu'on tient) donne la nouvelle place.
+      for (const [autreId, el] of cartes.current) {
+        if (autreId === id) continue;
+        const rect = el.getBoundingClientRect();
+        if (ev.clientX >= rect.left && ev.clientX <= rect.right && ev.clientY >= rect.top && ev.clientY <= rect.bottom) {
+          deplacer(id, ordreCourant.current.indexOf(autreId));
+          break;
+        }
       }
-    }
-  }
-
-  async function finGeste(e: React.PointerEvent<HTMLButtonElement>) {
-    if (!glisse) return;
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {
-      /* deja relache */
-    }
-    setGlisse(null);
-    dernierPointeur.current = null;
-    await enregistrer(ordreCourant.current, ordreAvantGeste.current);
-  }
-
-  function annulerGeste() {
-    if (!glisse) return;
-    setGlisse(null);
-    dernierPointeur.current = null;
-    setOrdre(ordreAvantGeste.current);
+    };
+    const nettoyer = () => {
+      window.removeEventListener("pointermove", surMouvement);
+      window.removeEventListener("pointerup", surFin);
+      window.removeEventListener("pointercancel", surAnnulation);
+      glisseId.current = null;
+      dernierPointeur.current = null;
+      setGlisse(null);
+    };
+    const surFin = () => {
+      nettoyer();
+      void enregistrer(ordreCourant.current, ordreAvantGeste.current);
+    };
+    const surAnnulation = () => {
+      nettoyer();
+      setOrdre(ordreAvantGeste.current);
+    };
+    window.addEventListener("pointermove", surMouvement);
+    window.addEventListener("pointerup", surFin);
+    window.addEventListener("pointercancel", surAnnulation);
   }
 
   // Defilement automatique de la page quand on approche du haut ou du bas de l'ecran.
@@ -197,9 +204,6 @@ export function ListeTraces({ activiteId, traces }: { activiteId: string; traces
                     type="button"
                     aria-label={`Déplacer cette trace (position ${rang + 1} sur ${ordre.length}). Faites glisser, ou utilisez les flèches du clavier.`}
                     onPointerDown={(e) => debutGeste(e, id)}
-                    onPointerMove={mouvementGeste}
-                    onPointerUp={finGeste}
-                    onPointerCancel={annulerGeste}
                     onKeyDown={(e) => void surTouche(e, id)}
                     style={{ touchAction: "none" }}
                     className="absolute left-1.5 top-1.5 z-10 flex h-9 w-9 cursor-grab items-center justify-center rounded-full bg-white/90 text-lg text-ardoise shadow-doux active:cursor-grabbing"
