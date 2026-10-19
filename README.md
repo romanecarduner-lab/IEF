@@ -2448,3 +2448,12 @@ progression, exports, IA — prévus dans les lots suivants.
   le reste s'enregistre avec « Enregistrer les modifications » (toujours
   visible). Ce n'est plus un `<form>` (le choix des compétences en contient un) :
   la date, le contexte et le titre sont vérifiés par le code.
+
+### Bouton « Enregistrer » plus discret aux étapes 1 et 2
+
+- Création et modification : aux étapes 1 et 2, le bouton principal (vert) est
+  « Suivant », pour ne pas enregistrer sans le vouloir. L'enregistrement
+  anticipé reste possible avec un petit lien « Enregistrer maintenant, sans
+  finir les étapes », isolé sous une ligne. À l'étape 3, « Enregistrer
+  l'activité » (ou « Enregistrer les modifications ») redevient le bouton
+  principal.

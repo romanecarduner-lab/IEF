@@ -309,24 +309,37 @@ export function FormulaireModifierActivite({
             Précédent
           </button>
         )}
-        {etape < 3 && (
+        {etape < 3 ? (
           <button
             type="button"
             onClick={() => allerEtape((etape + 1) as 1 | 2 | 3)}
-            className="bouton-secondaire"
+            className="bouton-primaire"
           >
             {etape === 1 ? "Suivant : compétences" : "Suivant : observation"}
           </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => void enregistrer()}
+            disabled={chargement}
+            className="bouton-primaire"
+          >
+            {chargement ? "Enregistrement…" : "Enregistrer les modifications"}
+          </button>
         )}
-        <button
-          type="button"
-          onClick={() => void enregistrer()}
-          disabled={chargement}
-          className="bouton-primaire"
-        >
-          {chargement ? "Enregistrement…" : "Enregistrer les modifications"}
-        </button>
       </div>
+      {etape < 3 && (
+        <div className="mt-4 border-t border-trait/60 pt-3">
+          <button
+            type="button"
+            onClick={() => void enregistrer()}
+            disabled={chargement}
+            className="min-h-[40px] text-xs text-ardoise underline underline-offset-2 hover:text-encre disabled:opacity-50"
+          >
+            {chargement ? "Enregistrement…" : "Enregistrer maintenant, sans finir les étapes"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

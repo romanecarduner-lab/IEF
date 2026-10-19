@@ -1304,27 +1304,39 @@ export function FormulaireActivite({
           />
         </div>
 
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-trait pt-5">
+        <div className="mt-6 border-t border-trait pt-5">
           <div className="flex flex-wrap items-center gap-3">
             {etape > 1 && (
               <button type="button" onClick={() => allerEtape(etape - 1)} className="bouton-secondaire">
                 Retour
               </button>
             )}
-            {etape < 3 && (
-              <button type="button" onClick={() => allerEtape(etape + 1)} className="bouton-secondaire">
+            {etape < 3 ? (
+              <button type="button" onClick={() => allerEtape(etape + 1)} className="bouton-primaire">
                 {etape === 1 ? "Suivant : compétences" : "Suivant : observation"}
               </button>
+            ) : (
+              <button type="submit" disabled={chargement} className="bouton-primaire">
+                {chargement ? etapeEnvoi ?? "Enregistrement…" : "Enregistrer l'activité"}
+              </button>
             )}
-            <button type="submit" disabled={chargement} className="bouton-primaire">
-              {chargement
-                ? etapeEnvoi ?? "Enregistrement…"
-                : etape < 3
-                  ? "Enregistrer maintenant"
-                  : "Enregistrer l'activité"}
-            </button>
           </div>
-          <IndicateurSynchronisation statut={statutSync} />
+          {/* Aux étapes 1 et 2, l'enregistrement anticipé reste possible mais discret,
+              pour ne pas être touché sans le vouloir. */}
+          {etape < 3 && (
+            <div className="mt-4 border-t border-trait/60 pt-3">
+              <button
+                type="submit"
+                disabled={chargement}
+                className="min-h-[40px] text-xs text-ardoise underline underline-offset-2 hover:text-encre disabled:opacity-50"
+              >
+                {chargement ? etapeEnvoi ?? "Enregistrement…" : "Enregistrer maintenant, sans finir les étapes"}
+              </button>
+            </div>
+          )}
+          <div className="mt-3">
+            <IndicateurSynchronisation statut={statutSync} />
+          </div>
         </div>
       </form>
     </div>
