@@ -1312,11 +1312,16 @@ export function FormulaireActivite({
               </button>
             )}
             {etape < 3 ? (
-              <button type="button" onClick={() => allerEtape(etape + 1)} className="bouton-primaire">
+              <button
+                key="bouton-suivant"
+                type="button"
+                onClick={() => allerEtape(etape + 1)}
+                className="bouton-primaire"
+              >
                 {etape === 1 ? "Suivant : compétences" : "Suivant : observation"}
               </button>
             ) : (
-              <button type="submit" disabled={chargement} className="bouton-primaire">
+              <button key="bouton-enregistrer" type="submit" disabled={chargement} className="bouton-primaire">
                 {chargement ? etapeEnvoi ?? "Enregistrement…" : "Enregistrer l'activité"}
               </button>
             )}
@@ -1326,6 +1331,7 @@ export function FormulaireActivite({
           {etape < 3 && (
             <div className="mt-4 border-t border-trait/60 pt-3">
               <button
+                key="enregistrer-anticipe"
                 type="submit"
                 disabled={chargement}
                 className="min-h-[40px] text-xs text-ardoise underline underline-offset-2 hover:text-encre disabled:opacity-50"

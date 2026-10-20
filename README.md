@@ -2465,3 +2465,18 @@ progression, exports, IA — prévus dans les lots suivants.
   page et n'est pas répété, pour tenir sur un petit écran). Les adresses
   (`onglet=a-travailler`) ne changent pas. Les anciens intitulés cités plus
   haut dans ce fichier désignent ces mêmes onglets.
+
+### Deux corrections : étapes et idées de l'accueil
+
+- **Étape 2 vers 3 de l'activité** : « Suivant : observation » et « Enregistrer
+  l'activité » étaient le même bouton à l'écran (introduit par le lot « bouton
+  Enregistrer discret »). En passant à l'étape 3 il devenait un bouton d'envoi
+  pendant le clic, ce qui enregistrait et fermait le formulaire. Chaque bouton
+  a maintenant sa propre clé (`key`), dans la création et la modification.
+  Vérifié sur banc d'essai : aller de l'étape 1 à 3 n'envoie rien.
+- **« Idées pour continuer » (accueil)** : le tirage était aléatoire à chaque
+  affichage de la page, donc il changeait dès que la page se rechargeait toute
+  seule (par exemple quand la session est renouvelée pendant une demande
+  d'idées). Il est maintenant fixé pour la journée (graine : compte + jour à
+  Paris + parcours, ordre des compétences trié) et change le lendemain, ou si
+  les compétences non abordées changent. Vérifié : 6 chargements, un seul tirage.

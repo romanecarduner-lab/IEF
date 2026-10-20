@@ -44,10 +44,32 @@ function libelleDate(date: string): string {
   return d.toLocaleDateString("fr-FR");
 }
 
-function melanger<T>(tableau: T[]): T[] {
+// Les idees de l'accueil ne doivent pas changer a chaque rechargement de la
+// page (par exemple quand on demande des idees d'activites, ou qu'une mise a
+// jour se fait en arriere-plan) : le tirage est donc fixe pour la journee.
+// Il change le lendemain, ou des que les competences non abordees changent.
+type Aleatoire = () => number;
+
+function fabriquerAleatoire(graine: string): Aleatoire {
+  let h = 1779033703 ^ graine.length;
+  for (let i = 0; i < graine.length; i++) {
+    h = Math.imul(h ^ graine.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  let etat = h >>> 0;
+  return () => {
+    etat = (etat + 0x6d2b79f5) >>> 0;
+    let t = etat;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function melanger<T>(tableau: T[], alea: Aleatoire): T[] {
   const copie = [...tableau];
   for (let i = copie.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(alea() * (i + 1));
     const temp = copie[i];
     copie[i] = copie[j]!;
     copie[j] = temp!;
@@ -66,6 +88,9 @@ export default async function PageTableauDeBord({
     data: { user },
   } = await supabase.auth.getUser();
   const prenom = (user?.user_metadata?.prenom as string | undefined) ?? "";
+  const jourParis = new Date().toLocaleDateString("fr-CA", { timeZone: "Europe/Paris" });
+  const graineDuJour = `${user?.id ?? ""}|${jourParis}`;
+  const alea = fabriquerAleatoire(graineDuJour);
 
   const [
     { count: nbEnfants },
@@ -206,11 +231,16 @@ export default async function PageTableauDeBord({
         .filter((autre) => autre.enfantId === p.enfantId && autre.cycleId === p.cycleId)
         .map((autre) => autre.id);
 
+      // Un tirage propre a chaque parcours : ces calculs se font en parallele,
+      // l'ordre dans lequel ils finissent ne doit pas changer le resultat.
+      const aleaParcours = fabriquerAleatoire(`${graineDuJour}|${p.id}`);
+
       const [{ data: tousLesObjectifs }, { data: observations }, { data: syntheses }] = await Promise.all([
         supabase
           .from("v_objectif_domaine")
           .select("objectif_id, libelle, domaine")
-          .eq("cycle_id", p.cycleId),
+          .eq("cycle_id", p.cycleId)
+          .order("objectif_id"),
         supabase
           .from("observations_elements_programme")
           .select("element_programme_id, activites!inner(parcours_id)")
@@ -286,7 +316,7 @@ export default async function PageTableauDeBord({
 
       const normaux: Candidat[] = [];
       for (const [domaine, objectifs] of nonAbordesParDomaine) {
-        const choisi = objectifs[Math.floor(Math.random() * objectifs.length)];
+        const choisi = objectifs[Math.floor(aleaParcours() * objectifs.length)];
         if (!choisi) continue;
         normaux.push({
           id: choisi.id,
@@ -299,7 +329,7 @@ export default async function PageTableauDeBord({
 
       const vierges: Candidat[] = [];
       for (const objectifs of viergesParSousDomaine.values()) {
-        const choisi = objectifs[Math.floor(Math.random() * objectifs.length)];
+        const choisi = objectifs[Math.floor(aleaParcours() * objectifs.length)];
         if (!choisi) continue;
         vierges.push({
           id: choisi.id,
@@ -320,17 +350,18 @@ export default async function PageTableauDeBord({
   // ne soit pas toujours en premiere position.
   const tousNormaux = candidatsParEnfant.flatMap((c) => c.normaux);
   const tousVierges = candidatsParEnfant.flatMap((c) => c.vierges);
-  const viergeChoisie = melanger(tousVierges)[0];
+  const viergeChoisie = melanger(tousVierges, alea)[0];
   const suggestionsCompetences = viergeChoisie
     ? [
         viergeChoisie,
         ...melanger(
           tousNormaux.filter(
             (c) => c.id !== viergeChoisie.id && c.libelle !== viergeChoisie.libelle
-          )
+          ),
+          alea
         ).slice(0, 2),
       ]
-    : melanger(tousNormaux).slice(0, 3);
+    : melanger(tousNormaux, alea).slice(0, 3);
 
   // Chemin complet (tranche d'age comprise) recupere seulement pour les
   // quelques suggestions finalement retenues -- requete bornee, pas un

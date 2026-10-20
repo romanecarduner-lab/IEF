@@ -311,6 +311,7 @@ export function FormulaireModifierActivite({
         )}
         {etape < 3 ? (
           <button
+            key="bouton-suivant"
             type="button"
             onClick={() => allerEtape((etape + 1) as 1 | 2 | 3)}
             className="bouton-primaire"
@@ -319,6 +320,7 @@ export function FormulaireModifierActivite({
           </button>
         ) : (
           <button
+            key="bouton-enregistrer"
             type="button"
             onClick={() => void enregistrer()}
             disabled={chargement}
