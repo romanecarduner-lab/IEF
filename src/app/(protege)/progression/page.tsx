@@ -300,7 +300,7 @@ export default async function PageProgression({
               : "text-ardoise hover:text-encre"
           }`}
         >
-          Ce qui progresse
+          En progression
         </Link>
         <Link
           href={`/progression?parcours=${parcoursId}&onglet=a-travailler`}
@@ -310,7 +310,7 @@ export default async function PageProgression({
               : "text-ardoise hover:text-encre"
           }`}
         >
-          Ce qui reste à voir
+          À travailler
         </Link>
         <Link
           href={`/progression?parcours=${parcoursId}&onglet=historique`}

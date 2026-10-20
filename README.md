@@ -2457,3 +2457,11 @@ progression, exports, IA — prévus dans les lots suivants.
   finir les étapes », isolé sous une ligne. À l'étape 3, « Enregistrer
   l'activité » (ou « Enregistrer les modifications ») redevient le bouton
   principal.
+
+### Onglets de Progression : nouveaux intitulés
+
+- « Ce qui progresse » devient **En progression** et « Ce qui reste à voir »
+  devient **À travailler** (le mot « Compétences » est dans le titre de la
+  page et n'est pas répété, pour tenir sur un petit écran). Les adresses
+  (`onglet=a-travailler`) ne changent pas. Les anciens intitulés cités plus
+  haut dans ce fichier désignent ces mêmes onglets.
