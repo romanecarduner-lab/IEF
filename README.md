@@ -2480,3 +2480,40 @@ progression, exports, IA — prévus dans les lots suivants.
   d'idées). Il est maintenant fixé pour la journée (graine : compte + jour à
   Paris + parcours, ordre des compétences trié) et change le lendemain, ou si
   les compétences non abordées changent. Vérifié : 6 chargements, un seul tirage.
+
+### Partager des photos depuis la galerie (Android, iPhone inchangé)
+
+- **Android** : une fois l'application installée sur l'écran d'accueil, elle
+  apparaît dans le menu « Partager » de la galerie. On sélectionne une ou
+  plusieurs photos, on choisit « Chemins d'apprentissage », et le formulaire
+  « Ajouter une activité » s'ouvre avec les photos déjà dans le champ photo.
+  Rien n'est envoyé avant « Enregistrer ».
+- **Fonctionnement** : le manifeste déclare une cible de partage
+  (`share_target`, POST vers `/partage-photos`). Le service worker
+  (`public/sw.js`, version `v3`) intercepte ce POST, range les fichiers dans
+  IndexedDB (base `ief-partage`) et redirige vers `/journal/nouvelle?partage=1`.
+  `src/lib/photosPartagees.ts` les relit, les vide de la file, et le formulaire
+  les dépose dans son champ photo (`DataTransfer`). Un message le confirme.
+  Ça marche hors réseau : rien ne part vers le serveur avant l'enregistrement.
+- **iPhone** : le menu « Partager » vers une application web n'existe pas. On
+  continue de choisir les photos dans le champ « Photo ou document », qui
+  accepte déjà plusieurs fichiers.
+- **À faire une fois sur Android** : désinstaller puis réinstaller l'application
+  sur l'écran d'accueil, pour que le téléphone enregistre la cible de partage.
+- Vérifié sur banc d'essai : une soumission multipart vers `/partage-photos`
+  (comme le menu Partager) donne 2 photos dans le champ, un message, et une
+  file de partage vide. Non testé sur un vrai Android.
+
+### Idées de l'accueil : compétence déjà travaillée encore proposée (diagnostic)
+
+- Constat : une compétence cochée sur une activité de l'année (même élément
+  dans le programme, même cycle) restait proposée dans « Idées pour continuer ».
+- Vérifié dans la base : l'observation existe, l'activité appartient bien à
+  l'enfant et au cycle, et l'identifiant de la compétence proposée est le même.
+  La logique de l'accueil devrait donc la retirer ; la cause exacte n'a pas
+  pu être reproduite sur le banc d'essai.
+- Changements : la comparaison des libellés se fait aussi à partir des éléments
+  réellement observés (en ignorant espaces et majuscules), et une lecture
+  Supabase qui échoue est signalée dans les journaux du serveur
+  (« Accueil, idées : lecture incomplète »). Si la compétence reste proposée
+  après redéploiement, ce message dans les journaux Vercel donnera la cause.

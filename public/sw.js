@@ -16,7 +16,7 @@
  *    ce site (hors photos du journal) passe tel quel.
  * A la deconnexion, l'application demande de vider les pages et photos gardees.
  */
-const VERSION = "v2";
+const VERSION = "v3";
 const CACHE_PAGES = "ief-pages-" + VERSION;
 const CACHE_IMAGES = "ief-images-" + VERSION;
 const CACHE_STATIQUE = "ief-statique-" + VERSION;
@@ -190,8 +190,52 @@ function avecDelai(promesse, ms) {
   ]);
 }
 
+// Photos partagees depuis la galerie (menu Partager, Android) : le manifeste
+// envoie un POST vers /partage-photos. On garde les fichiers dans IndexedDB
+// puis on redirige vers le formulaire, qui les reprend. Fonctionne meme hors
+// reseau, puisque rien ne part vers le serveur.
+const BASE_PARTAGE = "ief-partage";
+const CHEMIN_PARTAGE = "/partage-photos";
+
+function ouvrirPartage() {
+  return new Promise((resoudre, rejeter) => {
+    const requete = indexedDB.open(BASE_PARTAGE, 1);
+    requete.onupgradeneeded = () => requete.result.createObjectStore("fichiers", { autoIncrement: true });
+    requete.onsuccess = () => resoudre(requete.result);
+    requete.onerror = () => rejeter(requete.error);
+  });
+}
+
+async function garderPhotosPartagees(fichiers) {
+  const base = await ouvrirPartage();
+  await new Promise((resoudre, rejeter) => {
+    const tx = base.transaction("fichiers", "readwrite");
+    const magasin = tx.objectStore("fichiers");
+    magasin.clear();
+    fichiers.forEach((f) => magasin.add(f));
+    tx.oncomplete = () => resoudre();
+    tx.onerror = () => rejeter(tx.error);
+  });
+  base.close();
+}
+
+async function recevoirPartage(req) {
+  try {
+    const donnees = await req.formData();
+    const fichiers = donnees.getAll("photos").filter((f) => f && typeof f === "object" && f.size > 0);
+    if (fichiers.length > 0) await garderPhotosPartagees(fichiers);
+  } catch (e) {
+    /* on redirige quand meme : le formulaire restera vide */
+  }
+  return Response.redirect("/journal/nouvelle?partage=1", 303);
+}
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
+  if (req.method === "POST" && new URL(req.url).pathname === CHEMIN_PARTAGE) {
+    event.respondWith(recevoirPartage(req));
+    return;
+  }
   if (req.method !== "GET") return;
   const url = new URL(req.url);
 

@@ -235,7 +235,11 @@ export default async function PageTableauDeBord({
       // l'ordre dans lequel ils finissent ne doit pas changer le resultat.
       const aleaParcours = fabriquerAleatoire(`${graineDuJour}|${p.id}`);
 
-      const [{ data: tousLesObjectifs }, { data: observations }, { data: syntheses }] = await Promise.all([
+      const [
+        { data: tousLesObjectifs, error: erreurObjectifs },
+        { data: observations, error: erreurObservations },
+        { data: syntheses, error: erreurSyntheses },
+      ] = await Promise.all([
         supabase
           .from("v_objectif_domaine")
           .select("objectif_id, libelle, domaine")
@@ -255,6 +259,17 @@ export default async function PageTableauDeBord({
           .eq("cycle_id", p.cycleId),
       ]);
 
+      // Si une lecture echoue, les competences deja travaillees ne sont plus
+      // retirees des idees : on le signale dans les journaux du serveur.
+      if (erreurObjectifs || erreurObservations || erreurSyntheses) {
+        console.error("Accueil, idees : lecture incomplete", {
+          parcours: p.id,
+          erreurObjectifs,
+          erreurObservations,
+          erreurSyntheses,
+        });
+      }
+
       const idsAbordes = new Set([
         ...(observations ?? []).map((o) => o.element_programme_id as string),
         ...(syntheses ?? []).map((o) => o.element_programme_id as string),
@@ -262,13 +277,28 @@ export default async function PageTableauDeBord({
       // Une competence au libelle strictement identique a une competence
       // deja abordee (reprise a un autre age du cycle) est elle aussi
       // consideree comme abordee : le suivi se fait a l'echelle du cycle.
-      const libellesAbordes = new Set(
-        (tousLesObjectifs ?? [])
-          .filter((o) => idsAbordes.has(o.objectif_id as string))
-          .map((o) => o.libelle as string)
-      );
+      // Les libelles sont compares a partir des ELEMENTS EFFECTIVEMENT observes
+      // (table elements_programme du cycle), et pas seulement a partir de la
+      // liste des objectifs proposes : une competence observee peut etre un
+      // autre element portant le meme libelle, absent de cette liste.
+      // La comparaison ignore espaces et majuscules.
+      const normaliser = (texte: string) => texte.replace(/\s+/g, " ").trim().toLowerCase();
+      const { data: elementsDuCycle } = await supabase
+        .from("elements_programme")
+        .select("id, libelle")
+        .eq("cycle_id", p.cycleId);
+      const libellesAbordes = new Set<string>();
+      for (const e of elementsDuCycle ?? []) {
+        if (idsAbordes.has(e.id as string)) libellesAbordes.add(normaliser(e.libelle as string));
+      }
       for (const o of tousLesObjectifs ?? []) {
-        if (libellesAbordes.has(o.libelle as string)) idsAbordes.add(o.objectif_id as string);
+        if (idsAbordes.has(o.objectif_id as string)) libellesAbordes.add(normaliser(o.libelle as string));
+      }
+      for (const o of tousLesObjectifs ?? []) {
+        if (libellesAbordes.has(normaliser(o.libelle as string))) idsAbordes.add(o.objectif_id as string);
+      }
+      for (const e of elementsDuCycle ?? []) {
+        if (libellesAbordes.has(normaliser(e.libelle as string))) idsAbordes.add(e.id as string);
       }
 
       // Sous-domaine d'une competence = 2e segment de son chemin complet

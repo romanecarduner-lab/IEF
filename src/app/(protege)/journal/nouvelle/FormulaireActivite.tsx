@@ -24,6 +24,7 @@ import { declencherEstimationArrierePlan } from "@/lib/estimationArrierePlan";
 import { ajouterALaFile, signalerChangementFile, type PhotoEnAttente } from "@/lib/fileAttente";
 import { estErreurReseau } from "@/lib/synchroActivite";
 import { useEnLigne } from "@/lib/useEnLigne";
+import { reprendrePhotosPartagees } from "@/lib/photosPartagees";
 
 type Option = { id: string; libelle: string };
 type OptionParcours = Option & {
@@ -192,6 +193,25 @@ export function FormulaireActivite({
 
   const [chargementDescriptionIA, setChargementDescriptionIA] = useState(false);
   const [nbPhotosSelectionnees, setNbPhotosSelectionnees] = useState(0);
+  // Photos partagees depuis la galerie (Android) : on les depose dans le champ
+  // photo, comme si elles avaient ete choisies ici. Rien n'est envoye.
+  const [photosRecues, setPhotosRecues] = useState<number | null>(null);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("partage") !== "1") return;
+    window.history.replaceState(null, "", "/journal/nouvelle");
+    let annule = false;
+    void reprendrePhotosPartagees().then((fichiers) => {
+      if (annule || fichiers.length === 0 || !inputPhotoRef.current) return;
+      const transfert = new DataTransfer();
+      fichiers.forEach((f) => transfert.items.add(f));
+      inputPhotoRef.current.files = transfert.files;
+      setNbPhotosSelectionnees(fichiers.length);
+      setPhotosRecues(fichiers.length);
+    });
+    return () => {
+      annule = true;
+    };
+  }, []);
   const [noteAnneeAjustee, setNoteAnneeAjustee] = useState<string | null>(null);
   const [erreurAucunParcoursPourDate, setErreurAucunParcoursPourDate] = useState<string | null>(
     null
@@ -822,6 +842,13 @@ export function FormulaireActivite({
         noValidate
         className="carte p-4 sm:p-6"
       >
+        {photosRecues !== null && (
+          <MessageStatut type="succes">
+            {photosRecues === 1
+              ? "1 photo reçue depuis la galerie. Elle est prête à être enregistrée avec l'activité."
+              : `${photosRecues} photos reçues depuis la galerie. Elles sont prêtes à être enregistrées avec l'activité.`}
+          </MessageStatut>
+        )}
         <EtapesActivite etape={etape} onChoisir={setEtape} titreOk={Boolean(donnees.titre.trim())} nbCompetences={new Set(suggestionsChoisies.values()).size} />
 
         <div className={etape === 1 ? "" : "hidden"} aria-hidden={etape !== 1}>
