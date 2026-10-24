@@ -72,22 +72,24 @@ function fabriquerAleatoire(graine: string): Aleatoire {
 async function lireToutesLesObservations(
   supabase: ReturnType<typeof creerClientServeur>,
   parcoursIds: string[]
-): Promise<{ data: { element_programme_id: string }[]; error: string | null }> {
+): Promise<{ data: { element_programme_id: string }[]; error: string | null; pages: number }> {
   const toutes: { element_programme_id: string }[] = [];
-  if (parcoursIds.length === 0) return { data: toutes, error: null };
+  if (parcoursIds.length === 0) return { data: toutes, error: null, pages: 0 };
   const TAILLE = 1000;
+  let pages = 0;
   for (let debut = 0; ; debut += TAILLE) {
+    pages += 1;
     const { data, error } = await supabase
       .from("observations_elements_programme")
       .select("id, element_programme_id, activites!inner(parcours_id)")
       .in("activites.parcours_id", parcoursIds)
       .order("id")
       .range(debut, debut + TAILLE - 1);
-    if (error) return { data: toutes, error: error.message };
+    if (error) return { data: toutes, error: error.message, pages };
     for (const o of data ?? []) toutes.push({ element_programme_id: o.element_programme_id as string });
     if (!data || data.length < TAILLE) break;
   }
-  return { data: toutes, error: null };
+  return { data: toutes, error: null, pages };
 }
 
 function melanger<T>(tableau: T[], alea: Aleatoire): T[] {
@@ -104,7 +106,7 @@ function melanger<T>(tableau: T[], alea: Aleatoire): T[] {
 export default async function PageTableauDeBord({
   searchParams,
 }: {
-  searchParams: { parcours?: string; debug?: string };
+  searchParams: { parcours?: string };
 }) {
   const supabase = creerClientServeur();
 
@@ -245,8 +247,6 @@ export default async function PageTableauDeBord({
   const parcoursUnParEnfantCycle = Array.from(
     new Map(parcours.map((p) => [`${p.enfantId}-${p.cycleId}`, p])).values()
   );
-  // Diagnostic temporaire, visible seulement avec ?debug=1 dans l'adresse.
-  const debugIdsAbordes = new Map<string, { ids: Set<string>; nbObs: number; erreur: string | null }>();
   const candidatsParEnfant = await Promise.all(
     parcoursUnParEnfantCycle.map(async (p) => {
       // Un objectif compte comme "aborde" des qu'il a ete observe sur
@@ -340,12 +340,6 @@ export default async function PageTableauDeBord({
         const cle = cleSousDomaine(id);
         if (cle) sousDomainesTouches.add(cle);
       }
-
-      debugIdsAbordes.set(p.id, {
-        ids: new Set(idsAbordes),
-        nbObs: (observations ?? []).length,
-        erreur: erreurObservations ?? null,
-      });
 
       const nonAbordesParDomaine = new Map<string, { id: string; libelle: string }[]>();
       const viergesParSousDomaine = new Map<
@@ -618,21 +612,6 @@ export default async function PageTableauDeBord({
                   );
                 })}
               </ul>
-              {searchParams.debug === "1" && (
-                <div className="mt-3 border-t border-trait pt-3 text-xs text-ardoise">
-                  <p className="font-medium">Diagnostic (temporaire)</p>
-                  {suggestionsCompetences.map((s) => {
-                    const d = debugIdsAbordes.get(s.parcoursId);
-                    return (
-                      <p key={s.id}>
-                        {s.id.slice(0, 8)} · parcours {s.parcoursId.slice(0, 8)} · observations lues :{" "}
-                        {d?.nbObs ?? "?"} · erreur : {d?.erreur ?? "aucune"} · comptée comme travaillée :{" "}
-                        {d?.ids.has(s.id) ? "oui" : "non"}
-                      </p>
-                    );
-                  })}
-                </div>
-              )}
             </div>
           )}
 

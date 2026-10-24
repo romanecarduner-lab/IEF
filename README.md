@@ -2526,5 +2526,5 @@ progression, exports, IA — prévus dans les lots suivants.
   Le diagnostic affichait « observations lues : 1000 ».
 - Correction : la lecture se fait par tranches de 1000 (`lireToutesLesObservations`
   dans `tableau-de-bord/page.tsx`), triées par identifiant.
-- Le bloc « Diagnostic (temporaire) », visible avec `?debug=1`, doit être retiré
-  une fois la correction confirmée.
+- Confirmé sur le téléphone de Romane : la compétence n'est plus proposée. Le
+  bloc de diagnostic a été retiré.
