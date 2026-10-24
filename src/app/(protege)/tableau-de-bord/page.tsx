@@ -66,6 +66,30 @@ function fabriquerAleatoire(graine: string): Aleatoire {
   };
 }
 
+// Supabase ne renvoie que 1000 lignes par requete au maximum : pour un enfant
+// qui a beaucoup d'observations, la liste etait tronquee et des competences
+// deja travaillees n'etaient plus reconnues. On lit donc par tranches.
+async function lireToutesLesObservations(
+  supabase: ReturnType<typeof creerClientServeur>,
+  parcoursIds: string[]
+): Promise<{ data: { element_programme_id: string }[]; error: string | null }> {
+  const toutes: { element_programme_id: string }[] = [];
+  if (parcoursIds.length === 0) return { data: toutes, error: null };
+  const TAILLE = 1000;
+  for (let debut = 0; ; debut += TAILLE) {
+    const { data, error } = await supabase
+      .from("observations_elements_programme")
+      .select("id, element_programme_id, activites!inner(parcours_id)")
+      .in("activites.parcours_id", parcoursIds)
+      .order("id")
+      .range(debut, debut + TAILLE - 1);
+    if (error) return { data: toutes, error: error.message };
+    for (const o of data ?? []) toutes.push({ element_programme_id: o.element_programme_id as string });
+    if (!data || data.length < TAILLE) break;
+  }
+  return { data: toutes, error: null };
+}
+
 function melanger<T>(tableau: T[], alea: Aleatoire): T[] {
   const copie = [...tableau];
   for (let i = copie.length - 1; i > 0; i--) {
@@ -247,10 +271,7 @@ export default async function PageTableauDeBord({
           .select("objectif_id, libelle, domaine")
           .eq("cycle_id", p.cycleId)
           .order("objectif_id"),
-        supabase
-          .from("observations_elements_programme")
-          .select("element_programme_id, activites!inner(parcours_id)")
-          .in("activites.parcours_id", parcoursMemeCycle),
+        lireToutesLesObservations(supabase, parcoursMemeCycle),
         // Une competence deja suivie (statut present, valide a la main
         // ou automatiquement) compte aussi comme abordee, meme sans
         // observation directe sur une activite.
@@ -323,7 +344,7 @@ export default async function PageTableauDeBord({
       debugIdsAbordes.set(p.id, {
         ids: new Set(idsAbordes),
         nbObs: (observations ?? []).length,
-        erreur: erreurObservations?.message ?? null,
+        erreur: erreurObservations ?? null,
       });
 
       const nonAbordesParDomaine = new Map<string, { id: string; libelle: string }[]>();

@@ -2517,3 +2517,14 @@ progression, exports, IA — prévus dans les lots suivants.
   Supabase qui échoue est signalée dans les journaux du serveur
   (« Accueil, idées : lecture incomplète »). Si la compétence reste proposée
   après redéploiement, ce message dans les journaux Vercel donnera la cause.
+
+### Idées de l'accueil : cause trouvée (limite de 1000 lignes)
+
+- Cause : Supabase ne renvoie que 1000 lignes par requête. La lecture des
+  observations de l'enfant était tronquée ; une compétence cochée récemment
+  pouvait tomber hors de la tranche lue et n'était donc pas retirée des idées.
+  Le diagnostic affichait « observations lues : 1000 ».
+- Correction : la lecture se fait par tranches de 1000 (`lireToutesLesObservations`
+  dans `tableau-de-bord/page.tsx`), triées par identifiant.
+- Le bloc « Diagnostic (temporaire) », visible avec `?debug=1`, doit être retiré
+  une fois la correction confirmée.
