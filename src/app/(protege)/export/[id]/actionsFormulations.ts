@@ -11,7 +11,10 @@ import {
   type ExempleStocke,
 } from "@/lib/exemplesExport";
 
-const TAILLE_LOT_PREPARATION = 3;
+// Une seule redaction par appel : avec 3 en parallele, l'appel depassait la
+// duree permise par le serveur et la preparation s'arretait a chaque fois.
+// Le bouton enchaine les appels tout seul jusqu'a la fin.
+const TAILLE_LOT_PREPARATION = 1;
 
 /**
  * Prepare, par petits lots successifs, pour chaque sous-domaine ayant au
@@ -210,19 +213,29 @@ export async function enregistrerSousDomaine(
 ): Promise<{ erreur: string } | { ok: true }> {
   const supabase = creerClientServeur();
 
-  const { error } = await supabase.from("dossiers_export_sous_domaines").upsert(
-    {
-      dossier_id: dossierId,
-      sous_domaine: sousDomaine,
+  // Mise a jour de la ligne deja preparee. Un upsert echouait ici : la table
+  // exige une valeur pour "domaine", que cette ecriture ne fournit pas, meme
+  // quand la ligne existe deja.
+  const { data, error } = await supabase
+    .from("dossiers_export_sous_domaines")
+    .update({
       synthese: texte,
       modifie_par_parent: true,
-    },
-    { onConflict: "dossier_id,sous_domaine" }
-  );
+      updated_at: new Date().toISOString(),
+    })
+    .eq("dossier_id", dossierId)
+    .eq("sous_domaine", sousDomaine)
+    .select("id");
 
   if (error) {
     console.error("Erreur lors de l'enregistrement du sous-domaine", error);
     return { erreur: "Impossible d'enregistrer. Merci de réessayer." };
+  }
+  if (!data || data.length === 0) {
+    return {
+      erreur:
+        "Ce sous-domaine n'est pas encore préparé. Relancez la préparation des formulations, puis modifiez-le.",
+    };
   }
 
   revalidatePath(`/export/${dossierId}`);

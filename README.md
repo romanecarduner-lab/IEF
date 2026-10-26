@@ -2528,3 +2528,19 @@ progression, exports, IA — prévus dans les lots suivants.
   dans `tableau-de-bord/page.tsx`), triées par identifiant.
 - Confirmé sur le téléphone de Romane : la compétence n'est plus proposée. Le
   bloc de diagnostic a été retiré.
+
+### Préparation de l'export : une rédaction par appel
+
+- Le bouton « Préparer » enchaînait des lots de 3 rédactions en parallèle. Un
+  lot dépassait la durée permise par le serveur, la préparation s'arrêtait et il
+  fallait relancer. Les lots sont maintenant d'une rédaction (`TAILLE_LOT_PREPARATION = 1`).
+  Le bouton enchaîne les appels jusqu'à la fin, comme avant. Les sous-domaines
+  déjà préparés restent gardés.
+
+### Modifier la synthèse d'un sous-domaine dans l'export
+
+- Cause : l'enregistrement utilisait un « upsert » qui n'envoyait pas la colonne
+  `domaine` (obligatoire dans la table). Postgres la vérifie même quand la ligne
+  existe, donc chaque enregistrement échouait avec « Impossible d'enregistrer ».
+- Correction : mise à jour de la ligne déjà préparée (`update`). Si la ligne
+  n'existe pas encore, un message demande de relancer la préparation.
