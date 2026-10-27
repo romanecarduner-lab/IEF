@@ -322,10 +322,9 @@ export async function finaliserDossier(
         titre: a.titre as string,
         date: new Date(a.date_activite as string).toLocaleDateString("fr-FR"),
         synthese: e.synthese ?? "",
-        description:
-          e.description_visible && typeof a.description === "string" && a.description.trim()
-            ? (a.description as string)
-            : undefined,
+        description: e.description_visible
+          ? (e.description_export?.trim() || (typeof a.description === "string" ? a.description.trim() : "")) || undefined
+          : undefined,
         imagesBase64: e.trace_ids
           .map((id) => base64ParPhoto.get(id))
           .filter((b): b is string => Boolean(b)),

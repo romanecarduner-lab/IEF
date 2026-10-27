@@ -8,6 +8,9 @@ export type ExempleStocke = {
   // Le parent choisit, exemple par exemple, d'ajouter la description de
   // l'activite sous la formulation pedagogique. Desactive par defaut.
   description_visible?: boolean;
+  // Texte de description propre au document (modifiable dans le dossier, sans
+  // toucher a la description de l'activite). Vide : on reprend celle de l'activite.
+  description_export?: string | null;
 };
 
 export type PhotoCandidate = { id: string; chemin: string; miniature: string | null };
@@ -52,6 +55,7 @@ export function lireExemples(ligne: { exemples?: unknown }): ExempleStocke[] {
         ? (brut.trace_ids as unknown[]).filter((t): t is string => typeof t === "string")
         : [],
       description_visible: brut.description_visible === true,
+      description_export: typeof brut.description_export === "string" ? brut.description_export : null,
     });
   }
   return resultat;

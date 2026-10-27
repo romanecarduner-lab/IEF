@@ -2556,3 +2556,13 @@ progression, exports, IA — prévus dans les lots suivants.
   À vérifier sur une vraie diapositive : une description très longue peut
   déborder de la zone prévue.
 - Aucune migration SQL : le choix tient dans le champ JSON existant.
+
+### Description propre au document (export)
+
+- Quand la case « Ajouter la description… » est cochée, le texte affiché est
+  modifiable dans le dossier (« Enregistrer ce texte »). Il est stocké avec
+  l'exemple (`description_export`) et n'est utilisé que dans le PDF et les
+  diapositives. La description de l'activité dans le journal ne change pas.
+- « Revenir à la description de l'activité » efface la version du document ;
+  le document reprend alors le texte du journal.
+- Aucune migration SQL : le champ tient dans le JSON existant.

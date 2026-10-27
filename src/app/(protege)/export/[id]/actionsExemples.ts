@@ -285,3 +285,29 @@ export async function basculerDescriptionExemple(
   revalidatePath(`/export/${dossierId}`);
   return { ok: true };
 }
+
+/**
+ * Enregistre la description propre au document pour un exemple. Texte vide :
+ * le document reprend a nouveau la description de l'activite.
+ */
+export async function enregistrerDescriptionExport(
+  dossierId: string,
+  sousDomaine: string,
+  activiteId: string,
+  texte: string
+): Promise<{ erreur: string } | { ok: true }> {
+  const supabase = creerClientServeur();
+
+  const ligne = await lireLigne(supabase, dossierId, sousDomaine);
+  if (!ligne) return { erreur: "Sous-domaine introuvable." };
+
+  const propre = texte.trim() ? texte : null;
+  const exemples = lireExemples(ligne).map((e) =>
+    e.activite_id === activiteId ? { ...e, description_export: propre } : e
+  );
+  if (!(await enregistrerExemples(supabase, dossierId, sousDomaine, exemples))) {
+    return { erreur: "Impossible d'enregistrer. Merci de réessayer." };
+  }
+  revalidatePath(`/export/${dossierId}`);
+  return { ok: true };
+}

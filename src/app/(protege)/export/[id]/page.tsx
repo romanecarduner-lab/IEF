@@ -472,7 +472,8 @@ export default async function PageDossierExport({
                                   sousDomaine={nomSousDomaine}
                                   activiteId={e.activite_id}
                                   visible={e.description_visible === true}
-                                  description={(activite?.description as string | null) ?? ""}
+                                  descriptionActivite={(activite?.description as string | null) ?? ""}
+                                  descriptionExport={e.description_export ?? null}
                                 />
                               </div>
                             );
