@@ -260,3 +260,28 @@ export async function enregistrerSyntheseExemple(
   revalidatePath(`/export/${dossierId}`);
   return { ok: true };
 }
+
+/**
+ * Choisit, pour un exemple, d'ajouter ou non la description de l'activite
+ * sous la formulation pedagogique dans le document exporte.
+ */
+export async function basculerDescriptionExemple(
+  dossierId: string,
+  sousDomaine: string,
+  activiteId: string,
+  visible: boolean
+): Promise<{ erreur: string } | { ok: true }> {
+  const supabase = creerClientServeur();
+
+  const ligne = await lireLigne(supabase, dossierId, sousDomaine);
+  if (!ligne) return { erreur: "Sous-domaine introuvable." };
+
+  const exemples = lireExemples(ligne).map((e) =>
+    e.activite_id === activiteId ? { ...e, description_visible: visible } : e
+  );
+  if (!(await enregistrerExemples(supabase, dossierId, sousDomaine, exemples))) {
+    return { erreur: "Impossible d'enregistrer. Merci de réessayer." };
+  }
+  revalidatePath(`/export/${dossierId}`);
+  return { ok: true };
+}

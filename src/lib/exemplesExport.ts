@@ -5,6 +5,9 @@ export type ExempleStocke = {
   activite_id: string;
   synthese: string | null;
   trace_ids: string[];
+  // Le parent choisit, exemple par exemple, d'ajouter la description de
+  // l'activite sous la formulation pedagogique. Desactive par defaut.
+  description_visible?: boolean;
 };
 
 export type PhotoCandidate = { id: string; chemin: string; miniature: string | null };
@@ -48,6 +51,7 @@ export function lireExemples(ligne: { exemples?: unknown }): ExempleStocke[] {
       trace_ids: Array.isArray(brut.trace_ids)
         ? (brut.trace_ids as unknown[]).filter((t): t is string => typeof t === "string")
         : [],
+      description_visible: brut.description_visible === true,
     });
   }
   return resultat;

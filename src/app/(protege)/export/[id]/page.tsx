@@ -8,6 +8,7 @@ import { BoutonFinaliser } from "./BoutonFinaliser";
 import { BoutonFinaliserJournal } from "./BoutonFinaliserJournal";
 import { BoutonPreparerFormulations } from "./BoutonPreparerFormulations";
 import { EditeurFormulation } from "./EditeurFormulation";
+import { ToggleDescriptionExemple } from "./ToggleDescriptionExemple";
 import { AideContextuelle } from "@/components/AideContextuelle";
 import { SelecteurExemples } from "./SelecteurExemples";
 import { lireExemples, morceaux } from "@/lib/exemplesExport";
@@ -236,7 +237,7 @@ export default async function PageDossierExport({
 
   const [{ data: activitesExemples }, { data: photosRetenues }] = await Promise.all([
     idsActivitesExemples.length > 0
-      ? supabase.from("activites").select("id, titre, date_activite").in("id", idsActivitesExemples)
+      ? supabase.from("activites").select("id, titre, date_activite, description").in("id", idsActivitesExemples)
       : Promise.resolve({ data: [] }),
     idsPhotosRetenues.length > 0
       ? supabase
@@ -465,6 +466,13 @@ export default async function PageDossierExport({
                                   activiteId={e.activite_id}
                                   texteInitial={e.synthese ?? ""}
                                   rows={3}
+                                />
+                                <ToggleDescriptionExemple
+                                  dossierId={params.id}
+                                  sousDomaine={nomSousDomaine}
+                                  activiteId={e.activite_id}
+                                  visible={e.description_visible === true}
+                                  description={(activite?.description as string | null) ?? ""}
                                 />
                               </div>
                             );

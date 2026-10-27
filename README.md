@@ -2544,3 +2544,15 @@ progression, exports, IA — prévus dans les lots suivants.
   existe, donc chaque enregistrement échouait avec « Impossible d'enregistrer ».
 - Correction : mise à jour de la ligne déjà préparée (`update`). Si la ligne
   n'existe pas encore, un message demande de relancer la préparation.
+
+### Description de l'activité dans l'export (au choix, exemple par exemple)
+
+- Sous chaque exemple d'un sous-domaine, une case « Ajouter la description de
+  l'activité dans le document » (désactivée par défaut). Le parent voit la
+  description avant de cocher. Le choix est enregistré avec l'exemple
+  (`description_visible`, dans `dossiers_export_sous_domaines.exemples`).
+- Le PDF ajoute la description sous la formulation pédagogique, en plus petit.
+- Les diapositives PowerPoint l'ajoutent sous la formulation, en plus petit.
+  À vérifier sur une vraie diapositive : une description très longue peut
+  déborder de la zone prévue.
+- Aucune migration SQL : le choix tient dans le champ JSON existant.

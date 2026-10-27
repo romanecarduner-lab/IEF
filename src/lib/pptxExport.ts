@@ -237,6 +237,19 @@ function ajouterDiapositiveSousDomaine(
           margin: 0,
         });
       }
+      if (exemple.description) {
+        slide.addText(exemple.description, {
+          x,
+          y: yTexte + 1.5,
+          w: largeurExemple,
+          h: 0.9,
+          fontSize: 8,
+          color: ARDOISE,
+          valign: "top",
+          isTextBox: true,
+          margin: 0,
+        });
+      }
     });
   });
 }

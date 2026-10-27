@@ -281,8 +281,8 @@ export async function finaliserDossier(
 
   const [{ data: activitesExemples }, { data: photosRetenues }] = await Promise.all([
     idsActivites.length > 0
-      ? supabase.from("activites").select("id, titre, date_activite").in("id", idsActivites)
-      : Promise.resolve({ data: [] as { id: string; titre: string; date_activite: string }[] }),
+      ? supabase.from("activites").select("id, titre, date_activite, description").in("id", idsActivites)
+      : Promise.resolve({ data: [] as { id: string; titre: string; date_activite: string; description: string | null }[] }),
     idsPhotos.length > 0
       ? supabase.from("traces").select("id, chemin_stockage").in("id", idsPhotos)
       : Promise.resolve({ data: [] as { id: string; chemin_stockage: string | null }[] }),
@@ -322,6 +322,10 @@ export async function finaliserDossier(
         titre: a.titre as string,
         date: new Date(a.date_activite as string).toLocaleDateString("fr-FR"),
         synthese: e.synthese ?? "",
+        description:
+          e.description_visible && typeof a.description === "string" && a.description.trim()
+            ? (a.description as string)
+            : undefined,
         imagesBase64: e.trace_ids
           .map((id) => base64ParPhoto.get(id))
           .filter((b): b is string => Boolean(b)),
