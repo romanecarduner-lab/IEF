@@ -34,10 +34,14 @@ const styles = StyleSheet.create({
   sousDomaineTitre: { fontSize: 13, color: "#264C3B", marginBottom: 6 },
   syntheseTexte: { fontSize: 11, color: "#26312D", lineHeight: 1.4, marginBottom: 10 },
   exemplesLigne: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  exempleBloc: { width: "48%", marginBottom: 6 },
+  // Chaque activite est sur un fond de carte ; ses photos reprennent ce fond.
+  // Deux couleurs alternent, pour que deux activites voisines se distinguent.
+  exempleBloc: { width: "48%", marginBottom: 8, padding: 6, borderRadius: 6 },
+  exempleFondA: { backgroundColor: "#E7EEE7" },
+  exempleFondB: { backgroundColor: "#F6EEDD" },
   exemplePhotos: { flexDirection: "row", flexWrap: "wrap", gap: 3, marginBottom: 4 },
-  exempleImageSeule: { width: "100%", height: 150, objectFit: "contain", backgroundColor: "#F6F1E8", borderRadius: 4 },
-  exempleImageMultiple: { width: "48%", height: 100, objectFit: "contain", backgroundColor: "#F6F1E8", borderRadius: 4 },
+  exempleImageSeule: { width: "100%", height: 200, objectFit: "contain", borderRadius: 4 },
+  exempleImageMultiple: { width: "48%", height: 100, objectFit: "contain", borderRadius: 4 },
   exempleTitre: { fontSize: 9, color: "#26312D", marginBottom: 1 },
   exempleDate: { fontSize: 8, color: "#5C6A62", marginBottom: 3 },
   exempleSynthese: { fontSize: 9, color: "#26312D", lineHeight: 1.3 },
@@ -86,7 +90,11 @@ export function DocumentDossierPedagogique({
               {sd.exemples.length > 0 && (
                 <View style={styles.exemplesLigne}>
                   {sd.exemples.map((e, j) => (
-                    <View key={j} style={styles.exempleBloc} wrap={false}>
+                    <View
+                      key={j}
+                      style={[styles.exempleBloc, j % 2 === 0 ? styles.exempleFondA : styles.exempleFondB]}
+                      wrap={false}
+                    >
                       {e.imagesBase64.length > 0 && (
                         <View style={styles.exemplePhotos}>
                           {e.imagesBase64.map((img, k) => (
