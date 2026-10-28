@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { creerClientServeur } from "@/lib/supabase/server";
+import { tousLesChemins } from "@/lib/versionsDossier";
 import { nomAuteurPourEnregistrement } from "@/lib/auteurs";
 
 export async function creerDossier(
@@ -107,12 +108,19 @@ export async function supprimerDossier(id: string) {
   // cascade SQL : on le retire explicitement d'abord, comme pour les traces.
   const { data: dossier } = await supabase
     .from("dossiers_export")
-    .select("pdf_final_storage_path")
+    .select("pdf_final_storage_path, pptx_final_storage_path, versions_finales")
     .eq("id", id)
     .maybeSingle();
 
-  if (dossier?.pdf_final_storage_path) {
-    await supabase.storage.from("traces-pedagogiques").remove([dossier.pdf_final_storage_path]);
+  if (dossier) {
+    const chemins = tousLesChemins(
+      dossier.versions_finales,
+      dossier.pdf_final_storage_path as string | null,
+      dossier.pptx_final_storage_path as string | null
+    );
+    if (chemins.length > 0) {
+      await supabase.storage.from("traces-pedagogiques").remove(chemins);
+    }
   }
 
   await supabase.from("dossiers_export").delete().eq("id", id);

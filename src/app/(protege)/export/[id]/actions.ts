@@ -11,6 +11,11 @@ import {
 } from "./DocumentDossierPedagogique";
 import { DocumentJournalPeriode, type ActiviteJournal } from "./DocumentJournalPeriode";
 import { genererPptxDossierPedagogique, genererPptxJournalPeriode } from "@/lib/pptxExport";
+import {
+  ajouterVersion,
+  archiverVersionActuelle,
+  nouvelleVersion,
+} from "@/lib/versionsDossier";
 
 export async function basculerActivite(
   dossierId: string,
@@ -233,7 +238,7 @@ export async function finaliserDossier(
   const { data: dossier } = await supabase
     .from("dossiers_export")
     .select(
-      "id, titre, parcours_id, parcours_scolaires(cycle_id, enfant_id, enfants(prenom, famille_id), cycles(libelle))"
+      "id, titre, parcours_id, versions_finales, parcours_scolaires(cycle_id, enfant_id, enfants(prenom, famille_id), cycles(libelle))"
     )
     .eq("id", dossierId)
     .maybeSingle();
@@ -356,7 +361,8 @@ export async function finaliserDossier(
     return { erreur: "La génération du PDF a échoué. Merci de réessayer." };
   }
 
-  const cheminPdf = `${familleId}/dossiers/${dossierId}.pdf`;
+  const version = nouvelleVersion(familleId, dossierId);
+  const cheminPdf = version.pdf;
   const { error: erreurUpload } = await supabase.storage
     .from("traces-pedagogiques")
     .upload(cheminPdf, pdfBuffer, { contentType: "application/pdf", upsert: true });
@@ -379,7 +385,7 @@ export async function finaliserDossier(
       cycle: (cycle?.libelle as string) ?? "",
       domaines,
     });
-    cheminPptx = `${familleId}/dossiers/${dossierId}.pptx`;
+    cheminPptx = version.pptx;
     const { error: erreurUploadPptx } = await supabase.storage
       .from("traces-pedagogiques")
       .upload(cheminPptx, pptxBuffer, {
@@ -400,6 +406,11 @@ export async function finaliserDossier(
       statut: "finalise",
       pdf_final_storage_path: cheminPdf,
       pptx_final_storage_path: cheminPptx,
+      versions_finales: ajouterVersion(dossier.versions_finales, {
+        finalise_le: version.finaliseLe,
+        pdf: cheminPdf,
+        pptx: cheminPptx,
+      }),
     })
     .eq("id", dossierId);
 
@@ -416,7 +427,7 @@ export async function finaliserDossierJournal(
   const { data: dossier } = await supabase
     .from("dossiers_export")
     .select(
-      "id, titre, parcours_id, periode_debut, periode_fin, parcours_scolaires(enfants(prenom, famille_id))"
+      "id, titre, parcours_id, periode_debut, periode_fin, versions_finales, parcours_scolaires(enfants(prenom, famille_id))"
     )
     .eq("id", dossierId)
     .maybeSingle();
@@ -533,7 +544,8 @@ export async function finaliserDossierJournal(
     return { erreur: "La génération du PDF a échoué. Merci de réessayer." };
   }
 
-  const cheminPdf = `${familleId}/dossiers/${dossierId}.pdf`;
+  const version = nouvelleVersion(familleId, dossierId);
+  const cheminPdf = version.pdf;
   const { error: erreurUpload } = await supabase.storage
     .from("traces-pedagogiques")
     .upload(cheminPdf, pdfBuffer, { contentType: "application/pdf", upsert: true });
@@ -555,7 +567,7 @@ export async function finaliserDossierJournal(
       periodeFin: dossier.periode_fin as string,
       activites,
     });
-    cheminPptx = `${familleId}/dossiers/${dossierId}.pptx`;
+    cheminPptx = version.pptx;
     const { error: erreurUploadPptx } = await supabase.storage
       .from("traces-pedagogiques")
       .upload(cheminPptx, pptxBuffer, {
@@ -576,8 +588,55 @@ export async function finaliserDossierJournal(
       statut: "finalise",
       pdf_final_storage_path: cheminPdf,
       pptx_final_storage_path: cheminPptx,
+      versions_finales: ajouterVersion(dossier.versions_finales, {
+        finalise_le: version.finaliseLe,
+        pdf: cheminPdf,
+        pptx: cheminPptx,
+      }),
     })
     .eq("id", dossierId);
+
+  revalidatePath(`/export/${dossierId}`);
+  revalidatePath("/export");
+  return { ok: true };
+}
+
+/**
+ * Rouvre un dossier finalise pour le modifier. Le dossier repasse en
+ * brouillon ; le PDF et le PowerPoint actuels restent dans l'historique.
+ * Ils seront remplaces seulement par une nouvelle finalisation, qui ajoute
+ * une version sans effacer les precedentes.
+ */
+export async function rouvrirDossier(
+  dossierId: string
+): Promise<{ erreur: string } | { ok: true }> {
+  const supabase = creerClientServeur();
+
+  const { data: dossier } = await supabase
+    .from("dossiers_export")
+    .select("id, statut, pdf_final_storage_path, pptx_final_storage_path, versions_finales")
+    .eq("id", dossierId)
+    .maybeSingle();
+
+  if (!dossier) return { erreur: "Dossier introuvable." };
+  if (dossier.statut !== "finalise") return { erreur: "Ce dossier n'est pas finalisé." };
+
+  const { error } = await supabase
+    .from("dossiers_export")
+    .update({
+      statut: "brouillon",
+      versions_finales: archiverVersionActuelle(
+        dossier.versions_finales,
+        dossier.pdf_final_storage_path as string | null,
+        dossier.pptx_final_storage_path as string | null
+      ),
+    })
+    .eq("id", dossierId);
+
+  if (error) {
+    console.error("Erreur lors de la réouverture du dossier", error);
+    return { erreur: "Impossible de rouvrir ce dossier. Merci de réessayer." };
+  }
 
   revalidatePath(`/export/${dossierId}`);
   revalidatePath("/export");

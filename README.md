@@ -2571,5 +2571,11 @@ progression, exports, IA — prévus dans les lots suivants.
 
 - PDF et diapositives : la description de l'activité (si choisie) vient avant
   la formulation pédagogique.
-- Sur les diapositives, les photos sont un peu réduites quand un exemple porte
-  une description, pour que le texte tienne. À vérifier sur une vraie diapositive.
+- Le PowerPoint est au format portrait A4 (comme le PDF), pour s'ouvrir de la même façon dans Canva. Les exemples sont empilés sur la page ; une diapositive reprend le sous-domaine (suite) quand il ne tient plus.
+
+## Export : rouvrir un dossier finalisé
+
+- Un dossier finalisé peut être rouvert (« Rouvrir pour modifier », avec confirmation) : il repasse en brouillon et on peut de nouveau modifier descriptions, formulations et exemples.
+- Chaque finalisation écrit son PDF et son PowerPoint sous un nom daté. Rien n'est écrasé.
+- La liste des versions est dans `dossiers_export.versions_finales` (migration `0066_versions_dossiers_finalises.sql` à exécuter dans Supabase). Une version finalisée avant cette mise à jour apparaît comme « Version finalisée avant l'historique ».
+- La suppression d'un dossier retire toutes ses versions du stockage.

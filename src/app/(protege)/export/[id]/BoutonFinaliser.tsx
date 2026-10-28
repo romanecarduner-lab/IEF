@@ -47,7 +47,8 @@ export function BoutonFinaliser({ dossierId }: { dossierId: string }) {
       <p className="mb-3 text-sm text-encre">
         Une fois finalisé, le contenu de ce dossier sera figé (les
         modifications ultérieures des activités ou traces sources ne le
-        changeront plus). Le PDF sera généré maintenant.
+        changeront plus). Le PDF sera généré maintenant. Les versions
+        précédentes restent accessibles.
       </p>
       {erreur && <MessageStatut type="erreur">{erreur}</MessageStatut>}
       <div className="flex gap-3">

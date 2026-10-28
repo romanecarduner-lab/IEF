@@ -6,6 +6,9 @@ import { EtapesExport } from "./EtapesExport";
 import { NavigationDomaines } from "../../progression/NavigationDomaines";
 import { BoutonFinaliser } from "./BoutonFinaliser";
 import { BoutonFinaliserJournal } from "./BoutonFinaliserJournal";
+import { BoutonRouvrir } from "./BoutonRouvrir";
+import { ListeVersionsFinales } from "./ListeVersionsFinales";
+import { lireVersions, nomFichierExport } from "@/lib/versionsDossier";
 import { BoutonPreparerFormulations } from "./BoutonPreparerFormulations";
 import { EditeurFormulation } from "./EditeurFormulation";
 import { ToggleDescriptionExemple } from "./ToggleDescriptionExemple";
@@ -30,7 +33,7 @@ export default async function PageDossierExport({
   const { data: dossier } = await supabase
     .from("dossiers_export")
     .select(
-      "id, titre, statut, parcours_id, type_dossier, periode_debut, periode_fin, pdf_final_storage_path, pptx_final_storage_path, parcours_scolaires(cycle_id, enfant_id, enfants(prenom), annees_scolaires(libelle))"
+      "id, titre, statut, parcours_id, type_dossier, periode_debut, periode_fin, pdf_final_storage_path, pptx_final_storage_path, versions_finales, parcours_scolaires(cycle_id, enfant_id, enfants(prenom), annees_scolaires(libelle))"
     )
     .eq("id", params.id)
     .maybeSingle();
@@ -52,6 +55,22 @@ export default async function PageDossierExport({
     : null;
 
   const estJournalPeriode = dossier.type_dossier === "journal_periode";
+
+  // Nom des fichiers telechargeables : date de la derniere finalisation.
+  const versionsDossier = lireVersions(dossier.versions_finales);
+  const derniereVersion = versionsDossier[versionsDossier.length - 1];
+  const nomDownloadPdf = nomFichierExport({
+    dateFinalisation: derniereVersion?.finalise_le ?? null,
+    prenom: (enfant?.prenom as string) ?? "",
+    titre: dossier.titre as string,
+    extension: "pdf",
+  });
+  const nomDownloadPptx = nomFichierExport({
+    dateFinalisation: derniereVersion?.finalise_le ?? null,
+    prenom: (enfant?.prenom as string) ?? "",
+    titre: dossier.titre as string,
+    extension: "pptx",
+  });
 
   const enTete = (
     <div className="mb-6">
@@ -107,14 +126,14 @@ export default async function PageDossierExport({
       if (dossier.pdf_final_storage_path) {
         const { data } = await supabase.storage
           .from("traces-pedagogiques")
-          .createSignedUrl(dossier.pdf_final_storage_path, DUREE_SIGNATURE_SECONDES);
+          .createSignedUrl(dossier.pdf_final_storage_path, DUREE_SIGNATURE_SECONDES, { download: nomDownloadPdf });
         urlPdf = data?.signedUrl ?? null;
       }
       let urlPptx: string | null = null;
       if (dossier.pptx_final_storage_path) {
         const { data } = await supabase.storage
           .from("traces-pedagogiques")
-          .createSignedUrl(dossier.pptx_final_storage_path, DUREE_SIGNATURE_SECONDES);
+          .createSignedUrl(dossier.pptx_final_storage_path, DUREE_SIGNATURE_SECONDES, { download: nomDownloadPptx });
         urlPptx = data?.signedUrl ?? null;
       }
       return (
@@ -146,6 +165,12 @@ export default async function PageDossierExport({
                 </a>
               )}
             </div>
+            <div className="mt-4">
+              <BoutonRouvrir dossierId={params.id} />
+            </div>
+          </div>
+          <div className="mt-6">
+            <ListeVersionsFinales brut={dossier.versions_finales} prenom={(enfant?.prenom as string) ?? ""} titre={dossier.titre as string} />
           </div>
         </div>
       );
@@ -300,14 +325,14 @@ export default async function PageDossierExport({
     if (dossier.pdf_final_storage_path) {
       const { data } = await supabase.storage
         .from("traces-pedagogiques")
-        .createSignedUrl(dossier.pdf_final_storage_path, DUREE_SIGNATURE_SECONDES);
+        .createSignedUrl(dossier.pdf_final_storage_path, DUREE_SIGNATURE_SECONDES, { download: nomDownloadPdf });
       urlPdf = data?.signedUrl ?? null;
     }
     let urlPptx: string | null = null;
     if (dossier.pptx_final_storage_path) {
       const { data } = await supabase.storage
         .from("traces-pedagogiques")
-        .createSignedUrl(dossier.pptx_final_storage_path, DUREE_SIGNATURE_SECONDES);
+        .createSignedUrl(dossier.pptx_final_storage_path, DUREE_SIGNATURE_SECONDES, { download: nomDownloadPptx });
       urlPptx = data?.signedUrl ?? null;
     }
 
@@ -344,6 +369,11 @@ export default async function PageDossierExport({
             )}
           </p>
         )}
+
+        <div className="mb-6">
+          <BoutonRouvrir dossierId={params.id} />
+        </div>
+        <ListeVersionsFinales brut={dossier.versions_finales} prenom={(enfant?.prenom as string) ?? ""} titre={dossier.titre as string} />
 
         <p className="text-sm text-ardoise">
           Ce dossier est figé : le contenu ci-dessus correspond au document

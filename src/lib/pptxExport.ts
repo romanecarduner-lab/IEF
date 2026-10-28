@@ -9,6 +9,20 @@ const CREME = "F6F1E8";
 const ENCRE = "26312D";
 const ARDOISE = "5C6A62";
 
+// Format portrait A4 (mêmes proportions que le PDF) : 7,5 x 10,61 pouces.
+const LARGEUR_PAGE = 7.5;
+const HAUTEUR_PAGE = 10.61;
+const MARGE = 0.5;
+const LARGEUR_CONTENU = LARGEUR_PAGE - 2 * MARGE; // 6,5 pouces
+const BAS_UTILE = HAUTEUR_PAGE - 0.4; // limite basse pour le texte
+
+const NOM_FORMAT = "A4_PORTRAIT";
+
+function configurerFormat(pptx: PptxGenJS) {
+  pptx.defineLayout({ name: NOM_FORMAT, width: LARGEUR_PAGE, height: HAUTEUR_PAGE });
+  pptx.layout = NOM_FORMAT;
+}
+
 function ajouterDiapositiveTitre(
   pptx: PptxGenJS,
   titre: string,
@@ -17,22 +31,23 @@ function ajouterDiapositiveTitre(
   const slide = pptx.addSlide();
   slide.background = { color: CREME };
   slide.addText(titre, {
-    x: 0.6,
-    y: 2.3,
-    w: 12.1,
-    h: 1.2,
-    fontSize: 32,
+    x: MARGE,
+    y: 3.6,
+    w: LARGEUR_CONTENU,
+    h: 1.6,
+    fontSize: 28,
     color: VERT_FORET,
     italic: true,
     align: "center",
+    valign: "middle",
     isTextBox: true,
   });
   slide.addText(sousTitres.join("\n"), {
-    x: 0.6,
-    y: 3.6,
-    w: 12.1,
-    h: 1.5,
-    fontSize: 16,
+    x: MARGE,
+    y: 5.4,
+    w: LARGEUR_CONTENU,
+    h: 1.6,
+    fontSize: 14,
     color: ARDOISE,
     align: "center",
     isTextBox: true,
@@ -47,11 +62,11 @@ function ajouterDiapositiveActivite(
   slide.background = { color: "FFFFFF" };
 
   slide.addText(activite.titre, {
-    x: 0.5,
-    y: 0.35,
-    w: 12.3,
-    h: 0.7,
-    fontSize: 22,
+    x: MARGE,
+    y: 0.4,
+    w: LARGEUR_CONTENU,
+    h: 0.8,
+    fontSize: 20,
     color: VERT_FORET,
     bold: true,
     isTextBox: true,
@@ -61,40 +76,44 @@ function ajouterDiapositiveActivite(
     activite.contexte ? ` · ${activite.contexte}` : ""
   }`;
   slide.addText(meta, {
-    x: 0.5,
-    y: 1.0,
-    w: 12.3,
-    h: 0.4,
-    fontSize: 12,
+    x: MARGE,
+    y: 1.2,
+    w: LARGEUR_CONTENU,
+    h: 0.35,
+    fontSize: 11,
     color: ARDOISE,
     isTextBox: true,
   });
 
   const premierePhoto = activite.traces.find((t) => t.imageBase64)?.imageBase64;
-  const largeurTexte = premierePhoto ? 6.6 : 12.3;
+
+  // Photo en haut, texte dessous ; sans photo, le texte prend toute la page.
+  let yTexte = 1.7;
+  let hauteurTexte = BAS_UTILE - 1.7 - 0.9;
+  if (premierePhoto) {
+    slide.addImage({
+      data: `image/jpeg;base64,${premierePhoto}`,
+      x: MARGE,
+      y: 1.7,
+      w: LARGEUR_CONTENU,
+      h: 4.4,
+      sizing: { type: "contain", w: LARGEUR_CONTENU, h: 4.4 },
+    });
+    yTexte = 6.3;
+    hauteurTexte = 3.0;
+  }
 
   if (activite.texte) {
     slide.addText(activite.texte, {
-      x: 0.5,
-      y: 1.6,
-      w: largeurTexte,
-      h: 5.3,
-      fontSize: 13,
+      x: MARGE,
+      y: yTexte,
+      w: LARGEUR_CONTENU,
+      h: hauteurTexte,
+      fontSize: 12,
       color: ENCRE,
       valign: "top",
       isTextBox: true,
       margin: 0,
-    });
-  }
-
-  if (premierePhoto) {
-    slide.addImage({
-      data: `image/jpeg;base64,${premierePhoto}`,
-      x: 7.4,
-      y: 1.6,
-      w: 5.4,
-      h: 5.3,
-      sizing: { type: "contain", w: 5.4, h: 5.3 },
     });
   }
 
@@ -103,12 +122,13 @@ function ajouterDiapositiveActivite(
       .map((c) => `• ${c.libelle} (${c.niveauAutonomie})`)
       .join("\n");
     slide.addText(texteCompetences, {
-      x: 0.5,
-      y: 6.6,
-      w: 12.3,
+      x: MARGE,
+      y: BAS_UTILE - 0.7,
+      w: LARGEUR_CONTENU,
       h: 0.7,
-      fontSize: 10,
+      fontSize: 9,
       color: VERT_SAUGE,
+      valign: "bottom",
       isTextBox: true,
     });
   }
@@ -128,16 +148,40 @@ function ajouterDiapositiveCouvertureDomaine(
   const slide = pptx.addSlide();
   slide.background = { color: CREME };
   slide.addText(domaine.nom, {
-    x: 0.6,
-    y: 2.8,
-    w: 12.1,
-    h: 1.2,
-    fontSize: 26,
+    x: MARGE,
+    y: 4.4,
+    w: LARGEUR_CONTENU,
+    h: 1.6,
+    fontSize: 24,
     color: VERT_FORET,
     italic: true,
     align: "center",
+    valign: "middle",
     isTextBox: true,
   });
+}
+
+type ExempleSousDomaine = DomaineDocumentPedagogique["sousDomaines"][number]["exemples"][number];
+
+// Hauteurs estimees (en pouces) des blocs, pour les repartir sur les
+// diapositives sans depasser la page. Les tailles de police sont celles
+// utilisees pour le rendu ci-dessous.
+const HAUTEUR_PHOTOS = 1.45;
+const ECART_PHOTOS = 0.08;
+
+function hauteurSynthese(texte: string): number {
+  return Math.max(0.3, Math.ceil(texte.length / 88) * 0.2 + 0.1);
+}
+
+function hauteurDescription(texte: string): number {
+  return Math.max(0.3, Math.ceil(texte.length / 110) * 0.16 + 0.1);
+}
+
+function hauteurBloc(exemple: ExempleSousDomaine): number {
+  const hPhotos = exemple.imagesBase64.length > 0 ? HAUTEUR_PHOTOS + ECART_PHOTOS : 0;
+  const hDesc = exemple.description ? hauteurDescription(exemple.description) : 0;
+  const hSynth = exemple.synthese ? hauteurSynthese(exemple.synthese) : 0;
+  return hPhotos + 0.3 + hDesc + hSynth + 0.2;
 }
 
 function ajouterDiapositiveSousDomaine(
@@ -145,45 +189,57 @@ function ajouterDiapositiveSousDomaine(
   domaineNom: string,
   sousDomaine: DomaineDocumentPedagogique["sousDomaines"][number]
 ) {
-  // Une diapositive porte la synthese et deux exemples au plus ; au-dela,
-  // des diapositives de suite reprennent les exemples suivants (deux par
-  // deux), sans repeter la synthese.
-  const groupes: (typeof sousDomaine.exemples)[] = [];
-  for (let i = 0; i < sousDomaine.exemples.length; i += 2) {
-    groupes.push(sousDomaine.exemples.slice(i, i + 2));
+  // Premiere diapositive : entete, synthese, puis les exemples qui tiennent.
+  // Les suivantes reprennent les exemples restants, sans repeter la synthese.
+  const hSyntheseDomaine = sousDomaine.synthese ? hauteurSynthese(sousDomaine.synthese) : 0;
+  const debutPremiere = 1.45 + hSyntheseDomaine + 0.3;
+  const debutSuite = 1.5;
+
+  const groupes: ExempleSousDomaine[][] = [];
+  let courant: ExempleSousDomaine[] = [];
+  let curseur = debutPremiere;
+  for (const exemple of sousDomaine.exemples) {
+    const h = hauteurBloc(exemple);
+    if (courant.length > 0 && curseur + h > BAS_UTILE) {
+      groupes.push(courant);
+      courant = [];
+      curseur = debutSuite;
+    }
+    courant.push(exemple);
+    curseur += h;
   }
-  if (groupes.length === 0) groupes.push([]);
+  if (courant.length > 0 || groupes.length === 0) groupes.push(courant);
 
   groupes.forEach((groupe, indexGroupe) => {
     const slide = pptx.addSlide();
     slide.background = { color: "FFFFFF" };
 
     slide.addText(domaineNom, {
-      x: 0.5,
+      x: MARGE,
       y: 0.3,
-      w: 12.3,
+      w: LARGEUR_CONTENU,
       h: 0.35,
-      fontSize: 11,
+      fontSize: 10,
       color: ARDOISE,
       isTextBox: true,
     });
     slide.addText(indexGroupe === 0 ? sousDomaine.nom : `${sousDomaine.nom} (suite)`, {
-      x: 0.5,
+      x: MARGE,
       y: 0.65,
-      w: 12.3,
+      w: LARGEUR_CONTENU,
       h: 0.6,
-      fontSize: 18,
+      fontSize: 16,
       color: VERT_FORET,
       bold: true,
       isTextBox: true,
     });
     if (indexGroupe === 0 && sousDomaine.synthese) {
       slide.addText(sousDomaine.synthese, {
-        x: 0.5,
-        y: 1.35,
-        w: 12.3,
-        h: 1.8,
-        fontSize: 11,
+        x: MARGE,
+        y: 1.45,
+        w: LARGEUR_CONTENU,
+        h: hSyntheseDomaine,
+        fontSize: 10.5,
         color: ENCRE,
         valign: "top",
         isTextBox: true,
@@ -191,73 +247,74 @@ function ajouterDiapositiveSousDomaine(
       });
     }
 
-    const largeurExemple = groupe.length === 2 ? 5.95 : 12.3;
-    const yImages = indexGroupe === 0 ? 3.4 : 1.5;
-    // Quand un exemple porte une description, les photos laissent un peu de
-    // place : le texte (description puis formulation) doit tenir sur la diapositive.
-    const avecDescription = groupe.some((e) => Boolean(e.description));
-    const hauteurImages = (indexGroupe === 0 ? 2.4 : 3.6) - (avecDescription ? 0.6 : 0);
-    groupe.forEach((exemple, i) => {
-      const x = 0.5 + i * (largeurExemple + 0.3);
+    let y = indexGroupe === 0 ? debutPremiere : debutSuite;
+    for (const exemple of groupe) {
       const nb = exemple.imagesBase64.length;
       if (nb > 0) {
-        // Photos cote a cote dans la largeur de l'exemple (3 au plus par
-        // rangee, les suivantes sont ignorees faute de place).
+        // Photos cote a cote sur la largeur de la page (3 au plus par rangee).
         const photos = exemple.imagesBase64.slice(0, 3);
-        const ecart = 0.08;
-        const largeurPhoto = (largeurExemple - ecart * (photos.length - 1)) / photos.length;
+        const largeurPhoto =
+          (LARGEUR_CONTENU - ECART_PHOTOS * (photos.length - 1)) / photos.length;
         photos.forEach((img, k) => {
           slide.addImage({
             data: `image/jpeg;base64,${img}`,
-            x: x + k * (largeurPhoto + ecart),
-            y: yImages,
+            x: MARGE + k * (largeurPhoto + ECART_PHOTOS),
+            y,
             w: largeurPhoto,
-            h: hauteurImages,
-            sizing: { type: "contain", w: largeurPhoto, h: hauteurImages },
+            h: HAUTEUR_PHOTOS,
+            sizing: { type: "contain", w: largeurPhoto, h: HAUTEUR_PHOTOS },
           });
         });
+        y += HAUTEUR_PHOTOS + ECART_PHOTOS;
       }
-      const yTexte = yImages + hauteurImages + 0.1;
+
       slide.addText(`${exemple.titre}  ·  ${exemple.date}`, {
-        x,
-        y: yTexte,
-        w: largeurExemple,
+        x: MARGE,
+        y,
+        w: LARGEUR_CONTENU,
         h: 0.3,
         fontSize: 9,
         color: ARDOISE,
         isTextBox: true,
       });
+      y += 0.3;
+
       // La description passe en premier (en plus petit), puis la formulation
       // pedagogique : c'est l'ordre voulu dans le document final.
-      let yFormulation = yTexte + 0.3;
       if (exemple.description) {
+        const h = hauteurDescription(exemple.description);
         slide.addText(exemple.description, {
-          x,
-          y: yTexte + 0.3,
-          w: largeurExemple,
-          h: 0.9,
+          x: MARGE,
+          y,
+          w: LARGEUR_CONTENU,
+          h,
           fontSize: 8,
           color: ARDOISE,
           valign: "top",
           isTextBox: true,
           margin: 0,
         });
-        yFormulation = yTexte + 1.25;
+        y += h;
       }
+
       if (exemple.synthese) {
+        const h = hauteurSynthese(exemple.synthese);
         slide.addText(exemple.synthese, {
-          x,
-          y: yFormulation,
-          w: largeurExemple,
-          h: 1.2,
+          x: MARGE,
+          y,
+          w: LARGEUR_CONTENU,
+          h,
           fontSize: 10,
           color: ENCRE,
           valign: "top",
           isTextBox: true,
           margin: 0,
         });
+        y += h;
       }
-    });
+
+      y += 0.2;
+    }
   });
 }
 
@@ -273,7 +330,7 @@ export async function genererPptxDossierPedagogique({
   domaines: DomaineDocumentPedagogique[];
 }): Promise<Buffer> {
   const pptx = new PptxGenJS();
-  pptx.layout = "LAYOUT_WIDE";
+  configurerFormat(pptx);
 
   ajouterDiapositiveTitre(pptx, titreDossier, [enfant, cycle]);
 
@@ -301,7 +358,7 @@ export async function genererPptxJournalPeriode({
   activites: ActiviteJournal[];
 }): Promise<Buffer> {
   const pptx = new PptxGenJS();
-  pptx.layout = "LAYOUT_WIDE";
+  configurerFormat(pptx);
 
   ajouterDiapositiveTitre(pptx, titreDossier, [
     enfant,
