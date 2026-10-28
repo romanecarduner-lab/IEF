@@ -212,52 +212,38 @@ async function genererBuffer(
   return resultat as Buffer;
 }
 
-function ajouterDiapositiveCouvertureDomaine(
-  pptx: PptxGenJS,
-  domaine: DomaineDocumentPedagogique
-) {
-  const slide = pptx.addSlide();
-  slide.background = { color: CREME };
-  slide.addText(domaine.nom, {
-    x: MARGE,
-    y: 4.4,
-    w: LARGEUR_CONTENU,
-    h: 1.6,
-    fontSize: 24,
-    color: VERT_FORET,
-    italic: true,
-    align: "center",
-    valign: "middle",
-    isTextBox: true,
-  });
-}
-
 type ExempleSousDomaine = DomaineDocumentPedagogique["sousDomaines"][number]["exemples"][number];
 
-// Hauteurs estimees (en pouces) des blocs, pour les repartir sur les
-// diapositives sans depasser la page. Les tailles de police sont celles
-// utilisees pour le rendu ci-dessous.
 const ECART_PHOTOS = 0.08;
-const HAUTEUR_MAX_PHOTO = 2.4; // photos horizontales, plusieurs cote a cote
-const HAUTEUR_MAX_PHOTO_SEULE = 3.4; // une seule photo horizontale, pleine largeur
-const LARGEUR_COLONNE_PHOTO = 2.5; // photos verticales, a gauche du texte
-const ECART_COLONNE = 0.25;
-const LARGEUR_TEXTE_COTE = LARGEUR_CONTENU - LARGEUR_COLONNE_PHOTO - ECART_COLONNE;
-const HAUTEUR_MAX_COLONNE = 4.2;
+const ECART_LIGNE = 0.25;
+const GAP_COLONNES = 0.45;
+const LARGEUR_COLONNE = (LARGEUR_CONTENU - GAP_COLONNES) / 2;
+const LARGEUR_PHOTO_VERTICALE = 1.25;
+const ECART_TEXTE_PHOTO = 0.15;
+const LARGEUR_TEXTE_COTE_COLONNE = LARGEUR_COLONNE - LARGEUR_PHOTO_VERTICALE - ECART_TEXTE_PHOTO;
+const HAUTEUR_PHOTO_SEULE = 2.6; // une seule photo horizontale, centree dans sa carte
+const HAUTEUR_PHOTO_MULTI = 1.5; // plusieurs photos horizontales
+const HAUTEUR_MAX_PHOTOS_VERTICALES = 2.8;
+// Au-dela de cette hauteur, une activite a cote de sa photo verticale ne tient
+// plus sur la page : la photo passe au-dessus du texte.
+const HAUTEUR_MAX_COTE = 4.0;
+// Au-dela de cette hauteur, une activite ne tient pas dans une colonne : elle
+// prend toute la largeur de la page.
+const HAUTEUR_MAX_CARTE_COLONNE = 6.0;
+const PADDING_CARTE = 0.12;
+// Fond de carte par activite : deux couleurs douces, alternees d'une activite
+// a l'autre (comme dans le PDF).
+const FONDS_ACTIVITE = ["E7EEE7", "F6EEDD"];
 
 function hauteurSynthese(texte: string): number {
-  return Math.max(0.3, lignesEstimees(texte, LARGEUR_CONTENU, 10) * 0.2 + 0.1);
+  return Math.max(0.3, lignesEstimees(texte, LARGEUR_CONTENU, 10) * 0.19 + 0.05);
 }
 
 function dimensionsOuDefaut(base64: string): { largeur: number; hauteur: number } {
   return dimensionsJpeg(base64) ?? { largeur: 4, hauteur: 3 };
 }
 
-/**
- * Disposition d'un exemple : si toutes ses photos sont verticales, elles vont
- * a gauche et le texte a droite ; sinon (photos horizontales, ou melange),
- * les photos sont en rangee et le texte passe en dessous.
- */
+/** Les photos sont-elles toutes verticales ? Dans ce cas, texte a cote. */
 function dispositionExemple(images: string[]): "cote" | "dessous" {
   if (images.length === 0) return "dessous";
   return images.every((b) => {
@@ -268,20 +254,32 @@ function dispositionExemple(images: string[]): "cote" | "dessous" {
     : "dessous";
 }
 
-function lignesEstimees(texte: string, largeur: number, taillePoints: number): number {
-  const caracteresParLigne = Math.max(10, Math.floor((largeur * 72) / (taillePoints * 0.5)));
+/** Nombre de lignes estimees d'un texte dans une largeur donnee (en pouces). */
+function lignesEstimees(texte: string, largeur: number, taillePoints: number, gras = false): number {
+  const facteur = gras ? 0.56 : 0.5;
+  const caracteresParLigne = Math.max(8, Math.floor((largeur * 72) / (taillePoints * facteur)));
   return Math.ceil(texte.length / caracteresParLigne);
 }
 
-/** Hauteur estimee du texte d'un exemple (titre, description, formulation). */
+/** Titre d'une activite (titre et date), en gras, sur la largeur donnee. */
+function texteTitreExemple(exemple: ExempleSousDomaine): string {
+  return `${exemple.titre}  ·  ${exemple.date}`;
+}
+
+function hauteurTitreExemple(exemple: ExempleSousDomaine, largeur: number): number {
+  return lignesEstimees(texteTitreExemple(exemple), largeur, 10, true) * 0.2 + 0.06;
+}
+
+/** Hauteur estimee du texte d'un exemple : titre, description, formulation. */
 function hauteurTexteExemple(exemple: ExempleSousDomaine, largeur: number): number {
-  let h = 0.3;
+  let h = hauteurTitreExemple(exemple, largeur);
   if (exemple.description) h += lignesEstimees(exemple.description, largeur, 8) * 0.14 + 0.12;
   if (exemple.synthese) h += lignesEstimees(exemple.synthese, largeur, 10) * 0.19 + 0.1;
   return h;
 }
 
 type Placement = { base64: string; x: number; y: number; w: number; h: number };
+type Cellule = { mode: "cote" | "dessous" | "vide"; placements: Placement[]; hauteur: number };
 
 /** Texte d'une activite : titre (date), description, puis formulation. */
 function ajouterTexteExemple(
@@ -291,79 +289,81 @@ function ajouterTexteExemple(
   y: number,
   largeur: number
 ): number {
-  slide.addText(`${exemple.titre}  ·  ${exemple.date}`, {
-    x, y, w: largeur, h: 0.3,
-    fontSize: 10, bold: true, color: ENCRE, isTextBox: true,
+  const hTitre = hauteurTitreExemple(exemple, largeur);
+  slide.addText(texteTitreExemple(exemple), {
+    x,
+    y,
+    w: largeur,
+    h: hTitre,
+    fontSize: 10,
+    bold: true,
+    color: ENCRE,
+    valign: "top",
+    isTextBox: true,
+    margin: 0,
   });
-  let yTexte = y + 0.3;
+  let yTexte = y + hTitre;
   if (exemple.description) {
     const h = lignesEstimees(exemple.description, largeur, 8) * 0.14 + 0.12;
     slide.addText(exemple.description, {
-      x, y: yTexte, w: largeur, h,
-      fontSize: 8, color: ARDOISE, valign: "top", isTextBox: true, margin: 0,
+      x,
+      y: yTexte,
+      w: largeur,
+      h,
+      fontSize: 8,
+      color: ARDOISE,
+      valign: "top",
+      isTextBox: true,
+      margin: 0,
     });
     yTexte += h;
   }
   if (exemple.synthese) {
     const h = lignesEstimees(exemple.synthese, largeur, 10) * 0.19 + 0.1;
     slide.addText(exemple.synthese, {
-      x, y: yTexte, w: largeur, h,
-      fontSize: 10, color: ENCRE, valign: "top", isTextBox: true, margin: 0,
+      x,
+      y: yTexte,
+      w: largeur,
+      h,
+      fontSize: 10,
+      color: ENCRE,
+      valign: "top",
+      isTextBox: true,
+      margin: 0,
     });
     yTexte += h;
   }
   return yTexte;
 }
 
-// Deux activites par ligne : une a gauche, une a droite.
-const GAP_COLONNES = 0.45;
-const LARGEUR_COLONNE = (LARGEUR_CONTENU - GAP_COLONNES) / 2;
-const LARGEUR_PHOTO_VERTICALE = 1.25;
-const ECART_TEXTE_PHOTO = 0.15;
-const LARGEUR_TEXTE_COTE_COLONNE = LARGEUR_COLONNE - LARGEUR_PHOTO_VERTICALE - ECART_TEXTE_PHOTO;
-const HAUTEUR_PHOTO_COLONNE = 3.2; // une seule photo horizontale : pleine largeur de la carte, centree
-const HAUTEUR_PHOTO_COLONNE_MULTI = 1.8; // plusieurs photos horizontales
-const HAUTEUR_MAX_PHOTOS_VERTICALES = 3.2;
-const ECART_LIGNE = 0.25;
+/** Photos verticales a gauche, texte a droite (colonne etroite). */
+function disposerCoteCellule(exemple: ExempleSousDomaine): Cellule {
+  const photos = exemple.imagesBase64.slice(0, 3);
+  const boxH = (HAUTEUR_MAX_PHOTOS_VERTICALES - ECART_PHOTOS * (photos.length - 1)) / photos.length;
+  let y = 0;
+  const placements = photos.map((base64) => {
+    const dim = dimensionsOuDefaut(base64);
+    const echelle = Math.min(LARGEUR_PHOTO_VERTICALE / dim.largeur, boxH / dim.hauteur);
+    const w = dim.largeur * echelle;
+    const h = dim.hauteur * echelle;
+    const placement = { base64, x: (LARGEUR_PHOTO_VERTICALE - w) / 2, y, w, h };
+    y += h + ECART_PHOTOS;
+    return placement;
+  });
+  const hPhotos = y - ECART_PHOTOS;
+  return {
+    mode: "cote",
+    placements,
+    hauteur: Math.max(hPhotos, hauteurTexteExemple(exemple, LARGEUR_TEXTE_COTE_COLONNE)),
+  };
+}
 
-type Cellule = {
-  mode: "cote" | "dessous" | "vide";
-  placements: Placement[];
-  hauteur: number;
-};
-
-/** Mise en page d'une activite dans sa colonne (largeur LARGEUR_COLONNE). */
-function disposerCellule(exemple: ExempleSousDomaine): Cellule {
-  const images = exemple.imagesBase64;
-  if (images.length === 0) {
-    return { mode: "vide", placements: [], hauteur: hauteurTexteExemple(exemple, LARGEUR_COLONNE) };
-  }
-  if (dispositionExemple(images) === "cote") {
-    // Photos verticales a gauche, texte a droite.
-    const photos = images.slice(0, 3);
-    const boxH = (HAUTEUR_MAX_PHOTOS_VERTICALES - ECART_PHOTOS * (photos.length - 1)) / photos.length;
-    let y = 0;
-    const placements = photos.map((base64) => {
-      const dim = dimensionsOuDefaut(base64);
-      const echelle = Math.min(LARGEUR_PHOTO_VERTICALE / dim.largeur, boxH / dim.hauteur);
-      const w = dim.largeur * echelle;
-      const h = dim.hauteur * echelle;
-      const placement = { base64, x: (LARGEUR_PHOTO_VERTICALE - w) / 2, y, w, h };
-      y += h + ECART_PHOTOS;
-      return placement;
-    });
-    const hPhotos = y - ECART_PHOTOS;
-    const hauteur = Math.max(hPhotos, hauteurTexteExemple(exemple, LARGEUR_TEXTE_COTE_COLONNE));
-    // Une seule photo verticale : centree en hauteur par rapport au texte.
-    const seule = placements[0];
-    if (placements.length === 1 && seule) seule.y = (hauteur - seule.h) / 2;
-    return { mode: "cote", placements, hauteur };
-  }
-  // Photos horizontales : en rangee, texte dessous.
-  const photos = images.slice(0, 3);
+/** Photos horizontales en rangee, texte dessous, dans la largeur donnee. */
+function disposerDessousCellule(exemple: ExempleSousDomaine, largeur: number): Cellule {
+  const photos = exemple.imagesBase64.slice(0, 3);
   const nb = photos.length;
-  const boxW = nb === 1 ? LARGEUR_COLONNE : (LARGEUR_COLONNE - ECART_PHOTOS * (nb - 1)) / nb;
-  const boxH = nb === 1 ? HAUTEUR_PHOTO_COLONNE : HAUTEUR_PHOTO_COLONNE_MULTI;
+  const boxW = nb === 1 ? largeur : (largeur - ECART_PHOTOS * (nb - 1)) / nb;
+  const boxH = nb === 1 ? HAUTEUR_PHOTO_SEULE : HAUTEUR_PHOTO_MULTI;
   const placements = photos.map((base64, k) => {
     const dim = dimensionsOuDefaut(base64);
     const echelle = Math.min(boxW / dim.largeur, boxH / dim.hauteur);
@@ -375,25 +375,62 @@ function disposerCellule(exemple: ExempleSousDomaine): Cellule {
   return {
     mode: "dessous",
     placements,
-    hauteur: hPhotos + ECART_PHOTOS + hauteurTexteExemple(exemple, LARGEUR_COLONNE),
+    hauteur: hPhotos + ECART_PHOTOS + hauteurTexteExemple(exemple, largeur),
   };
 }
 
-/** Range les activites deux par deux (gauche, droite). */
-function rangerParDeux(exemples: ExempleSousDomaine[]): ExempleSousDomaine[][] {
-  const lignes: ExempleSousDomaine[][] = [];
-  for (let i = 0; i < exemples.length; i += 2) lignes.push(exemples.slice(i, i + 2));
+/** Mise en page d'une activite dans la largeur donnee (colonne ou page). */
+function disposerCellule(exemple: ExempleSousDomaine, largeur: number): Cellule {
+  const images = exemple.imagesBase64;
+  if (images.length === 0) {
+    return { mode: "vide", placements: [], hauteur: hauteurTexteExemple(exemple, largeur) };
+  }
+  if (largeur === LARGEUR_COLONNE && dispositionExemple(images) === "cote") {
+    const cote = disposerCoteCellule(exemple);
+    if (cote.hauteur <= HAUTEUR_MAX_COTE) return cote;
+  }
+  return disposerDessousCellule(exemple, largeur);
+}
+
+type Ligne = { exemples: ExempleSousDomaine[]; pleineLargeur: boolean };
+
+/**
+ * Range les activites deux par deux (gauche, droite). Une activite trop haute
+ * pour une colonne prend seule toute la largeur de la page.
+ */
+function planifierLignes(exemples: ExempleSousDomaine[]): Ligne[] {
+  const lignes: Ligne[] = [];
+  let i = 0;
+  while (i < exemples.length) {
+    const actuel = exemples[i];
+    if (!actuel) break;
+    const hauteurActuelle = disposerCellule(actuel, LARGEUR_COLONNE).hauteur;
+    if (hauteurActuelle > HAUTEUR_MAX_CARTE_COLONNE) {
+      lignes.push({ exemples: [actuel], pleineLargeur: true });
+      i += 1;
+      continue;
+    }
+    const suivant = exemples[i + 1];
+    if (suivant && disposerCellule(suivant, LARGEUR_COLONNE).hauteur <= HAUTEUR_MAX_CARTE_COLONNE) {
+      lignes.push({ exemples: [actuel, suivant], pleineLargeur: false });
+      i += 2;
+    } else {
+      lignes.push({ exemples: [actuel], pleineLargeur: false });
+      i += 1;
+    }
+  }
   return lignes;
 }
 
-function hauteurLigne(ligne: ExempleSousDomaine[]): number {
-  return ligne.reduce((max, e) => Math.max(max, disposerCellule(e).hauteur), 0) + ECART_LIGNE + 2 * PADDING_CARTE;
+function largeurLigne(ligne: Ligne): number {
+  return ligne.pleineLargeur ? LARGEUR_CONTENU - 2 * PADDING_CARTE : LARGEUR_COLONNE;
 }
 
-// Fond de carte par activite : deux couleurs douces, alternees d'une activite
-// a l'autre (comme dans le PDF).
-const FONDS_ACTIVITE = ["E7EEE7", "F6EEDD"];
-const PADDING_CARTE = 0.12;
+function hauteurLigne(ligne: Ligne): number {
+  const largeur = largeurLigne(ligne);
+  const max = ligne.exemples.reduce((m, e) => Math.max(m, disposerCellule(e, largeur).hauteur), 0);
+  return max + ECART_LIGNE + 2 * PADDING_CARTE;
+}
 
 function ajouterCellule(
   pptx: PptxGenJS,
@@ -401,13 +438,14 @@ function ajouterCellule(
   exemple: ExempleSousDomaine,
   x: number,
   y: number,
+  largeur: number,
   fond: string
 ) {
-  const cellule = disposerCellule(exemple);
+  const cellule = disposerCellule(exemple, largeur);
   slide.addShape(pptx.ShapeType.roundRect, {
     x: x - PADDING_CARTE,
     y: y - PADDING_CARTE,
-    w: LARGEUR_COLONNE + 2 * PADDING_CARTE,
+    w: largeur + 2 * PADDING_CARTE,
     h: cellule.hauteur + 2 * PADDING_CARTE,
     fill: { color: fond },
     line: { color: fond, width: 0 },
@@ -426,90 +464,122 @@ function ajouterCellule(
     ajouterTexteExemple(slide, exemple, x + LARGEUR_PHOTO_VERTICALE + ECART_TEXTE_PHOTO, y, LARGEUR_TEXTE_COTE_COLONNE);
   } else {
     const hPhotos = cellule.placements.reduce((max, p) => Math.max(max, p.h), 0);
-    const yTexte = cellule.mode === "dessous" ? y + hPhotos + ECART_PHOTOS : y;
-    ajouterTexteExemple(slide, exemple, x, yTexte, LARGEUR_COLONNE);
+    const yTexte = cellule.mode === "dessous" && hPhotos > 0 ? y + hPhotos + ECART_PHOTOS : y;
+    ajouterTexteExemple(slide, exemple, x, yTexte, largeur);
   }
 }
 
-function ajouterDiapositiveSousDomaine(
-  pptx: PptxGenJS,
-  domaineNom: string,
-  sousDomaine: DomaineDocumentPedagogique["sousDomaines"][number]
+type Section = {
+  domaine: string;
+  sousDomaine: DomaineDocumentPedagogique["sousDomaines"][number];
+};
+
+const DEBUT_PAGE = 0.5;
+
+/** En-tete d'une section : nom du domaine, titre du sous-domaine, synthese. */
+function hauteurEntete(section: Section, avecSynthese: boolean): number {
+  const hSynthese = avecSynthese && section.sousDomaine.synthese ? hauteurSynthese(section.sousDomaine.synthese) : 0;
+  return 0.3 + 0.45 + hSynthese + 0.1;
+}
+
+function dessinerEntete(
+  slide: PptxGenJS.Slide,
+  section: Section,
+  y: number,
+  suite: boolean,
+  avecSynthese: boolean
 ) {
-  // Premiere diapositive : entete, synthese, puis les lignes qui tiennent.
-  // Les suivantes reprennent les activites restantes, sans repeter la synthese.
-  const hSyntheseDomaine = sousDomaine.synthese ? hauteurSynthese(sousDomaine.synthese) : 0;
-  const debutPremiere = 1.45 + hSyntheseDomaine + 0.3;
-  const debutSuite = 1.5;
-
-  const groupes: ExempleSousDomaine[][][] = [];
-  let courant: ExempleSousDomaine[][] = [];
-  let curseur = debutPremiere;
-  for (const ligne of rangerParDeux(sousDomaine.exemples)) {
-    const h = hauteurLigne(ligne);
-    if (courant.length > 0 && curseur + h > BAS_UTILE) {
-      groupes.push(courant);
-      courant = [];
-      curseur = debutSuite;
-    }
-    courant.push(ligne);
-    curseur += h;
-  }
-  if (courant.length > 0 || groupes.length === 0) groupes.push(courant);
-
-  groupes.forEach((lignes, indexGroupe) => {
-    const slide = pptx.addSlide();
-    slide.background = { color: "FFFFFF" };
-
-    slide.addText(domaineNom, {
-      x: MARGE,
-      y: 0.3,
-      w: LARGEUR_CONTENU,
-      h: 0.35,
-      fontSize: 10,
-      color: ARDOISE,
-      isTextBox: true,
-    });
-    slide.addText(indexGroupe === 0 ? sousDomaine.nom : `${sousDomaine.nom} (suite)`, {
-      x: MARGE,
-      y: 0.65,
-      w: LARGEUR_CONTENU,
-      h: 0.6,
-      fontSize: 16,
-      color: VERT_FORET,
-      bold: true,
-      isTextBox: true,
-    });
-    if (indexGroupe === 0 && sousDomaine.synthese) {
-      slide.addText(sousDomaine.synthese, {
-        x: MARGE,
-        y: 1.45,
-        w: LARGEUR_CONTENU,
-        h: hSyntheseDomaine,
-        fontSize: 10.5,
-        color: ENCRE,
-        valign: "top",
-        isTextBox: true,
-        margin: 0,
-      });
-    }
-
-    let y = indexGroupe === 0 ? debutPremiere : debutSuite;
-    lignes.forEach((ligne) => {
-      ligne.forEach((exemple, col) => {
-        const fond = FONDS_ACTIVITE[sousDomaine.exemples.indexOf(exemple) % 2] ?? FONDS_ACTIVITE[0] ?? "E7EEE7";
-        ajouterCellule(
-          pptx,
-          slide,
-          exemple,
-          MARGE + col * (LARGEUR_COLONNE + GAP_COLONNES) + PADDING_CARTE,
-          y + PADDING_CARTE,
-          fond
-        );
-      });
-      y += hauteurLigne(ligne);
-    });
+  slide.addText(section.domaine, {
+    x: MARGE,
+    y,
+    w: LARGEUR_CONTENU,
+    h: 0.28,
+    fontSize: 9,
+    color: ARDOISE,
+    isTextBox: true,
+    margin: 0,
   });
+  slide.addText(suite ? `${section.sousDomaine.nom} (suite)` : section.sousDomaine.nom, {
+    x: MARGE,
+    y: y + 0.28,
+    w: LARGEUR_CONTENU,
+    h: 0.45,
+    fontSize: 15,
+    color: VERT_FORET,
+    bold: true,
+    valign: "top",
+    isTextBox: true,
+    margin: 0,
+  });
+  const synthese = section.sousDomaine.synthese;
+  if (avecSynthese && synthese) {
+    slide.addText(synthese, {
+      x: MARGE,
+      y: y + 0.75,
+      w: LARGEUR_CONTENU,
+      h: hauteurSynthese(synthese),
+      fontSize: 10.5,
+      color: ENCRE,
+      valign: "top",
+      isTextBox: true,
+      margin: 0,
+    });
+  }
+}
+
+function dessinerLigne(
+  pptx: PptxGenJS,
+  slide: PptxGenJS.Slide,
+  sousDomaine: DomaineDocumentPedagogique["sousDomaines"][number],
+  ligne: Ligne,
+  y: number
+) {
+  const largeur = largeurLigne(ligne);
+  ligne.exemples.forEach((exemple, col) => {
+    const x = ligne.pleineLargeur ? MARGE : MARGE + col * (LARGEUR_COLONNE + GAP_COLONNES);
+    const fond = FONDS_ACTIVITE[sousDomaine.exemples.indexOf(exemple) % 2] ?? "E7EEE7";
+    ajouterCellule(pptx, slide, exemple, x + PADDING_CARTE, y + PADDING_CARTE, largeur, fond);
+  });
+}
+
+/**
+ * Enchaine les sections (domaine, sous-domaine) sur les pages : plusieurs
+ * sous-domaines peuvent partager une page. Une section coupee en deux pages
+ * reprend son titre avec la mention « (suite) ».
+ */
+function ajouterSectionsDansPages(pptx: PptxGenJS, sections: Section[]) {
+  let page: PptxGenJS.Slide | null = null;
+  let y = DEBUT_PAGE;
+
+  const nouvellePage = (): PptxGenJS.Slide => {
+    const nouvelle = pptx.addSlide();
+    nouvelle.background = { color: "FFFFFF" };
+    y = DEBUT_PAGE;
+    return nouvelle;
+  };
+
+  for (const section of sections) {
+    const lignes = planifierLignes(section.sousDomaine.exemples);
+    const premiereHauteur = lignes[0] ? hauteurLigne(lignes[0]) : 0;
+    const hEntete = hauteurEntete(section, true);
+    if (!page || y + hEntete + premiereHauteur > BAS_UTILE) {
+      page = nouvellePage();
+    }
+    dessinerEntete(page, section, y, false, true);
+    y += hEntete;
+
+    for (const ligne of lignes) {
+      const h = hauteurLigne(ligne);
+      if (y + h > BAS_UTILE) {
+        page = nouvellePage();
+        dessinerEntete(page, section, y, true, false);
+        y += hauteurEntete(section, false);
+      }
+      dessinerLigne(pptx, page, section.sousDomaine, ligne, y);
+      y += h;
+    }
+  }
+  if (!page) nouvellePage();
 }
 
 export async function genererPptxDossierPedagogique({
@@ -529,12 +599,10 @@ export async function genererPptxDossierPedagogique({
 
   ajouterDiapositiveTitre(pptx, titreDossier, [enfant, cycle]);
 
-  for (const domaine of domainesOrientes) {
-    ajouterDiapositiveCouvertureDomaine(pptx, domaine);
-    for (const sousDomaine of domaine.sousDomaines) {
-      ajouterDiapositiveSousDomaine(pptx, domaine.nom, sousDomaine);
-    }
-  }
+  const sections: Section[] = domainesOrientes.flatMap((domaine) =>
+    domaine.sousDomaines.map((sousDomaine) => ({ domaine: domaine.nom, sousDomaine }))
+  );
+  ajouterSectionsDansPages(pptx, sections);
 
   return genererBuffer(pptx);
 }

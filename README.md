@@ -2571,7 +2571,11 @@ progression, exports, IA — prévus dans les lots suivants.
 
 - PDF et diapositives : la description de l'activité (si choisie) vient avant
   la formulation pédagogique.
-- Le PowerPoint est au format portrait A4 (comme le PDF), pour s'ouvrir de la même façon dans Canva. Les exemples sont empilés sur la page ; une diapositive reprend le sous-domaine (suite) quand il ne tient plus.
+- Le PowerPoint est au format portrait A4 (comme le PDF), pour s'ouvrir de la même façon dans Canva.
+- Deux activités par ligne (gauche, droite). Chaque activité est sur un fond de carte, deux couleurs alternées (vert sauge pâle, ocre pâle) ; ses photos reprennent ce fond, dans le PDF comme dans le PowerPoint.
+- Photo horizontale : texte dessous. Photos verticales : texte à côté. Une activité trop haute pour une colonne prend toute la largeur de la page.
+- Plusieurs sous-domaines peuvent partager une page ; une section coupée reprend son titre avec « (suite) ».
+- Les photos sont redressées (orientation EXIF) avec sharp avant insertion, et placées sans déformation.
 
 ## Export : rouvrir un dossier finalisé
 
