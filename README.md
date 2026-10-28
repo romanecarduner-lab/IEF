@@ -2566,3 +2566,10 @@ progression, exports, IA — prévus dans les lots suivants.
 - « Revenir à la description de l'activité » efface la version du document ;
   le document reprend alors le texte du journal.
 - Aucune migration SQL : le champ tient dans le JSON existant.
+
+### Ordre dans le document : description avant la formulation
+
+- PDF et diapositives : la description de l'activité (si choisie) vient avant
+  la formulation pédagogique.
+- Sur les diapositives, les photos sont un peu réduites quand un exemple porte
+  une description, pour que le texte tienne. À vérifier sur une vraie diapositive.

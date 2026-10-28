@@ -105,8 +105,8 @@ export function DocumentDossierPedagogique({
                       )}
                       <Text style={styles.exempleTitre}>{e.titre}</Text>
                       <Text style={styles.exempleDate}>{e.date}</Text>
-                      {e.synthese && <Text style={styles.exempleSynthese}>{e.synthese}</Text>}
                       {e.description && <Text style={styles.exempleDescription}>{e.description}</Text>}
+                      {e.synthese && <Text style={styles.exempleSynthese}>{e.synthese}</Text>}
                     </View>
                   ))}
                 </View>

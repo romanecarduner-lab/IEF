@@ -193,7 +193,10 @@ function ajouterDiapositiveSousDomaine(
 
     const largeurExemple = groupe.length === 2 ? 5.95 : 12.3;
     const yImages = indexGroupe === 0 ? 3.4 : 1.5;
-    const hauteurImages = indexGroupe === 0 ? 2.4 : 3.6;
+    // Quand un exemple porte une description, les photos laissent un peu de
+    // place : le texte (description puis formulation) doit tenir sur la diapositive.
+    const avecDescription = groupe.some((e) => Boolean(e.description));
+    const hauteurImages = (indexGroupe === 0 ? 2.4 : 3.6) - (avecDescription ? 0.6 : 0);
     groupe.forEach((exemple, i) => {
       const x = 0.5 + i * (largeurExemple + 0.3);
       const nb = exemple.imagesBase64.length;
@@ -224,27 +227,31 @@ function ajouterDiapositiveSousDomaine(
         color: ARDOISE,
         isTextBox: true,
       });
-      if (exemple.synthese) {
-        slide.addText(exemple.synthese, {
-          x,
-          y: yTexte + 0.3,
-          w: largeurExemple,
-          h: 1.2,
-          fontSize: 10,
-          color: ENCRE,
-          valign: "top",
-          isTextBox: true,
-          margin: 0,
-        });
-      }
+      // La description passe en premier (en plus petit), puis la formulation
+      // pedagogique : c'est l'ordre voulu dans le document final.
+      let yFormulation = yTexte + 0.3;
       if (exemple.description) {
         slide.addText(exemple.description, {
           x,
-          y: yTexte + 1.5,
+          y: yTexte + 0.3,
           w: largeurExemple,
           h: 0.9,
           fontSize: 8,
           color: ARDOISE,
+          valign: "top",
+          isTextBox: true,
+          margin: 0,
+        });
+        yFormulation = yTexte + 1.25;
+      }
+      if (exemple.synthese) {
+        slide.addText(exemple.synthese, {
+          x,
+          y: yFormulation,
+          w: largeurExemple,
+          h: 1.2,
+          fontSize: 10,
+          color: ENCRE,
           valign: "top",
           isTextBox: true,
           margin: 0,
