@@ -89,7 +89,7 @@ export async function VueHistorique({ parcoursId }: { parcoursId: string }) {
             {l.ancienStatut ? `${l.ancienStatut} → ${l.nouveauStatut}` : l.nouveauStatut}
           </p>
           <p className="text-xs text-ardoise">
-            {new Date(l.date).toLocaleString("fr-FR")} · {l.auteur}
+            {new Date(l.date).toLocaleString("fr-FR", { timeZone: "Europe/Paris" })} · {l.auteur}
           </p>
           {l.commentaire && (
             <p className="mt-1 text-xs text-encre">{l.commentaire}</p>

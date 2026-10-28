@@ -55,6 +55,7 @@ export async function ListeVersionsFinales({
                   ? `Finalisée le ${new Date(v.finalise_le).toLocaleString("fr-FR", {
                       dateStyle: "long",
                       timeStyle: "short",
+                      timeZone: "Europe/Paris",
                     })}`
                   : "Version finalisée avant l’historique"}
               </p>
