@@ -20,6 +20,9 @@ export type DomaineDocumentPedagogique = {
   sousDomaines: SousDomaineDocument[];
 };
 
+// Au-dela de cette longueur de formulation, l'activite passe en disposition mixte.
+const SEUIL_TEXTE_LONG = 300;
+
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 11, fontFamily: "Helvetica" },
 
@@ -46,6 +49,13 @@ const styles = StyleSheet.create({
   exempleDate: { fontSize: 8, color: "#5C6A62", marginBottom: 3 },
   exempleSynthese: { fontSize: 9, color: "#26312D", lineHeight: 1.3 },
   exempleDescription: { fontSize: 8, color: "#5B6661", lineHeight: 1.3, marginTop: 4 },
+  // Disposition "mixte" pour les activites au texte long : titre et description
+  // sur toute la largeur, puis photo a gauche et formulation a droite.
+  exempleCorpsMixte: { flexDirection: "row", gap: 8, marginTop: 4 },
+  exempleColonnePhotos: { width: "45%" },
+  exempleColonneTexte: { width: "55%" },
+  exempleImageColonne: { width: "100%", height: 130, objectFit: "contain", borderRadius: 4, marginBottom: 3 },
+  exempleImageColonneSeule: { width: "100%", height: 180, objectFit: "contain", borderRadius: 4 },
 
   pied: { position: "absolute", bottom: 24, left: 40, right: 40, fontSize: 8, color: "#5C6A62", textAlign: "center" },
 });
@@ -89,10 +99,43 @@ export function DocumentDossierPedagogique({
 
               {sd.exemples.length > 0 && (
                 <View style={styles.exemplesLigne}>
-                  {sd.exemples.map((e, j) => (
+                  {sd.exemples.map((e, j) => {
+                    const fond = j % 2 === 0 ? styles.exempleFondA : styles.exempleFondB;
+                    const longue = e.synthese.length > SEUIL_TEXTE_LONG;
+                    if (longue) {
+                      return (
+                        <View key={j} style={[styles.exempleBloc, fond]} wrap={false}>
+                          <Text style={styles.exempleTitre}>{e.titre}</Text>
+                          <Text style={styles.exempleDate}>{e.date}</Text>
+                          {e.description && <Text style={styles.exempleDescription}>{e.description}</Text>}
+                          <View style={styles.exempleCorpsMixte}>
+                            {e.imagesBase64.length > 0 && (
+                              <View style={styles.exempleColonnePhotos}>
+                                {e.imagesBase64.map((img, k) => (
+                                  // eslint-disable-next-line jsx-a11y/alt-text -- Image de react-pdf, pas une balise HTML
+                                  <Image
+                                    key={k}
+                                    src={`data:image/jpeg;base64,${img}`}
+                                    style={
+                                      e.imagesBase64.length === 1
+                                        ? styles.exempleImageColonneSeule
+                                        : styles.exempleImageColonne
+                                    }
+                                  />
+                                ))}
+                              </View>
+                            )}
+                            <View style={styles.exempleColonneTexte}>
+                              <Text style={styles.exempleSynthese}>{e.synthese}</Text>
+                            </View>
+                          </View>
+                        </View>
+                      );
+                    }
+                    return (
                     <View
                       key={j}
-                      style={[styles.exempleBloc, j % 2 === 0 ? styles.exempleFondA : styles.exempleFondB]}
+                      style={[styles.exempleBloc, fond]}
                       wrap={false}
                     >
                       {e.imagesBase64.length > 0 && (
@@ -116,7 +159,8 @@ export function DocumentDossierPedagogique({
                       {e.description && <Text style={styles.exempleDescription}>{e.description}</Text>}
                       {e.synthese && <Text style={styles.exempleSynthese}>{e.synthese}</Text>}
                     </View>
-                  ))}
+                    );
+                  })}
                 </View>
               )}
             </View>

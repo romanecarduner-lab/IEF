@@ -227,9 +227,8 @@ const HAUTEUR_MAX_PHOTOS_VERTICALES = 2.8;
 // Au-dela de cette hauteur, une activite a cote de sa photo verticale ne tient
 // plus sur la page : la photo passe au-dessus du texte.
 const HAUTEUR_MAX_COTE = 4.0;
-// Au-dela de cette hauteur, une activite ne tient pas dans une colonne : elle
-// prend toute la largeur de la page.
-const HAUTEUR_MAX_CARTE_COLONNE = 6.0;
+// Au-dela de cette hauteur, la disposition mixte ne tient plus sur une page.
+const HAUTEUR_MAX_MIXTE = 7.5;
 const PADDING_CARTE = 0.12;
 // Fond de carte par activite : deux couleurs douces, alternees d'une activite
 // a l'autre (comme dans le PDF).
@@ -270,19 +269,34 @@ function hauteurTitreExemple(exemple: ExempleSousDomaine, largeur: number): numb
   return lignesEstimees(texteTitreExemple(exemple), largeur, 10, true) * 0.22 + 0.1;
 }
 
-/** Hauteur estimee du texte d'un exemple : titre, description, formulation. */
-function hauteurTexteExemple(exemple: ExempleSousDomaine, largeur: number): number {
+/** Hauteur du titre et de la description (pleine largeur de la zone). */
+function hauteurTitreEtDescription(exemple: ExempleSousDomaine, largeur: number): number {
   let h = hauteurTitreExemple(exemple, largeur);
   if (exemple.description) h += lignesEstimees(exemple.description, largeur, 8) * 0.14 + 0.12;
-  if (exemple.synthese) h += lignesEstimees(exemple.synthese, largeur, 10) * 0.19 + 0.1;
   return h;
 }
 
-type Placement = { base64: string; x: number; y: number; w: number; h: number };
-type Cellule = { mode: "cote" | "dessous" | "vide"; placements: Placement[]; hauteur: number };
+/** Hauteur de la formulation pedagogique. */
+function hauteurSyntheseExemple(exemple: ExempleSousDomaine, largeur: number): number {
+  return exemple.synthese ? lignesEstimees(exemple.synthese, largeur, 10) * 0.19 + 0.1 : 0;
+}
 
-/** Texte d'une activite : titre (date), description, puis formulation. */
-function ajouterTexteExemple(
+/** Hauteur estimee du texte d'un exemple : titre, description, formulation. */
+function hauteurTexteExemple(exemple: ExempleSousDomaine, largeur: number): number {
+  return hauteurTitreEtDescription(exemple, largeur) + hauteurSyntheseExemple(exemple, largeur);
+}
+
+type Placement = { base64: string; x: number; y: number; w: number; h: number };
+type Cellule = {
+  mode: "cote" | "dessous" | "mixte" | "vide";
+  placements: Placement[];
+  hauteur: number;
+  // Mode "mixte" : hauteur du titre et de la description, en pleine largeur.
+  hEnTete?: number;
+};
+
+/** Titre (date) et description d'une activite. Renvoie la position suivante. */
+function ajouterTitreEtDescription(
   slide: PptxGenJS.Slide,
   exemple: ExempleSousDomaine,
   x: number,
@@ -318,22 +332,43 @@ function ajouterTexteExemple(
     });
     yTexte += h;
   }
-  if (exemple.synthese) {
-    const h = lignesEstimees(exemple.synthese, largeur, 10) * 0.19 + 0.1;
-    slide.addText(exemple.synthese, {
-      x,
-      y: yTexte,
-      w: largeur,
-      h,
-      fontSize: 10,
-      color: ENCRE,
-      valign: "top",
-      isTextBox: true,
-      margin: 0,
-    });
-    yTexte += h;
-  }
   return yTexte;
+}
+
+/** Formulation pedagogique d'une activite. Renvoie la position suivante. */
+function ajouterSyntheseExemple(
+  slide: PptxGenJS.Slide,
+  exemple: ExempleSousDomaine,
+  x: number,
+  y: number,
+  largeur: number
+): number {
+  if (!exemple.synthese) return y;
+  const h = hauteurSyntheseExemple(exemple, largeur);
+  slide.addText(exemple.synthese, {
+    x,
+    y,
+    w: largeur,
+    h,
+    fontSize: 10,
+    color: ENCRE,
+    valign: "top",
+    isTextBox: true,
+    margin: 0,
+  });
+  return y + h;
+}
+
+/** Texte complet d'une activite : titre, description, puis formulation. */
+function ajouterTexteExemple(
+  slide: PptxGenJS.Slide,
+  exemple: ExempleSousDomaine,
+  x: number,
+  y: number,
+  largeur: number
+): number {
+  const yApresDescription = ajouterTitreEtDescription(slide, exemple, x, y, largeur);
+  return ajouterSyntheseExemple(slide, exemple, x, yApresDescription, largeur);
 }
 
 /** Photos verticales a gauche, texte a droite (colonne etroite). */
@@ -379,6 +414,24 @@ function disposerDessousCellule(exemple: ExempleSousDomaine, largeur: number): C
   };
 }
 
+/**
+ * Mode mixte : titre et description en pleine largeur, puis photo et
+ * formulation cote a cote. Sert quand le texte est trop long pour tenir
+ * a cote de la photo.
+ */
+function disposerMixteCellule(exemple: ExempleSousDomaine): Cellule {
+  const cote = disposerCoteCellule(exemple);
+  const hEnTete = hauteurTitreEtDescription(exemple, LARGEUR_COLONNE);
+  const hPhotos = cote.placements.reduce((max, p) => Math.max(max, p.y + p.h), 0);
+  const hSynthese = hauteurSyntheseExemple(exemple, LARGEUR_TEXTE_COTE_COLONNE);
+  return {
+    mode: "mixte",
+    placements: cote.placements,
+    hEnTete,
+    hauteur: hEnTete + 0.1 + Math.max(hPhotos, hSynthese),
+  };
+}
+
 /** Mise en page d'une activite dans la largeur donnee (colonne ou page). */
 function disposerCellule(exemple: ExempleSousDomaine, largeur: number): Cellule {
   const images = exemple.imagesBase64;
@@ -388,6 +441,8 @@ function disposerCellule(exemple: ExempleSousDomaine, largeur: number): Cellule 
   if (largeur === LARGEUR_COLONNE && dispositionExemple(images) === "cote") {
     const cote = disposerCoteCellule(exemple);
     if (cote.hauteur <= HAUTEUR_MAX_COTE) return cote;
+    const mixte = disposerMixteCellule(exemple);
+    if (mixte.hauteur <= HAUTEUR_MAX_MIXTE) return mixte;
   }
   return disposerDessousCellule(exemple, largeur);
 }
@@ -405,13 +460,13 @@ function planifierLignes(exemples: ExempleSousDomaine[]): Ligne[] {
     const actuel = exemples[i];
     if (!actuel) break;
     const hauteurActuelle = disposerCellule(actuel, LARGEUR_COLONNE).hauteur;
-    if (hauteurActuelle > HAUTEUR_MAX_CARTE_COLONNE) {
+    if (hauteurActuelle > HAUTEUR_MAX_MIXTE) {
       lignes.push({ exemples: [actuel], pleineLargeur: true });
       i += 1;
       continue;
     }
     const suivant = exemples[i + 1];
-    if (suivant && disposerCellule(suivant, LARGEUR_COLONNE).hauteur <= HAUTEUR_MAX_CARTE_COLONNE) {
+    if (suivant && disposerCellule(suivant, LARGEUR_COLONNE).hauteur <= HAUTEUR_MAX_MIXTE) {
       lignes.push({ exemples: [actuel, suivant], pleineLargeur: false });
       i += 2;
     } else {
@@ -451,6 +506,28 @@ function ajouterCellule(
     line: { color: fond, width: 0 },
     rectRadius: 0.08,
   });
+
+  if (cellule.mode === "mixte") {
+    const yColonne = ajouterTitreEtDescription(slide, exemple, x, y, largeur) + 0.1;
+    for (const p of cellule.placements) {
+      slide.addImage({
+        data: `image/jpeg;base64,${p.base64}`,
+        x: x + p.x,
+        y: yColonne + p.y,
+        w: p.w,
+        h: p.h,
+      });
+    }
+    ajouterSyntheseExemple(
+      slide,
+      exemple,
+      x + LARGEUR_PHOTO_VERTICALE + ECART_TEXTE_PHOTO,
+      yColonne,
+      LARGEUR_TEXTE_COTE_COLONNE
+    );
+    return;
+  }
+
   for (const p of cellule.placements) {
     slide.addImage({
       data: `image/jpeg;base64,${p.base64}`,
