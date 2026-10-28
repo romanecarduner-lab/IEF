@@ -256,7 +256,7 @@ function dispositionExemple(images: string[]): "cote" | "dessous" {
 
 /** Nombre de lignes estimees d'un texte dans une largeur donnee (en pouces). */
 function lignesEstimees(texte: string, largeur: number, taillePoints: number, gras = false): number {
-  const facteur = gras ? 0.56 : 0.5;
+  const facteur = gras ? 0.62 : 0.5;
   const caracteresParLigne = Math.max(8, Math.floor((largeur * 72) / (taillePoints * facteur)));
   return Math.ceil(texte.length / caracteresParLigne);
 }
@@ -267,7 +267,7 @@ function texteTitreExemple(exemple: ExempleSousDomaine): string {
 }
 
 function hauteurTitreExemple(exemple: ExempleSousDomaine, largeur: number): number {
-  return lignesEstimees(texteTitreExemple(exemple), largeur, 10, true) * 0.2 + 0.06;
+  return lignesEstimees(texteTitreExemple(exemple), largeur, 10, true) * 0.22 + 0.1;
 }
 
 /** Hauteur estimee du texte d'un exemple : titre, description, formulation. */
